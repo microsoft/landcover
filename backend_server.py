@@ -61,9 +61,6 @@ def pred_patch(model):
 
     naip_data, pat_trans, pat_crs, pat_bounds, padding = DataLoader.get_naip_by_extent(tile_fn, extent)
     naip_data = np.rollaxis(naip_data, 0, 3)
-    naip_img = naip_data[:,:,:3].copy().astype(np.uint8) # keep the RGB channels to save as a color image later
-    if padding > 0:
-        naip_img = naip_img[padding:-padding,padding:-padding,:]
     
     #landsat_data = DataLoader.get_landsat_by_extent(tile_fn, extent, padding)
     #landsat_data = np.rollaxis(landsat_data, 0, 3)
@@ -123,6 +120,47 @@ def pred_patch(model):
     bottle.response.status = 200
     return json.dumps(data)
 
+def get_input():
+    ''' TODO: What are we doing
+    '''
+    bottle.response.content_type = 'application/json'
+
+    # Inputs
+    data = bottle.request.json
+    extent = data["extent"]
+
+    # ------------------------------------------------------
+    # Step 1
+    #   Transform the input extent into a shapely geometry
+    #   Find the tile assosciated with the geometry
+    # ------------------------------------------------------
+    geom = DataLoader.extent_to_transformed_geom(extent)
+    return_code, return_msg = DataLoader.lookup_tile_by_geom(geom)
+    # TODO: How to handle errors
+    if not return_code:
+        bottle.response.status = 400
+        return json.dumps({"error": return_msg})
+    else:
+        tile_fn = return_msg
+
+    # ------------------------------------------------------
+    # Step 2
+    #   Load the input data sources for the given tile  
+    # ------------------------------------------------------
+
+    naip_data, pat_trans, pat_crs, pat_bounds, padding = DataLoader.get_naip_by_extent(tile_fn, extent)
+    naip_data = np.rollaxis(naip_data, 0, 3)
+    naip_img = naip_data[:,:,:3].copy().astype(np.uint8) # keep the RGB channels to save as a color image later
+    if padding > 0:
+        naip_img = naip_img[padding:-padding,padding:-padding,:]
+
+    img_naip = cv2.imencode(".png", cv2.cvtColor(naip_img, cv2.COLOR_RGB2BGR))[1].tostring()
+    img_naip = base64.b64encode(img_naip).decode("utf-8")
+    data["input_naip"] = img_naip
+
+    bottle.response.status = 200
+    return json.dumps(data)
+
 def do_get():
     '''Dummy method for easily testing whether the server is running correctly'''
     return "Backend server running"
@@ -163,6 +201,9 @@ def main():
     app.route("/predPatch", method="OPTIONS", callback=do_options)
     app.route('/predPatch', method="POST", callback=custom_pred_patch)
     
+    app.route("/getInput", method="OPTIONS", callback=do_options)
+    app.route('/getInput', method="POST", callback=get_input)
+
     app.route('/', method="GET", callback=do_get)
 
     bottle_server_kwargs = {
