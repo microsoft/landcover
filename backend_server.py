@@ -108,10 +108,6 @@ def pred_patch(model):
     img_hard = cv2.imencode(".png", cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGR))[1].tostring()
     img_hard = base64.b64encode(img_hard).decode("utf-8")
     data["output_hard"] = img_hard
-    
-    img_naip = cv2.imencode(".png", cv2.cvtColor(naip_img, cv2.COLOR_RGB2BGR))[1].tostring()
-    img_naip = base64.b64encode(img_naip).decode("utf-8")
-    data["input_naip"] = img_naip
 
     data["model_name"] = name
 

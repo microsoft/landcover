@@ -231,6 +231,9 @@
 
         var requestPatches = function(polygon, weights_save, map){
 
+            // Request input image from the first server we know about
+            requestInputPatch(polygon, ENDPOINTS[0]["url"]);
+
             // Setup placeholders for the predictions from the current click to be saved to
             currentPatches.push(null);
             currentPatchSrcs.push(Object());
@@ -247,13 +250,46 @@
             }
         };
 
-        var requestPatch = function(polygon, weights_save, map, requestIdx, patchId, serviceURL=processingServiceURL){
+        var requestInputPatch = function(polygon, serviceURL){
             var topleft = L.latLng(polygon[0][0], polygon[0][1]);
             var topleftProjected = L.CRS.EPSG3857.project(topleft);
             var bottomright = L.latLng(polygon[2][0], polygon[2][1]);
             var bottomrightProjected = L.CRS.EPSG3857.project(bottomright);
 
-            console.debug(topleftProjected.y - bottomrightProjected.y, bottomrightProjected.x - topleftProjected.x);
+            var request = {
+                "extent": {
+                    "xmax": bottomrightProjected.x,
+                    "xmin": topleftProjected.x,
+                    "ymax": topleftProjected.y,
+                    "ymin": bottomrightProjected.y,
+                    "spatialReference": {
+                        "latestWkid": 3857
+                    }
+                },
+            };
+
+            $.ajax({
+                type: "POST",
+                url: serviceURL + "getInput",
+                data: JSON.stringify(request),
+                success: function(data, textStatus, jqXHR){
+                    var resp = data;
+                    $("#inputNAIP").attr("src", "data:image/png;base64," + resp.input_naip);
+                },
+                error: function(jqXHR, textStatus, errorThrown){
+                    var response = $.parseJSON(jqXHR.responseText);
+                    console.log("Error in processing server: " + response.error);
+                },
+                dataType: "json",
+                contentType: "application/json"
+            });
+        };
+
+        var requestPatch = function(polygon, weights_save, map, requestIdx, patchId, serviceURL=processingServiceURL){
+            var topleft = L.latLng(polygon[0][0], polygon[0][1]);
+            var topleftProjected = L.CRS.EPSG3857.project(topleft);
+            var bottomright = L.latLng(polygon[2][0], polygon[2][1]);
+            var bottomrightProjected = L.CRS.EPSG3857.project(bottomright);
 
             var request = {
                 "extent": {
@@ -277,10 +313,7 @@
                     var srcs = [
                         "data:image/png;base64," + resp.output_soft,
                         "data:image/png;base64," + resp.output_hard,
-                        //"data:image/png;base64," + resp.input_naip
                     ];
-
-                    $("#inputNAIP").attr("src", "data:image/png;base64," + resp.input_naip);
 
                     var img = $("#exampleImage_"+patchId);
                     if (patchId == active_im_id) {
