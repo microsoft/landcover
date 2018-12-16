@@ -90,6 +90,5 @@ Copy the files from `//mslandcoverstorageeast.file.core.windows.net/chesapeake/d
   - Need to make sure that the fix doesn't assume a fixed input size.
 - `/predPatch` will probably _not_ work with other CRSs (besides EPSG:3857)
 - `/predPatch` will probably _not_ fail in an useful way
-- Clicking on the "NAIP Input" image in the web app doesn't behave as expected (it should either do nothing, or display the NAIP imagery on the map).
 - We want the `backend_server.py` to be decoupled from the implementation of the code needed to run the model. The way this currently works (in `main()` of `backend_server.py`) is really hacky.
 
