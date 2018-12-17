@@ -10,7 +10,7 @@ import shapely.geometry
 import rasterio
 import rasterio.mask
 
-cnn_model_file = "/mnt/blobfuse/train-output/ForKolyaPaper-train_Chesapeake2014_region_patch_LC4_sp2_NLCD-0.2-40/cnn_60.model"
+cnn_model_file = "data/cnn_60.model" #/mnt/blobfuse/train-output/ForKolyaPaper-train_Chesapeake2014_region_patch_LC4_sp2_NLCD-0.2-40/cnn_60.model
 
 def load_cnn_model(fn, gpu_id=0):
     cntk.try_set_default_device(cntk.gpu(gpu_id))
