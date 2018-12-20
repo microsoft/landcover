@@ -13,6 +13,7 @@ import numpy as np
 import cv2
 
 import DataLoader
+import GeoTools
 import utils
 
 def enable_cors():
@@ -31,7 +32,9 @@ def do_options():
     return
 
 def pred_patch(model):
-    ''' TODO: What are we doing
+    ''' Method called for POST `/predPatch`
+
+    `model` is a method created in main() based on the `--model` command line argument
     '''
     bottle.response.content_type = 'application/json'
 
@@ -45,33 +48,34 @@ def pred_patch(model):
     #   Transform the input extent into a shapely geometry
     #   Find the tile assosciated with the geometry
     # ------------------------------------------------------
-    geom = DataLoader.extent_to_transformed_geom(extent)
-    return_code, return_msg = DataLoader.lookup_tile_by_geom(geom)
-    # TODO: How to handle errors
-    if not return_code:
+    geom = GeoTools.extent_to_transformed_geom(extent, "EPSG:4269")
+    try:
+        naip_fn = DataLoader.lookup_tile_by_geom(geom)
+    except ValueError as e:
+        print(e)
         bottle.response.status = 400
-        return json.dumps({"error": return_msg})
-    else:
-        tile_fn = return_msg
+        return json.dumps({"error": str(e)})
 
     # ------------------------------------------------------
     # Step 2
     #   Load the input data sources for the given tile  
     # ------------------------------------------------------
 
-    naip_data, pat_trans, pat_crs, pat_bounds, padding = DataLoader.get_naip_by_extent(tile_fn, extent)
+    naip_data, padding = DataLoader.get_data_by_extent(naip_fn, extent, DataLoader.GeoDataTypes.NAIP)
     naip_data = np.rollaxis(naip_data, 0, 3)
     
-    #landsat_data = DataLoader.get_landsat_by_extent(tile_fn, extent, padding)
+    #landsat_data = DataLoader.get_landsat_by_extent(naip_fn, extent, padding)
     #landsat_data = np.rollaxis(landsat_data, 0, 3)
     
-    #nlcd_data = DataLoader.get_nlcd_by_extent(tile_fn, extent, padding)
+    #nlcd_data = DataLoader.get_nlcd_by_extent(naip_fn, extent, padding)
     #nlcd_data = np.rollaxis(to_one_hot(nlcd_data, 22), 0, 3)
-    
-    #lc_data = DataLoader.get_lc_by_extent(tile_fn, extent, padding)
+    #nlcd_data = np.squeeze(nlcd_data)
+    #nlcd_data = np.vectorize(utils.NLCD_CLASS_TO_IDX.__getitem__)(nlcd_data)
+
+    #lc_data = DataLoader.get_lc_by_extent(naip_fn, extent, padding)
     #lc_data = np.rollaxis(to_one_hot(lc_data, 7), 0, 3)
 
-    #blg_data = DataLoader.get_blg_by_extent(tile_fn, extent, padding)
+    #blg_data = DataLoader.get_blg_by_extent(naip_fn, extent, padding)
     #blg_data = np.rollaxis(blg_data, 0, 3)
     
     # ------------------------------------------------------
@@ -82,7 +86,7 @@ def pred_patch(model):
     # ------------------------------------------------------
     #output, name = ServerModels_Baseline_Blg_test.run_cnn(naip_data, landsat_data, blg_data, with_smooth=False)
     #name += "_with_smooth_False"
-    output, name = model(naip_data, tile_fn, extent, padding)
+    output, name = model(naip_data, naip_fn, extent, padding)
 
     assert output.shape[2] == 4, "The model function should return an image shaped as (height, width, num_classes)"
     output *= weights[np.newaxis, np.newaxis, :] # multiply by the weight vector
@@ -111,13 +115,11 @@ def pred_patch(model):
 
     data["model_name"] = name
 
-
-
     bottle.response.status = 200
     return json.dumps(data)
 
 def get_input():
-    ''' TODO: What are we doing
+    ''' Method called for POST `/getInput`
     '''
     bottle.response.content_type = 'application/json'
 
@@ -130,21 +132,20 @@ def get_input():
     #   Transform the input extent into a shapely geometry
     #   Find the tile assosciated with the geometry
     # ------------------------------------------------------
-    geom = DataLoader.extent_to_transformed_geom(extent)
-    return_code, return_msg = DataLoader.lookup_tile_by_geom(geom)
-    # TODO: How to handle errors
-    if not return_code:
+    geom = GeoTools.extent_to_transformed_geom(extent, "EPSG:4269")
+    try:
+        naip_fn = DataLoader.lookup_tile_by_geom(geom)
+    except ValueError as e:
+        print(e)
         bottle.response.status = 400
-        return json.dumps({"error": return_msg})
-    else:
-        tile_fn = return_msg
+        return json.dumps({"error": str(e)})
 
     # ------------------------------------------------------
     # Step 2
     #   Load the input data sources for the given tile  
     # ------------------------------------------------------
 
-    naip_data, pat_trans, pat_crs, pat_bounds, padding = DataLoader.get_naip_by_extent(tile_fn, extent)
+    naip_data, padding = DataLoader.get_data_by_extent(naip_fn, extent, DataLoader.GeoDataTypes.NAIP)
     naip_data = np.rollaxis(naip_data, 0, 3)
     naip_img = naip_data[:,:,:3].copy().astype(np.uint8) # keep the RGB channels to save as a color image later
     if padding > 0:

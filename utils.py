@@ -1,7 +1,15 @@
 import numpy as np
 import string
 
-colour_map_nlcd = np.asarray([
+
+NLCD_CLASSES = [
+    0, 11, 12, 21, 22, 23, 24, 31, 41, 42, 43, 51, 52, 71, 72, 73, 74, 81, 82, 90, 95, 255
+]
+NLCD_CLASS_TO_IDX = {
+    cl: i for i, cl in enumerate(NLCD_CLASSES)
+}
+
+COLOR_MAP_NLCD = np.array(
     [0,0,1],
     [1,1,1],
     [0.6,0.6,0.3],
@@ -25,7 +33,7 @@ colour_map_nlcd = np.asarray([
     [1,0,0],
 ], dtype=np.float32)
 
-colour_map_lc6 = np.asarray([
+COLOR_MAP_LC6 = np.array([
     [0,0,1],
     [0,0.5,0],
     [0.5,1,0.5],
@@ -34,7 +42,7 @@ colour_map_lc6 = np.asarray([
     [0.10,0.10,0.10],
 ], dtype=np.float32)
 
-colour_map_lc4 = np.asarray([
+COLOR_MAP_LC4 = np.array([
     [0,0,1],
     [0,0.5,0],
     [0.5,1,0.5],
@@ -61,11 +69,11 @@ def class_prediction_to_img(y_pred, hard=True):
     height, width, num_classes = y_pred.shape
 
     if num_classes > 10:
-        colour_map = colour_map_nlcd
+        colour_map = COLOR_MAP_NLCD
     elif num_classes == 6:
-        colour_map = colour_map_lc6
+        colour_map = COLOR_MAP_LC6
     elif num_classes == 4:
-        colour_map = colour_map_lc4
+        colour_map = COLOR_MAP_LC4
     else:
         raise TypeError("num_classes must match a known prediction format")
 
@@ -83,5 +91,5 @@ def class_prediction_to_img(y_pred, hard=True):
                 img[:, :, ch] += y_pred_temp[:, :, c] * colour_map[c, ch]
     return img
     
-def nlcd_to_img(img):
-    return np.vectorize(NLCD_COLOR_MAP.__getitem__, signature='()->(n)')(img).astype(np.uint8)
+#def nlcd_to_img(img):
+#    return np.vectorize(NLCD_COLOR_MAP.__getitem__, signature='()->(n)')(img).astype(np.uint8)
