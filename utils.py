@@ -9,7 +9,7 @@ NLCD_CLASS_TO_IDX = {
     cl: i for i, cl in enumerate(NLCD_CLASSES)
 }
 
-COLOR_MAP_NLCD = np.array(
+COLOR_MAP_NLCD = np.array([
     [0,0,1],
     [1,1,1],
     [0.6,0.6,0.3],
