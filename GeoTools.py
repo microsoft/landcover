@@ -11,5 +11,6 @@ def extent_to_transformed_geom(extent, dest_crs="EPSG:4269"):
         "coordinates": [[(left, top), (right, top), (right, bottom), (left, bottom), (left, top)]]
     }
 
-    # The map navigator uses EPSG:3857 and Caleb's indices use EPSG:4269
-    return fiona.transform.transform_geom("EPSG:3857", dest_crs, geom)
+    src_crs = "EPSG:" + str(extent["spatialReference"]["latestWkid"])
+
+    return fiona.transform.transform_geom(src_crs, dest_crs, geom)

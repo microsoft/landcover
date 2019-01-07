@@ -92,12 +92,7 @@ def pred_patch(model):
     output *= weights[np.newaxis, np.newaxis, :] # multiply by the weight vector
     sum_vals = output.sum(axis=2) # need to normalize sums to 1 in order for the rendered output to be correct
     output = output / (sum_vals[:,:,np.newaxis] + 0.000001)
-
-
-    output_save = output.copy() # keep the original output to save later
-    if padding > 0:
-        output = output[padding:-padding, padding:-padding, :]
-
+    
 
     # ------------------------------------------------------
     # Step 4

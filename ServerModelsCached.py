@@ -9,31 +9,53 @@ import shapely.geometry
 import rasterio
 import rasterio.mask
 
-def extent_to_geom(extent, dest_crs="EPSG:4269"):
-    left, right = extent["xmin"], extent["xmax"]
-    top, bottom = extent["ymax"], extent["ymin"]
-
-    geom = {
-        "type": "Polygon",
-        "coordinates": [[(left, top), (right, top), (right, bottom), (left, bottom), (left, top)]]
-    }
-
-    src_crs = "EPSG:" + str(extent["spatialReference"]["latestWkid"])
-
-    return fiona.transform.transform_geom(src_crs, dest_crs, geom)
+import GeoTools
 
 def run(naip, fn, extent, buffer):
     return get_cached_by_extent(fn, extent, buffer)
 
 def get_cached_by_extent(fn, extent, buffer):
     fn = fn.replace("esri-naip/", "full-usa-output/7_10_2018/")[:-4] + "_prob.tif"
+
     f = rasterio.open(fn, "r")
-    geom = extent_to_geom(extent, f.crs["init"])
-    minx, miny, maxx, maxy = shapely.geometry.shape(geom).buffer(buffer).bounds
+    geom = GeoTools.extent_to_transformed_geom(extent, f.crs["init"])
+    pad_rad = 15 # TODO: this might need to be changed for much larger inputs
+    buffed_geom = shapely.geometry.shape(geom).buffer(pad_rad)
+    minx, miny, maxx, maxy = buffed_geom.bounds
     geom = shapely.geometry.mapping(shapely.geometry.box(minx, miny, maxx, maxy, ccw=True))
     out_image, out_transform = rasterio.mask.mask(f, [geom], crop=True)
+    src_crs = f.crs.copy()
     f.close()
-    print(out_image.shape)
-    out_image = np.rollaxis(out_image, 0, 3)
-    return out_image / 255.0, "Full-US-prerun"
+    
+    dst_crs = {"init": "EPSG:%s" % (extent["spatialReference"]["latestWkid"])}
+    dst_transform, width, height = rasterio.warp.calculate_default_transform(
+        src_crs,
+        dst_crs,
+        width=out_image.shape[2], height=out_image.shape[1],
+        left=buffed_geom.bounds[0],
+        bottom=buffed_geom.bounds[1],
+        right=buffed_geom.bounds[2],
+        top=buffed_geom.bounds[3],
+        resolution=1
+    )
+
+    dst_image = np.zeros((out_image.shape[0], height, width), np.uint8)
+    rasterio.warp.reproject(
+            source=out_image,
+            destination=dst_image,
+            src_transform=out_transform,
+            src_crs=src_crs,
+            dst_transform=dst_transform,
+            dst_crs=dst_crs,
+            resampling=rasterio.warp.Resampling.nearest
+    )
+    
+    # Calculate the correct padding
+    w = extent["xmax"] - extent["xmin"]
+    padding = int(np.round((dst_image.shape[1] - w) / 2))
+
+    dst_image = np.rollaxis(dst_image, 0, 3)
+    dst_image = dst_image[padding:-padding, padding:-padding, :]
+
+    return dst_image / 255.0, "Full-US-prerun"
 
