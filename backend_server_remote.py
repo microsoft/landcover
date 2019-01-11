@@ -12,7 +12,7 @@ import json
 import numpy as np
 import cv2
 
-import DataManager
+import GeoTools
 import utils
 
 import requests
@@ -47,17 +47,7 @@ def pred_patch(model):
     #   Transform the input extent into a shapely geometry
     #   Find the tile assosciated with the geometry
     # ------------------------------------------------------
-    geom = DataManager.extent_to_transformed_geom(extent)
-    # OLD VERSION
-    '''
-    return_code, return_msg = DataManager.lookup_tile_by_geom(geom)
-    # TODO: How to handle errors
-    if not return_code:
-        bottle.response.status = 400
-        return json.dumps({"error": return_msg})
-    else:
-        tile_fn = return_msg
-    '''
+    geom = GeoTools.extent_to_transformed_geom(extent)
 
     # ------------------------------------------------------
     # Step 2
