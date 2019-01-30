@@ -88,4 +88,4 @@ Copy the files from `//mslandcoverstorageeast.file.core.windows.net/chesapeake/d
 - `/predPatch` will probably _not_ work with other CRSs (besides EPSG:3857)
 - `/predPatch` will probably _not_ fail in an useful way
 - We want the `backend_server.py` to be decoupled from the implementation of the code needed to run the model. The way this currently works (in `main()` of `backend_server.py`) is really hacky.
-
+- If you switch the "Sharpness" slider immediately after clicking on the map (before results are returned) then an error happens.
