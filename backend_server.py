@@ -163,7 +163,7 @@ def main():
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debugging", default=False)
     parser.add_argument("--host", action="store", dest="host", type=str, help="Host to bind to", default="0.0.0.0")
     parser.add_argument("--port", action="store", dest="port", type=int, help="Port to listen on", default=4444)
-    parser.add_argument("--model", action="store", dest="model", choices=["1","2","3"], help="Model to use", required=True)
+    parser.add_argument("--model", action="store", dest="model", choices=["old_cached", "new_cached", "iclr", "mila"], help="Model to use", required=True)
 
     args = parser.parse_args(sys.argv[1:])
 
@@ -173,12 +173,18 @@ def main():
     TODO: This "run_model" method signature should be standardized.
     '''
     loaded_model = None
-    if args.model == "1":
+    if args.model == "old_cached":
         import ServerModelsCached
         loaded_model = ServerModelsCached.run
-    elif args.model == "2":
+    elif args.model == "new_cached":
+        import ServerModelsCachedNew
+        loaded_model = ServerModelsCachedNew.run
+    elif args.model == "iclr":
         import ServerModelsICLR
         loaded_model = ServerModelsICLR.run
+    elif args.model == "mila":
+        import ServerModelsMila
+        loaded_model = ServerModelsMila.run
     else:
         print("Model isn't implemented, aborting")
         return
