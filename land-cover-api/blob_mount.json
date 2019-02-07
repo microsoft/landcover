@@ -1,0 +1,15 @@
+[
+    {
+        "accountName":"mslandcoverstorageeast",
+        "accountKey":"<add accountKey>",
+        "containerName":"esri-naip",
+        "mappedDirectory":"/mnt/blobfuse/esri-naip"
+    },
+    {
+        "accountName":"modeloutput",
+        "accountKey":"<add accountKey>",
+        "containerName":"full-usa-output",
+        "mappedDirectory":"/mnt/blobfuse/full-usa-output"
+    }
+
+]
