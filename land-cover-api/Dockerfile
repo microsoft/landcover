@@ -6,7 +6,6 @@ COPY ./blob_mount.json /app/fuse/blob_mount.json
 RUN apt-get update && apt-get upgrade -y
 RUN apt-get install -y libgl1-mesa-glx
 
-#RUN /usr/local/envs/ai4e_py_api/bin/pip install gdal
 RUN /usr/local/envs/ai4e_py_api/bin/pip install rasterio==1.0.12
 
 # Example of installing additonal Anaconda packages - numpy and pandas
