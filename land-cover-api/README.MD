@@ -1,8 +1,8 @@
 # Land Cover Mapping API
 
 
-This folder contains code that can be used to create the landcover api (to be deployed using docker), built using AI for Earth the base image 
-( Refer to [AI for Earth API Development tutorial](https://github.com/Microsoft/AIforEarth-API-Development/blob/master/Quickstart.md ) for more info)
+- This folder contains the landcover api code which can be hosted by deploying to a docker container
+- Built using AI for Earth the base image. (refer to [AI for Earth API Development tutorial](https://github.com/Microsoft/AIforEarth-API-Development/blob/master/Quickstart.md ) for more info)
 
 ## Overview
 
