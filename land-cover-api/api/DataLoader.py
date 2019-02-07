@@ -21,10 +21,6 @@ import glob
 
 import GeoTools
 
-#added by annie
-from azure.storage.blob import BlockBlobService
-import glob
-
 class GeoDataTypes(Enum):
     NAIP = 1
     NLCD = 2
