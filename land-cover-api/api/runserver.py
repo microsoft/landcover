@@ -59,12 +59,6 @@ def health_check():
 def post():    
     # wrap_sync_endpoint wraps your function within a logging trace.
     post_data  = request.get_json()
-    #return str(post_data['extent'])
-   
-    print("-------------------------------------------------")
-    print(post_data['extent'])
-    print("-------------------------------------------------")
-
     return ai4e_wrapper.wrap_sync_endpoint(pred_patch, "post:pred_patch", data=post_data)
 
 @app.route(api_prefix + '/getinput', methods=['GET'])
@@ -76,9 +70,7 @@ def get():
 #def pred_patch(**kwargs):
 def pred_patch(data):
     # Inputs
-
-    #data = kwargs.get('data', None)
-
+  
     extent = data["extent"]
     weights = np.array(data["weights"], dtype=np.float32)
 
@@ -140,9 +132,7 @@ def get_input(data):
     
     ''' Method called for POST `/getInput`
     '''
-
     # Inputs
-    #data = kwargs.get('data', None)
     extent = data["extent"]
     # ------------------------------------------------------
     # Step 1
