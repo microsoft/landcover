@@ -89,5 +89,5 @@ Output example:
   ```
   docker run -p 8001:80 --privileged --cap-add=SYS_ADMIN --device=/dev/fuse "your_custom_image_name:1"
   ```
-  If you get an error port 8000 is in use try with a different port number 
+  (use a different port number other than 8001 if the port is already in use) 
   
