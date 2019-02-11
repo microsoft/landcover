@@ -15,7 +15,7 @@ def run(naip, fn, extent, buffer):
     return get_cached_by_extent(fn, extent, buffer)
 
 def get_cached_by_extent(fn, extent, buffer):
-    fn = fn.replace("esri-naip/", "full-usa-output/7_10_2018/")[:-4] + "_prob.tif"
+    fn = fn.replace("esri-naip/", "full-usa-output/1_3_2019/")[:-4] + "_prob.tif"
 
     f = rasterio.open(fn, "r")
     geom = GeoTools.extent_to_transformed_geom(extent, f.crs["init"])
