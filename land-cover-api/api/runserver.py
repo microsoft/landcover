@@ -5,6 +5,7 @@
 from task_management.api_task import ApiTaskManager
 from flask import Flask, request
 from flask_restful import Resource, Api
+from flask_cors import CORS, cross_origin
 from time import sleep
 import json
 from ai4e_app_insights import AppInsights
@@ -34,6 +35,9 @@ print("Creating Application")
 api_prefix = getenv('API_PREFIX')
 app = Flask(__name__)
 api = Api(app)
+#cors = CORS(app)
+
+app.config['JSON_SORT_KEYS'] = False
 
 # Log requests, traces and exceptions to the Application Insights service
 appinsights = AppInsights(app)
@@ -50,18 +54,26 @@ ai4e_wrapper = AI4EWrapper(app)
 
 #load the precomputed results
 model = ServerModelsCached.run
+
+@app.after_request
+def enable_cors(response):
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'PUT, GET, POST, DELETE, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Origin, Accept, Content-Type, X-Requested-With, X-CSRF-Token'
+
+    return response
  
 @app.route('/', methods=['GET'])
 def health_check():
     return "Health check OK"
 
-@app.route(api_prefix + '/predpatch', methods=['POST'])
+@app.route(api_prefix + '/predPatch', methods=['POST'])
 def post():    
     # wrap_sync_endpoint wraps your function within a logging trace.
     post_data  = request.get_json()
     return ai4e_wrapper.wrap_sync_endpoint(pred_patch, "post:pred_patch", data=post_data)
 
-@app.route(api_prefix + '/getinput', methods=['GET'])
+@app.route(api_prefix + '/getInput', methods=['GET'])
 def get():
     post_data = json.loads(request.data)
     #return(get_input(post_data))
