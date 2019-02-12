@@ -35,7 +35,7 @@ print("Creating Application")
 api_prefix = getenv('API_PREFIX')
 app = Flask(__name__)
 api = Api(app)
-#cors = CORS(app)
+
 
 app.config['JSON_SORT_KEYS'] = False
 
@@ -68,16 +68,16 @@ def health_check():
     return "Health check OK"
 
 @app.route(api_prefix + '/predPatch', methods=['POST'])
-def post():    
+def post_pred_patch():    
     # wrap_sync_endpoint wraps your function within a logging trace.
     post_data  = request.get_json()
     return ai4e_wrapper.wrap_sync_endpoint(pred_patch, "post:pred_patch", data=post_data)
 
-@app.route(api_prefix + '/getInput', methods=['GET'])
-def get():
+@app.route(api_prefix + '/getInput', methods=['POST'])
+def post_get_input():
     post_data = json.loads(request.data)
     #return(get_input(post_data))
-    return ai4e_wrapper.wrap_sync_endpoint(get_input, "get:get_input", data=post_data)
+    return ai4e_wrapper.wrap_sync_endpoint(get_input, "post:get_input", data=post_data)
 
 #def pred_patch(**kwargs):
 def pred_patch(data):
