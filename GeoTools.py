@@ -1,6 +1,7 @@
 import numpy as np
 import rasterio
 import fiona
+import fiona.transform
 
 def extent_to_transformed_geom(extent, dest_crs="EPSG:4269"):
     left, right = extent["xmin"], extent["xmax"]
