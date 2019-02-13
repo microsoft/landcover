@@ -84,11 +84,8 @@ Copy the files from `//mslandcoverstorageeast.file.core.windows.net/chesapeake/d
 
 
 ## Issues/To-do list
- 
-- Alignment of images between clicks is off
-  - I understand the root cause of this problem but haven't implemented in the backend in a way that makes the most sense yet. The ideas for the fix can be found in `DataLoader.get_naip_by_extent_fixed` -- Caleb
-  - Need to make sure that the fix doesn't assume a fixed input size.
+
 - `/predPatch` will probably _not_ work with other CRSs (besides EPSG:3857)
 - `/predPatch` will probably _not_ fail in an useful way
 - We want the `backend_server.py` to be decoupled from the implementation of the code needed to run the model. The way this currently works (in `main()` of `backend_server.py`) is really hacky.
-
+- If you switch the "Sharpness" slider immediately after clicking on the map (before results are returned) then an error happens.

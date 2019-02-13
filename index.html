@@ -8,7 +8,7 @@
     <meta name="author" content="">
     <link rel="icon" href="favicon.ico">
 
-    <title>Land Cover Client</title>
+    <title>Land Cover Mapping</title>
 
     <!-- Core CSS -->
     <link href="css/leaflet.css" rel="stylesheet" />
@@ -18,7 +18,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.css">
 
     <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet">
-
+    
     <style type="text/css">
         html, body {
             height: 100%;
@@ -30,10 +30,6 @@
             margin: 0;
         }
 
-        body.waiting * {
-            cursor: wait;
-        }
-
         #map {
             width: 100%;
             height: 100%;
@@ -42,6 +38,25 @@
 
         .leaflet-control-slider{
             border-radius: 2px; 
+        }
+        
+        .sidebar{
+            border: 0 !important;
+            right: 20px !important;
+        }
+        .sidebar-content{
+            right: 0 !important;
+        }
+        .sidebar-header{
+            background-color: #19715E;
+            font-family: "Segoe UI Web (West European)",Segoe UI,-apple-system,BlinkMacSystemFont,Roboto,Helvetica Neue,sans-serif;
+            font-size: 1.2em;
+            letter-spacing: .1rem;
+            font-weight: 400;
+            color: white;
+        }
+        .sidebar-tabs{
+            background-color: rgba(255, 255, 255, 0.95);
         }
 
         #inputNAIP{
@@ -88,42 +103,90 @@
             width: 171px;
         }
 
+        .logo-area{
+            background-color: #19715E;
+            width:300px;
+            height:70px;
+            display: flex !important;
+            flex-basis: auto;
+            flex-grow: 1;
+            align-items: center;
+            font-family: "Segoe UI Web (West European)",Segoe UI,-apple-system,BlinkMacSystemFont,Roboto,Helvetica Neue,sans-serif;
+        }
+
+        .logo-text{
+            font-size: 1.7em;
+            letter-spacing: .1rem;
+            font-weight: 400;
+            line-height: 1.5;
+            color: white;
+            padding: 2px;
+            padding-right: 2rem;
+            padding-left: 2rem;
+        }
+
+        .logo-link{
+            font-size: 100%;
+            font-weight: 400;
+            color: white;
+            padding-right: 1.5rem;
+            padding-left: 1.5rem;
+        }
+        
+        .m-0{
+            margin: 0 !important;
+        }
+        
+        .leaflet-container .logo-area a {
+            color: #19715E;
+        }
+        
+        .leaflet-container .logo-area a:hover {
+            color: #25A782;
+        }
+
     </style>
 
 </head>
 
 <body>
 
-    <div id="map"></div>
-    
-    <div id="sidebar" class="sidebar collapsed">
-        <!-- Nav tabs -->
-        <div class="sidebar-tabs">
-            <ul role="tablist">
-                <li>
-                    <a href="#home" role="tab">
-                        <i class="fa fa-bars"></i>
-                    </a>
-                </li>
-            </ul>
-    
-            <ul role="tablist">
-                <li>
-                    <a href="#settings" role="tab">
-                        <i class="fa fa-gear"></i>
-                    </a>
+    <!--
+    <nav class="navbar navbar-solid navbar-fixed-top">
+        <a class="" href=".">
+            <figure class="m-0">
+                <span class="logo-text"> AI for Earth </span>
+            </figure>
+        </a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav mr-sm-auto">
+                <li class="nav-item mx-xl-5">
+                    <a class="nav-link text-capitalize text-white px-sm-4 small" href="https://www.microsoft.com/en-us/ai-for-earth/land-cover-mapping-api">About</a>
                 </li>
             </ul>
         </div>
+    </nav>
+    -->
+
+    <div id="map"></div>
+    
+    <div id="sidebar" class="sidebar">
     
         <!-- Tab panes -->
         <div class="sidebar-content">
+
+            <!-- Start of "home" tab -->
             <div class="sidebar-pane" id="home">
                 <h1 class="sidebar-header">
-                    Land Cover Training
+                    Land Cover Mapping
+                    <!--
                     <span class="sidebar-close">
                         <i class="fa fa-caret-right"></i>
                     </span>
+                    -->
                 </h1>
     
     
@@ -183,16 +246,8 @@
                         </tr>
                     </table>
                 </div>
-
-            </div> <!-- End of "home" tab -->
-    
-            <div class="sidebar-pane" id="settings">
-                <h1 class="sidebar-header">Settings
-                    <span class="sidebar-close">
-                        <i class="fa fa-caret-right"></i>
-                    </span>
-                </h1>
             </div>
+            <!-- End of "home" tab -->
         </div>
     </div>
 
@@ -416,6 +471,16 @@
                 layers: [Esri_WorldImagery, cities]
             });
 
+
+            //---------------------------------------------------------------------
+            // Setup AI4E Branding
+            //----------------------------------------------------------------------
+            var logoControl = $("<div class='leaflet-control logo-area'></div>");
+
+            logoControl.append("<a href='.' style='text-decoration: underline;' class='.m-0'><span class='logo-text'> AI for Earth </span></a>");
+            logoControl.append("<a href='https://www.microsoft.com/en-us/ai-for-earth/land-cover-mapping-api' style='text-decoration: underline;'><span class='logo-link'>About</span></a>");
+            $(".leaflet-top.leaflet-left").append(logoControl)
+
             //----------------------------------------------------------------------
             // Setup leaflet-control-geocoder plugin
             //----------------------------------------------------------------------
@@ -629,6 +694,8 @@
             });
 
         });
+
+
     </script>
 </body>
 
