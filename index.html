@@ -277,6 +277,7 @@
         var SELECTION_SIZE = 200; // in meters, probably
 
         var selectionBox = null;
+        var tooltip = null;
         var currentSelection = null;
 
         var exampleImgsList = [];
@@ -476,10 +477,13 @@
             // Setup AI4E Branding
             //----------------------------------------------------------------------
             var logoControl = $("<div class='leaflet-control logo-area'></div>");
-
             logoControl.append("<a href='.' style='text-decoration: underline;' class='.m-0'><span class='logo-text'> AI for Earth </span></a>");
             logoControl.append("<a href='https://www.microsoft.com/en-us/ai-for-earth/land-cover-mapping-api' style='text-decoration: underline;'><span class='logo-link'>About</span></a>");
+            
             $(".leaflet-top.leaflet-left").append(logoControl)
+
+
+            $(".leaflet-top.leaflet-left").append("<div class='leaflet-control' style='background-color:white; padding:10px;width:120px;height:17px;' id='latlng'></div>")
 
             //----------------------------------------------------------------------
             // Setup leaflet-control-geocoder plugin
@@ -616,6 +620,9 @@
             map.addEventListener('mousemove', function(e){
                 curSelPoly = getPolyAround(e.latlng, SELECTION_SIZE)
 
+                var lat = Math.round(e.latlng.lat * 1000) / 1000;
+                var lng = Math.round(e.latlng.lng * 1000) / 1000;
+
                 if(selectionBox === null){
                     selectionBox = L.polygon(curSelPoly, {
                         color: "#000000",
@@ -623,8 +630,11 @@
                         weight: 2
                     });
                     selectionBox.addTo(map);
+                    
+                    $("#latlng").text(lat + "N " + lng + "E");
                 }else{
                     selectionBox.setLatLngs(curSelPoly);
+                    $("#latlng").text(lat + "N " + lng + "E");
                 }
             });
 
