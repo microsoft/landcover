@@ -3,6 +3,7 @@
 # vim:fenc=utf-8
 import sys
 import os
+
 import bottle
 import argparse
 import functools
@@ -15,6 +16,8 @@ import cv2
 import DataLoader
 import GeoTools
 import utils
+
+import ServerModelsICLRFormat, ServerModelsCachedFormat
 
 def enable_cors():
     '''From https://gist.github.com/richard-flosi/3789163
@@ -86,13 +89,14 @@ def pred_patch(model):
     # ------------------------------------------------------
     #output, name = ServerModels_Baseline_Blg_test.run_cnn(naip_data, landsat_data, blg_data, with_smooth=False)
     #name += "_with_smooth_False"
-    output, name = model(naip_data, naip_fn, extent, padding)
-
+    output, name = model.run(naip_data, naip_fn, extent, padding)
     assert output.shape[2] == 4, "The model function should return an image shaped as (height, width, num_classes)"
     output *= weights[np.newaxis, np.newaxis, :] # multiply by the weight vector
     sum_vals = output.sum(axis=2) # need to normalize sums to 1 in order for the rendered output to be correct
     output = output / (sum_vals[:,:,np.newaxis] + 0.000001)
     
+    if padding > 0:
+        output = output[padding:-padding,padding:-padding,:]
 
     # ------------------------------------------------------
     # Step 4
@@ -163,33 +167,27 @@ def main():
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debugging", default=False)
     parser.add_argument("--host", action="store", dest="host", type=str, help="Host to bind to", default="0.0.0.0")
     parser.add_argument("--port", action="store", dest="port", type=int, help="Port to listen on", default=4444)
-    parser.add_argument("--model", action="store", dest="model", choices=["old_cached", "new_cached", "iclr", "mila"], help="Model to use", required=True)
+    parser.add_argument("--model", action="store", dest="model", choices=["cached", "keras", "iclr"], help="Model to use", required=True)
+    parser.add_argument("--model_fn", action="store", dest="model_fn", type=str, help="Model fn to use", default=None)
+    parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", default=0)
 
     args = parser.parse_args(sys.argv[1:])
 
-
-    # Here we dynamically load a method that will execute whatever model we want to run when someone calls `/predPatch`
-    ''' NOTE: If you want to implement new models to incorporate with this code, they should be added below.
-    TODO: This "run_model" method signature should be standardized.
-    '''
-    loaded_model = None
-    if args.model == "old_cached":
-        import ServerModelsCached
-        loaded_model = ServerModelsCached.run
-    elif args.model == "new_cached":
-        import ServerModelsCachedNew
-        loaded_model = ServerModelsCachedNew.run
+    model = None
+    if args.model == "cached":
+        if args.model_fn not in ["7_10_2018","1_3_2019"]:
+            print("When using `cached` model you must specify either '7_10_2018', or '1_3_2019'. Exiting...")
+            return
+        model = ServerModelsCachedFormat.CachedModel(args.model_fn)
+    elif args.model == "keras":
+        model = ServerModelsICLRFormat.KerasModel(args.model_fn, args.gpuid)
     elif args.model == "iclr":
-        import ServerModelsICLR
-        loaded_model = ServerModelsICLR.run
-    elif args.model == "mila":
-        import ServerModelsMila
-        loaded_model = ServerModelsMila.run
+        model = ServerModelsICLRFormat.CNTKModel(args.model_fn, args.gpuid)
     else:
         print("Model isn't implemented, aborting")
         return
     # We pass the dynamically loaded method to the `predPatch` callback as an argument 
-    custom_pred_patch = functools.partial(pred_patch, model=loaded_model)
+    custom_pred_patch = functools.partial(pred_patch, model=model)
 
 
     # Setup the bottle server 
