@@ -1,7 +1,6 @@
 import sys, os, time
 
 import numpy as np
-import cntk
 
 import fiona
 import fiona.transform
