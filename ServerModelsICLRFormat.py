@@ -77,8 +77,7 @@ class CNTKModel(object):
 
         cntk.try_set_default_device(cntk.gpu(0))
         cntk.use_default_device()
-        return cntk.load_model(fn)
-
+        
         self.model_fn = model_fn
         self.model = cntk.load_model(self.model_fn)
         
