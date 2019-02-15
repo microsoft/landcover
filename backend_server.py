@@ -90,12 +90,13 @@ def pred_patch(model):
     #output, name = ServerModels_Baseline_Blg_test.run_cnn(naip_data, landsat_data, blg_data, with_smooth=False)
     #name += "_with_smooth_False"
     output, name = model.run(naip_data, naip_fn, extent, padding)
-
     assert output.shape[2] == 4, "The model function should return an image shaped as (height, width, num_classes)"
     output *= weights[np.newaxis, np.newaxis, :] # multiply by the weight vector
     sum_vals = output.sum(axis=2) # need to normalize sums to 1 in order for the rendered output to be correct
     output = output / (sum_vals[:,:,np.newaxis] + 0.000001)
     
+    if padding > 0:
+        output = output[padding:-padding,padding:-padding,:]
 
     # ------------------------------------------------------
     # Step 4

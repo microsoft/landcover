@@ -36,13 +36,10 @@ class KerasModel(object):
     def run_model_on_tile(self, naip_tile, batch_size=32):
 
         naip_tile = naip_tile / 255.0
-        print(naip_tile.shape)
 
         down_weight_padding = 40
         height = naip_tile.shape[0]
         width = naip_tile.shape[1]
-
-        print(height, width)
 
         stride_x = self.input_size - down_weight_padding*2
         stride_y = self.input_size - down_weight_padding*2
