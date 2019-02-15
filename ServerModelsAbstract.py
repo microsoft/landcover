@@ -1,5 +1,6 @@
+from abc import ABC, abstractmethod
 
-class BackendModel(object):
+class BackendModel(ABC):
 
     @abstractmethod
     def run(self, naip_data, naip_fn, extent, buffer):
