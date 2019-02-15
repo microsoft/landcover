@@ -11,7 +11,9 @@ import rasterio.mask
 
 import GeoTools
 
-class CachedModel(object):
+from ServerModelsAbstract import BackendModel
+
+class CachedModel(BackendModel):
 
     def __init__(self, results_dir):
         self.results_dir = results_dir
