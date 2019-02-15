@@ -173,20 +173,14 @@ def main():
 
     args = parser.parse_args(sys.argv[1:])
 
-
-    # Here we dynamically load a method that will execute whatever model we want to run when someone calls `/predPatch`
-    ''' NOTE: If you want to implement new models to incorporate with this code, they should be added below.
-    TODO: This "run_model" method signature should be standardized.
-    '''
     model = None
     if args.model == "cached":
+        if args.model_fn not in ["7_10_2018","1_3_2019"]:
+            print("When using `cached` model you must specify either '7_10_2018', or '1_3_2019'. Exiting...")
+            return
         model = ServerModelsCachedFormat.CachedModel(args.model_fn)
     elif args.model == "keras":
-        if args.model_fn is not None:
-            model = ServerModelsICLRFormat.KerasModel(args.model_fn, args.gpuid)
-        else:
-            print("Must pass --model_fn when using a `keras` model. Exiting...")
-            return
+        model = ServerModelsICLRFormat.KerasModel(args.model_fn, args.gpuid)
     elif args.model == "iclr":
         model = ServerModelsICLRFormat.CNTKModel(args.model_fn, args.gpuid)
     else:

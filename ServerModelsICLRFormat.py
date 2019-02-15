@@ -77,7 +77,7 @@ class CNTKModel(object):
 
         cntk.try_set_default_device(cntk.gpu(0))
         cntk.use_default_device()
-        
+
         self.model_fn = model_fn
         self.model = cntk.load_model(self.model_fn)
         
@@ -90,6 +90,7 @@ class CNTKModel(object):
     def run_model_on_tile(self, naip, batch_size=32):
 
         naip = naip/255.0
+        naip = naip.astype(np.float32)
         #landsat = landsat/65536.0
 
         naip = np.swapaxes(naip, 0, 1)
