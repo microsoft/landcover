@@ -10,8 +10,6 @@ import shapely.geometry
 import rasterio
 import rasterio.mask
 
-import keras
-import keras.models
 
 def softmax(output):
     output_max = np.max(output, axis=3, keepdims=True)
@@ -21,7 +19,12 @@ def softmax(output):
 
 class KerasModel(object):
 
-    def __init__(self, model_fn):
+    def __init__(self, model_fn, gpuid):
+        os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(gpuid)
+        import keras
+        import keras.models
+
         self.model_fn = model_fn
         self.model = keras.models.load_model(self.model_fn, custom_objects={"jaccard_loss":keras.metrics.mean_squared_error})
         
@@ -61,7 +64,7 @@ class KerasModel(object):
                 batch_indices.append((y_index, x_index))
                 batch_count+=1
 
-        model_output = model.predict(np.array(batch), batch_size=batch_size, verbose=0)
+        model_output = self.model.predict(np.array(batch), batch_size=batch_size, verbose=0)
         for i, (y, x) in enumerate(batch_indices):
             output[y:y+self.input_size, x:x+self.input_size] += model_output[i] * kernel[..., np.newaxis]
             counts[y:y+self.input_size, x:x+self.input_size] += kernel

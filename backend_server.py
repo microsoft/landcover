@@ -4,32 +4,6 @@
 import sys
 import os
 
-# Here we look through the args to find which GPU we should use
-# We must do this before importing keras, which is super hacky
-# See: https://stackoverflow.com/questions/40690598/can-keras-with-tensorflow-backend-be-forced-to-use-cpu-or-gpu-at-will
-# TODO: This _really_ should be part of the normal argparse code.
-def parse_args(args, key):
-    def is_int(s):
-        try: 
-            int(s)
-            return True
-        except ValueError:
-            return False
-    for i, arg in enumerate(args):
-        if arg == key: # --gpu 0
-            if i+1 < len(sys.argv):
-                if is_int(args[i+1]):
-                    return args[i+1]
-        elif key in arg: # --gpu=0
-            parts = arg.split("=")
-            if parts[0] == key and is_int(parts[1]):
-                return parts[1]
-    return None
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-GPU_ID = parse_args(sys.argv, "--gpu")
-if GPU_ID is not None: # if we passed `--gpu INT`, then set the flag, else don't
-    os.environ["CUDA_VISIBLE_DEVICES"] = GPU_ID
-
 import bottle
 import argparse
 import functools
@@ -194,7 +168,7 @@ def main():
     parser.add_argument("--port", action="store", dest="port", type=int, help="Port to listen on", default=4444)
     parser.add_argument("--model", action="store", dest="model", choices=["old_cached", "new_cached", "iclr", "keras"], help="Model to use", required=True)
     parser.add_argument("--model_fn", action="store", dest="model_fn", type=str, help="Model fn to use", default=None)
-    parser.add_argument("--gpu", action="store", dest="gpu", type=int, help="GPU to use", default=0)
+    parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", default=0)
 
     args = parser.parse_args(sys.argv[1:])
 
@@ -215,7 +189,7 @@ def main():
         model = ServerModelsICLR.run
     elif args.model == "keras":
         if args.model_fn is not None:
-            model = ServerModelsICLRFormat.KerasModel(args.model_fn)
+            model = ServerModelsICLRFormat.KerasModel(args.model_fn, args.gpuid)
         else:
             print("Must pass --model_fn when using a `keras` model. Exiting...")
             return
