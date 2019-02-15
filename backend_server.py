@@ -17,7 +17,7 @@ import DataLoader
 import GeoTools
 import utils
 
-import ServerModelsICLRFormat
+import ServerModelsICLRFormat, ServerModelsCachedFormat
 
 def enable_cors():
     '''From https://gist.github.com/richard-flosi/3789163
@@ -167,7 +167,7 @@ def main():
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debugging", default=False)
     parser.add_argument("--host", action="store", dest="host", type=str, help="Host to bind to", default="0.0.0.0")
     parser.add_argument("--port", action="store", dest="port", type=int, help="Port to listen on", default=4444)
-    parser.add_argument("--model", action="store", dest="model", choices=["old_cached", "new_cached", "iclr", "keras"], help="Model to use", required=True)
+    parser.add_argument("--model", action="store", dest="model", choices=["cached", "keras"], help="Model to use", required=True)
     parser.add_argument("--model_fn", action="store", dest="model_fn", type=str, help="Model fn to use", default=None)
     parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", default=0)
 
@@ -179,15 +179,8 @@ def main():
     TODO: This "run_model" method signature should be standardized.
     '''
     model = None
-    if args.model == "old_cached":
-        import ServerModelsCached
-        model = ServerModelsCached.run
-    elif args.model == "new_cached":
-        import ServerModelsCachedNew
-        model = ServerModelsCachedNew.run
-    elif args.model == "iclr":
-        import ServerModelsICLR
-        model = ServerModelsICLR.run
+    if args.model == "cached":
+        model = ServerModelsCachedFormat.CachedModel(args.model_fn)
     elif args.model == "keras":
         if args.model_fn is not None:
             model = ServerModelsICLRFormat.KerasModel(args.model_fn, args.gpuid)

@@ -2,14 +2,6 @@ import sys, os, time
 
 import numpy as np
 
-import fiona
-import fiona.transform
-import shapely
-import shapely.geometry
-import rasterio
-import rasterio.mask
-
-
 def softmax(output):
     output_max = np.max(output, axis=3, keepdims=True)
     exps = np.exp(output-output_max)
