@@ -3,6 +3,33 @@
 # vim:fenc=utf-8
 import sys
 import os
+
+# Here we look through the args to find which GPU we should use
+# We must do this before importing keras, which is super hacky
+# See: https://stackoverflow.com/questions/40690598/can-keras-with-tensorflow-backend-be-forced-to-use-cpu-or-gpu-at-will
+# TODO: This _really_ should be part of the normal argparse code.
+def parse_args(args, key):
+    def is_int(s):
+        try: 
+            int(s)
+            return True
+        except ValueError:
+            return False
+    for i, arg in enumerate(args):
+        if arg == key: # --gpu 0
+            if i+1 < len(sys.argv):
+                if is_int(args[i+1]):
+                    return args[i+1]
+        elif key in arg: # --gpu=0
+            parts = arg.split("=")
+            if parts[0] == key and is_int(parts[1]):
+                return parts[1]
+    return None
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+GPU_ID = parse_args(sys.argv, "--gpu")
+if GPU_ID is not None: # if we passed `--gpu INT`, then set the flag, else don't
+    os.environ["CUDA_VISIBLE_DEVICES"] = GPU_ID
+
 import bottle
 import argparse
 import functools
@@ -15,6 +42,8 @@ import cv2
 import DataLoader
 import GeoTools
 import utils
+
+import ServerModelsICLRFormat
 
 def enable_cors():
     '''From https://gist.github.com/richard-flosi/3789163
@@ -86,7 +115,7 @@ def pred_patch(model):
     # ------------------------------------------------------
     #output, name = ServerModels_Baseline_Blg_test.run_cnn(naip_data, landsat_data, blg_data, with_smooth=False)
     #name += "_with_smooth_False"
-    output, name = model(naip_data, naip_fn, extent, padding)
+    output, name = model.run(naip_data, naip_fn, extent, padding)
 
     assert output.shape[2] == 4, "The model function should return an image shaped as (height, width, num_classes)"
     output *= weights[np.newaxis, np.newaxis, :] # multiply by the weight vector
@@ -164,6 +193,7 @@ def main():
     parser.add_argument("--host", action="store", dest="host", type=str, help="Host to bind to", default="0.0.0.0")
     parser.add_argument("--port", action="store", dest="port", type=int, help="Port to listen on", default=4444)
     parser.add_argument("--model", action="store", dest="model", choices=["old_cached", "new_cached", "iclr", "mila"], help="Model to use", required=True)
+    parser.add_argument("--gpu", action="store", dest="gpu", type=int, help="GPU to use", default=0)
 
     args = parser.parse_args(sys.argv[1:])
 
@@ -172,24 +202,23 @@ def main():
     ''' NOTE: If you want to implement new models to incorporate with this code, they should be added below.
     TODO: This "run_model" method signature should be standardized.
     '''
-    loaded_model = None
+    model = None
     if args.model == "old_cached":
         import ServerModelsCached
-        loaded_model = ServerModelsCached.run
+        model = ServerModelsCached.run
     elif args.model == "new_cached":
         import ServerModelsCachedNew
-        loaded_model = ServerModelsCachedNew.run
+        model = ServerModelsCachedNew.run
     elif args.model == "iclr":
         import ServerModelsICLR
-        loaded_model = ServerModelsICLR.run
-    elif args.model == "mila":
-        import ServerModelsMila
-        loaded_model = ServerModelsMila.run
+        model = ServerModelsICLR.run
+    elif args.model == "keras":
+        model = ServerModelsICLRFormat.KerasModel("data/final_model.h5")
     else:
         print("Model isn't implemented, aborting")
         return
     # We pass the dynamically loaded method to the `predPatch` callback as an argument 
-    custom_pred_patch = functools.partial(pred_patch, model=loaded_model)
+    custom_pred_patch = functools.partial(pred_patch, model=model)
 
 
     # Setup the bottle server 
