@@ -2,13 +2,15 @@ import sys, os, time
 
 import numpy as np
 
+from ServerModelsAbstract import BackendModel
+
 def softmax(output):
     output_max = np.max(output, axis=3, keepdims=True)
     exps = np.exp(output-output_max)
     exp_sums = np.sum(exps, axis=3, keepdims=True)
     return exps/exp_sums
 
-class KerasModel(object):
+class KerasModel(BackendModel):
 
     def __init__(self, model_fn, gpuid):
         os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -68,7 +70,7 @@ class KerasModel(object):
 
 
 
-class CNTKModel(object):
+class CNTKModel(BackendModel):
 
     def __init__(self, model_fn, gpuid):
         os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
