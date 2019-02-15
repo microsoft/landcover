@@ -167,7 +167,7 @@ def main():
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debugging", default=False)
     parser.add_argument("--host", action="store", dest="host", type=str, help="Host to bind to", default="0.0.0.0")
     parser.add_argument("--port", action="store", dest="port", type=int, help="Port to listen on", default=4444)
-    parser.add_argument("--model", action="store", dest="model", choices=["cached", "keras"], help="Model to use", required=True)
+    parser.add_argument("--model", action="store", dest="model", choices=["cached", "keras", "iclr"], help="Model to use", required=True)
     parser.add_argument("--model_fn", action="store", dest="model_fn", type=str, help="Model fn to use", default=None)
     parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", default=0)
 
@@ -187,6 +187,8 @@ def main():
         else:
             print("Must pass --model_fn when using a `keras` model. Exiting...")
             return
+    elif args.model == "iclr":
+        model = ServerModelsICLRFormat.CNTKModel(args.model_fn, args.gpuid)
     else:
         print("Model isn't implemented, aborting")
         return
