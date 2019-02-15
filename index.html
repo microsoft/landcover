@@ -482,8 +482,8 @@
             
             $(".leaflet-top.leaflet-left").append(logoControl)
 
-
-            $(".leaflet-top.leaflet-left").append("<div class='leaflet-control' style='background-color:white; padding:10px;width:120px;height:17px;' id='latlng'></div>")
+            // Add div for displaying lat/lon
+            //$(".leaflet-top.leaflet-left").append("<div class='leaflet-control' style='background-color:white; padding:10px;width:120px;height:17px;' id='latlng'></div>")
 
             //----------------------------------------------------------------------
             // Setup leaflet-control-geocoder plugin
@@ -631,10 +631,11 @@
                     });
                     selectionBox.addTo(map);
                     
-                    $("#latlng").text(lat + "N " + lng + "E");
                 }else{
                     selectionBox.setLatLngs(curSelPoly);
-                    $("#latlng").text(lat + "N " + lng + "E");
+                    
+                    // Displays lat/lon on page
+                    //$("#latlng").text(lat + "N " + lng + "E");
                 }
             });
 
