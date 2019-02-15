@@ -74,5 +74,5 @@ class KerasModel(object):
         output = output / counts[..., np.newaxis]
         output[:,:,4] += output[:,:,5]
         output[:,:,4] += output[:,:,6]
-        output = output[:,:,:5]
+        output = output[:,:,1:5]
         return output
