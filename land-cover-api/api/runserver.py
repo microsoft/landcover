@@ -14,6 +14,8 @@ from ai4e_service import AI4EWrapper
 import sys
 import os
 from os import getenv
+from enum import Enum
+
 
 import sys
 import os
@@ -39,21 +41,27 @@ api = Api(app)
 
 app.config['JSON_SORT_KEYS'] = False
 
+#-re-enable for log
 # Log requests, traces and exceptions to the Application Insights service
 appinsights = AppInsights(app)
 
-# Use the AI4EAppInsights library to send log messages.
+# # Use the AI4EAppInsights library to send log messages.
 log = AI4EAppInsights()
 
-# Use the internal-container AI for Earth Task Manager (not for production use!).
+# # Use the internal-container AI for Earth Task Manager (not for production use!).
 api_task_manager = ApiTaskManager(flask_api=api, resource_prefix=api_prefix)
 
-# Use the AI4EWrapper to executes your functions within a logging trace.
-# Also, helps support long-running/async functions.
+# # Use the AI4EWrapper to executes your functions within a logging trace.
+# # Also, helps support long-running/async functions.
 ai4e_wrapper = AI4EWrapper(app)
 
 #load the precomputed results
 model = ServerModelsCached.run
+
+class data_type(Enum):
+    extent = 1
+    latlon = 2
+  
 
 @app.after_request
 def enable_cors(response):
@@ -67,34 +75,63 @@ def enable_cors(response):
 def health_check():
     return "Health check OK"
 
+@app.route(api_prefix + '/predPatchLatlong', methods=['POST'])
+def post_pred_patch_by_latlon():    
+    
+    post_data  = request.get_json()
+    return ai4e_wrapper.wrap_sync_endpoint(pred_patch, "post:pred_patch", 
+           data=post_data, type=data_type.latlon)
+
 @app.route(api_prefix + '/predPatch', methods=['POST'])
 def post_pred_patch():    
-    # wrap_sync_endpoint wraps your function within a logging trace.
+    
     post_data  = request.get_json()
-    return ai4e_wrapper.wrap_sync_endpoint(pred_patch, "post:pred_patch", data=post_data)
+    return ai4e_wrapper.wrap_sync_endpoint(pred_patch, "post:pred_patch", 
+           data=post_data, type=data_type.extent)
+
+@app.route(api_prefix + '/getInputLatlong', methods=['POST'])
+def post_get_input_by_latlon():
+    
+    post_data = json.loads(request.data)
+    return ai4e_wrapper.wrap_sync_endpoint(get_input, "post:get_input", 
+           data=post_data, type=data_type.latlon)
 
 @app.route(api_prefix + '/getInput', methods=['POST'])
 def post_get_input():
+    
     post_data = json.loads(request.data)
-    #return(get_input(post_data))
-    return ai4e_wrapper.wrap_sync_endpoint(get_input, "post:get_input", data=post_data)
+    return ai4e_wrapper.wrap_sync_endpoint(get_input, "post:get_input", 
+           data=post_data, type=data_type.extent)
 
-#def pred_patch(**kwargs):
-def pred_patch(data):
-    # Inputs
-  
-    extent = data["extent"]
+def pred_patch(data, type):
+    
+    ''' Method called for POST `/predPatchLatLon` and  POST `/predPatch`
+    
+    '''
     weights = np.array(data["weights"], dtype=np.float32)
-
+    
     # ------------------------------------------------------
     # Step 1
     #   Transform the input extent into a shapely geometry
     #   Find the tile assosciated with the geometry
     # ------------------------------------------------------
-    geom = GeoTools.extent_to_transformed_geom(extent, "EPSG:4269")
+    if(type == data_type.extent):
+        extent = data["extent"]
+        GeoTools.latest_wkid = extent["spatialReference"]["latestWkid"]
+        
+        geom = GeoTools.extent_to_transformed_geom(extent, "EPSG:4269")
+    else:   
+        lat = data["latitude"]
+        lon = data["longitude"]
+        
+        GeoTools.latest_wkid = data["latestWkid"]
+        GeoTools.patch_size = data["patchSize"]
+        
+        extent, geom = GeoTools.get_geom(lat, lon, "EPSG:4326")
+        data["extent"] = extent
+
     try:
         naip_fn = DataLoader.lookup_tile_by_geom(geom)
-        print(naip_fn)
     except ValueError as e:
         print(e)
         return json.dumps({"error": str(e)})
@@ -140,18 +177,29 @@ def pred_patch(data):
 
     return json.dumps(data)
 
-def get_input(data):
+def get_input(data, type):
     
-    ''' Method called for POST `/getInput`
+    ''' Method called for  POST `/getInput` and POST `/getInputLatLon`
     '''
-    # Inputs
-    extent = data["extent"]
+
     # ------------------------------------------------------
     # Step 1
     #   Transform the input extent into a shapely geometry
     #   Find the tile assosciated with the geometry
     # ------------------------------------------------------
-    geom = GeoTools.extent_to_transformed_geom(extent, "EPSG:4269")
+    if(type == data_type.extent):      
+        extent = data["extent"]
+        GeoTools.latest_wkid = extent["spatialReference"]["latestWkid"]
+        geom = GeoTools.extent_to_transformed_geom(extent, "EPSG:4269")
+    else:
+        lat = data["latitude"]
+        lon = data["longitude"]
+        
+        GeoTools.latest_wkid = data["latestWkid"]
+        GeoTools.patch_size = data["patchSize"]
+        
+        extent, geom = GeoTools.get_geom(lat, lon, "EPSG:4326")
+        data["extent"] = extent
     try:
         naip_fn = DataLoader.lookup_tile_by_geom(geom)
     except ValueError as e:
