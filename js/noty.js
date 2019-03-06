@@ -1,8 +1,8 @@
 /* 
   @package NOTY - Dependency-free notification library 
-  @version version: 3.2.0-beta 
+  @version version: 3.1.4 
   @contributors https://github.com/needim/noty/graphs/contributors 
-  @documentation Examples and Documentation - https://ned.im/noty 
+  @documentation Examples and Documentation - http://needim.github.com/noty 
   @license Licensed under the MIT licenses: http://www.opensource.org/licenses/mit-license.php 
 */
 
@@ -2359,11 +2359,6 @@ var Noty = function () {
     _classCallCheck(this, Noty);
 
     this.options = Utils.deepExtend({}, API.Defaults, options);
-
-    if (API.Store[this.options.id]) {
-      return API.Store[this.options.id];
-    }
-
     this.id = this.options.id || Utils.generateID('bar');
     this.closeTimer = -1;
     this.barDom = null;
@@ -2430,10 +2425,6 @@ var Noty = function () {
     value: function show() {
       var _this = this;
 
-      if (this.showing || this.shown) {
-        return this; // preventing multiple show
-      }
-
       if (this.options.killer === true) {
         Noty.closeAll();
       } else if (typeof this.options.killer === 'string') {
@@ -2493,7 +2484,7 @@ var Noty = function () {
           var btn = _this.barDom.querySelector('#' + _this.options.buttons[key].id);
           Utils.addListener(btn, 'click', function (e) {
             Utils.stopPropagation(e);
-            _this.options.buttons[key].cb(_this);
+            _this.options.buttons[key].cb();
           });
         });
       }
@@ -2721,7 +2712,7 @@ var Noty = function () {
 
       this.closing = true;
 
-      if (this.options.animation.close === null || this.options.animation.close === false) {
+      if (this.options.animation.close === null) {
         this.promises.close = new _es6Promise2.default(function (resolve) {
           resolve();
         });
@@ -2776,33 +2767,12 @@ var Noty = function () {
     }
 
     /**
-     * @param {string} queueName
+     * @param {Object} obj
      * @return {Noty}
-     */
-
-  }, {
-    key: 'clearQueue',
-    value: function clearQueue() {
-      var queueName = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 'global';
-
-      if (API.Queues.hasOwnProperty(queueName)) {
-        API.Queues[queueName].queue = [];
-      }
-      return this;
-    }
-
-    /**
-     * @return {API.Queues}
      */
 
   }, {
     key: 'overrideDefaults',
-
-
-    /**
-     * @param {Object} obj
-     * @return {Noty}
-     */
     value: function overrideDefaults(obj) {
       API.Defaults = Utils.deepExtend({}, API.Defaults, obj);
       return this;
@@ -2853,7 +2823,7 @@ var Noty = function () {
   }, {
     key: 'version',
     value: function version() {
-      return "3.2.0-beta";
+      return "3.1.4";
     }
 
     /**
@@ -2866,21 +2836,6 @@ var Noty = function () {
     value: function Push(workerPath) {
       return new _push.Push(workerPath);
     }
-  }, {
-    key: 'Queues',
-    get: function get() {
-      return API.Queues;
-    }
-
-    /**
-     * @return {API.PageHidden}
-     */
-
-  }, {
-    key: 'PageHidden',
-    get: function get() {
-      return API.PageHidden;
-    }
   }]);
 
   return Noty;
@@ -2890,9 +2845,7 @@ var Noty = function () {
 
 
 exports.default = Noty;
-if (typeof window !== 'undefined') {
-  Utils.visibilityChangeFlow();
-}
+Utils.visibilityChangeFlow();
 module.exports = exports['default'];
 
 /***/ }),
