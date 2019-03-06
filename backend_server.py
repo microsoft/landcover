@@ -52,6 +52,8 @@ def reset_model():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
 
+    model_fit = False
+
     bottle.response.status = 200
     return json.dumps(data)
 
@@ -73,15 +75,15 @@ def retrain_model():
         model_fit = True
         print("Finished fitting model")
 
-
-    if model_fit and True:
-        # Test on all data
-        y_pred = augment_model.predict(ServerModelsKDD.x_test)
-        print(y_pred.shape)
-        print(ServerModelsKDD.y_test.shape)
-        print("acc", np.sum(y_pred == ServerModelsKDD.y_test) / y_pred.shape[0])
-        print("corrected", 10371631 - np.sum(ServerModelsKDD.y_test != y_pred))
-        print("\% for graph",  (10371631 - np.sum(ServerModelsKDD.y_test != y_pred)) / 10371631)
+    # Perform validation set testing
+    # if model_fit and True:
+    #     # Test on all data
+    #     y_pred = augment_model.predict(ServerModelsKDD.x_test)
+    #     print(y_pred.shape)
+    #     print(ServerModelsKDD.y_test.shape)
+    #     print("acc", np.sum(y_pred == ServerModelsKDD.y_test) / y_pred.shape[0])
+    #     print("corrected", 10371631 - np.sum(ServerModelsKDD.y_test != y_pred))
+    #     print("\% for graph",  (10371631 - np.sum(ServerModelsKDD.y_test != y_pred)) / 10371631)
             
     bottle.response.status = 200
     return json.dumps(data)
