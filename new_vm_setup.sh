@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # update blobfuse version
+sudo apt-get update
 sudo apt-get install blobfuse
 
 # install our python geospatial library dependencies

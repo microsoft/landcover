@@ -19,6 +19,16 @@ import utils
 
 import ServerModelsICLRFormat, ServerModelsCachedFormat
 
+from sklearn.linear_model import LogisticRegression
+predictions = []
+corrections_x = []
+corrections_y = []
+augment_model = LogisticRegression(C=0.1, class_weight="balanced")
+model_fit = False
+
+#---------------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------------
+
 def enable_cors():
     '''From https://gist.github.com/richard-flosi/3789163
 
@@ -34,7 +44,111 @@ def do_options():
     bottle.response.status = 204
     return
 
+#---------------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------------
+
+def reset_model():
+    global model_fit
+    bottle.response.content_type = 'application/json'
+    data = bottle.request.json
+
+    bottle.response.status = 200
+    return json.dumps(data)
+
+def retrain_model():
+    global model_fit
+    bottle.response.content_type = 'application/json'
+    data = bottle.request.json
+
+    x_train = np.concatenate(corrections_x, axis=0)
+    y_train = np.concatenate(corrections_y, axis=0)
+
+    print(x_train.shape, y_train.shape)
+
+    vals, counts = np.unique(y_train, return_counts=True)
+    print(list(zip(vals, counts)))
+    if len(vals) == 4:
+        print("Fitting model with %d samples" % (x_train.shape[0]))
+        augment_model.fit(x_train, y_train)
+        model_fit = True
+        print("Finished fitting model")
+
+
+    if model_fit and True:
+        # Test on all data
+        y_pred = augment_model.predict(ServerModelsKDD.x_test)
+        print(y_pred.shape)
+        print(ServerModelsKDD.y_test.shape)
+        print("acc", np.sum(y_pred == ServerModelsKDD.y_test) / y_pred.shape[0])
+        print("corrected", 10371631 - np.sum(ServerModelsKDD.y_test != y_pred))
+        print("\% for graph",  (10371631 - np.sum(ServerModelsKDD.y_test != y_pred)) / 10371631)
+            
+    bottle.response.status = 200
+    return json.dumps(data)
+
+def record_correction():
+    bottle.response.content_type = 'application/json'
+    data = bottle.request.json
+
+    tlat, tlon = data["extent"]["ymax"], data["extent"]["xmin"]
+    blat, blon = data["extent"]["ymin"], data["extent"]["xmax"]
+    value = data["value"]
+
+    src_crs, dst_crs, dst_transform, rev_dst_transform, padding = transforms[-1]
+    src_crs = "epsg:%d" % (src_crs)
+    origin_crs = "epsg:%d" % (data["extent"]["spatialReference"]["latestWkid"])
+
+    xs, ys = fiona.transform.transform(origin_crs, src_crs, [tlon,blon], [tlat,blat])
+    xs, ys = fiona.transform.transform(src_crs, dst_crs, xs, ys)
+    
+    tdst_x = xs[0]
+    tdst_y = ys[0]
+    tdst_col, tdst_row = rev_dst_transform * (tdst_x, tdst_y)
+    tdst_row = int(np.floor(tdst_row))
+    tdst_col = int(np.floor(tdst_col))
+
+    bdst_x = xs[1]
+    bdst_y = ys[1]
+    bdst_col, bdst_row = rev_dst_transform * (bdst_x, bdst_y)
+    bdst_row = int(np.floor(bdst_row))
+    bdst_col = int(np.floor(bdst_col))
+
+    value_to_class_idx = {
+        "water" : 0,
+        "forest" : 1,
+        "field" : 2,
+        "built" : 3,
+    }
+    class_idx = value_to_class_idx[value]
+
+    tdst_row, bdst_row = min(tdst_row, bdst_row)-padding, max(tdst_row, bdst_row)-padding
+    tdst_col, bdst_col = min(tdst_col, bdst_col)-padding, max(tdst_col, bdst_col)-padding
+
+    x_train = predictions[-1][tdst_row:bdst_row+1, tdst_col:bdst_col+1, :].copy().reshape(-1,4)
+    y_train = np.zeros((x_train.shape[0]), dtype=np.uint8)
+    y_train[:] = class_idx
+
+    predictions[-1][tdst_row:bdst_row+1, tdst_col:bdst_col+1, :] = 0
+    predictions[-1][tdst_row:bdst_row+1, tdst_col:bdst_col+1, class_idx] = 1
+
+    img_soft = np.round(utils.class_prediction_to_img(predictions[-1], False)*255,0).astype(np.uint8)
+    img_soft = cv2.imencode(".png", cv2.cvtColor(img_soft, cv2.COLOR_RGB2BGR))[1].tostring()
+    img_soft = base64.b64encode(img_soft).decode("utf-8")
+    data["output_soft"] = img_soft
+
+    img_hard = np.round(utils.class_prediction_to_img(predictions[-1], True)*255,0).astype(np.uint8)
+    img_hard = cv2.imencode(".png", cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGR))[1].tostring()
+    img_hard = base64.b64encode(img_hard).decode("utf-8")
+    data["output_hard"] = img_hard
+
+    corrections_x.append(x_train)
+    corrections_y.append(y_train)
+
+    bottle.response.status = 200
+    return json.dumps(data)
+
 def pred_patch(model):
+    global model_fit
     ''' Method called for POST `/predPatch`
 
     `model` is a method created in main() based on the `--model` command line argument
@@ -97,6 +211,14 @@ def pred_patch(model):
     
     if padding > 0:
         output = output[padding:-padding,padding:-padding,:]
+
+    if model_fit:
+        print("Augmenting output")
+        original_shape = output.shape
+        output = output.reshape(-1,4)
+        output = augment_model.predict_proba(output)
+        output = output.reshape(original_shape)
+        predictions.append(output.copy())
 
     # ------------------------------------------------------
     # Step 4
@@ -161,6 +283,10 @@ def do_get():
     '''Dummy method for easily testing whether the server is running correctly'''
     return "Backend server running"
 
+
+#---------------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------------
+
 def main():
     parser = argparse.ArgumentParser(description="Backend Server")
 
@@ -199,6 +325,16 @@ def main():
     
     app.route("/getInput", method="OPTIONS", callback=do_options)
     app.route('/getInput', method="POST", callback=get_input)
+
+    app.route("/recordCorrection", method="OPTIONS", callback=do_options)
+    app.route('/recordCorrection', method="POST", callback=record_correction)
+
+    app.route("/retrainModel", method="OPTIONS", callback=do_options)
+    app.route('/retrainModel', method="POST", callback=retrain_model)
+
+    app.route("/resetModel", method="OPTIONS", callback=do_options)
+    app.route('/resetModel', method="POST", callback=reset_model)
+
 
     app.route('/', method="GET", callback=do_get)
 
