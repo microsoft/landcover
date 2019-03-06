@@ -105,7 +105,7 @@ def lookup_tile_by_geom(geom):
 
 # ------------------------------------------------------------------------------
 
-def get_data_by_extent(naip_fn, extent, geo_data_type):
+def get_data_by_extent(naip_fn, extent, geo_data_type, return_transforms=False):
 
     if geo_data_type == GeoDataTypes.NAIP:
         fn = naip_fn
@@ -124,6 +124,8 @@ def get_data_by_extent(naip_fn, extent, geo_data_type):
         raise ValueError("GeoDataType not recognized")
 
     f = rasterio.open(fn, "r")
+    f_index = f.index
+    f_crs = f.crs.to_epsg()
     geom = GeoTools.extent_to_transformed_geom(extent, f.crs["init"])
     pad_rad = 15 # TODO: this might need to be changed for much larger inputs
     buffed_geom = shapely.geometry.shape(geom).buffer(pad_rad)
@@ -160,10 +162,11 @@ def get_data_by_extent(naip_fn, extent, geo_data_type):
     w = extent["xmax"] - extent["xmin"]
     padding = int(np.round((dst_image.shape[1] - w) / 2))
 
-    return dst_image, padding
-
+    if return_transforms:
+        return dst_image, padding, (f_crs, dst_crs["init"], dst_transform, ~dst_transform, padding)
+    else:
+        return dst_image, padding
 # ------------------------------------------------------------------------------
-
 
 
 # ------------------------------------------------------------------------------

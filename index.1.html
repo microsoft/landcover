@@ -169,7 +169,7 @@
             <!-- Start of "home" tab -->
             <div class="sidebar-pane" id="home">
                 <h1 class="sidebar-header">
-                    Land Cover Mapping
+                    Menu
                     <!--
                     <span class="sidebar-close">
                         <i class="fa fa-caret-right"></i>
@@ -207,6 +207,9 @@
                         </div>
                         <div class="radio">
                             <label><input type="radio" name="new-class" value="built">Built</label>
+                        </div>
+                        <div style="text-align: center; margin-top:10px;">
+                            <label><input type="button" id="btnRetrain" value="Retrain"></label>
                         </div>
                     </div>
                 </div>
@@ -302,6 +305,9 @@
         var currentPatchSrcs = [];
         var currentPatchModelIDs = [];
 
+        var middle_cedar_boundary = new L.geoJson();
+        var middle_cedar_qa_boundary = new L.geoJson();
+        
         var soft0_hard1 = 1;
         var active_im_id = 0;
 
@@ -490,6 +496,7 @@
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             });
             var Esri_WorldImagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19,
                 attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
             });
 
@@ -497,6 +504,8 @@
                 L.marker([47.60, -122.15]).bindPopup('Bellevue, WA'),
                 L.marker([39.74, -104.99]).bindPopup('Denver, CO'),
                 L.marker([37.53,  -77.44]).bindPopup('Richmond, VA'),
+                L.marker([42.3197,  -92.7033]).bindPopup('Middle Cedar QA Area, IA'),
+                L.marker([42.526395, -92.441995]).bindPopup('Cedar Falls, IA'),
             ];
             var cities = L.layerGroup(interesting_locations);
 
@@ -514,7 +523,7 @@
             //----------------------------------------------------------------------
             var logoControl = $("<div class='leaflet-control logo-area'></div>");
 
-            logoControl.append("<a href='.' style='text-decoration: underline;' class='.m-0'><span class='logo-text'> AI for Earth </span></a>");
+            logoControl.append("<a href='.' style='text-decoration: underline;' class='.m-0'><span class='logo-text'> Land Cover </span></a>");
             logoControl.append("<a href='https://www.microsoft.com/en-us/ai-for-earth/land-cover-mapping-api' style='text-decoration: underline;'><span class='logo-link'>About</span></a>");
             $(".leaflet-top.leaflet-left").append(logoControl)
 
@@ -647,11 +656,50 @@
             ).addTo(map);
             sidebar.open("home")
 
+            
+            middle_cedar_qa_boundary.addTo(map);
+            $.ajax({
+                dataType: "json",
+                url: "data/middle_cedar_qa.geojson",
+                success: function(data) {
+                    $(data.features).each(function(key, data) {
+                        middle_cedar_qa_boundary.addData(data);
+                    });
+                    middle_cedar_qa_boundary.setStyle({
+                        "color": "#ff7800",
+                        "weight": 4,
+                        "fill": false
+                    })
+                }
+            });
+
+            middle_cedar_boundary.addTo(map);
+            $.ajax({
+                dataType: "json",
+                url: "data/middle_cedar.geojson",
+                success: function(data) {
+                    $(data.features).each(function(key, data) {
+                        middle_cedar_boundary.addData(data);
+                    });
+                    middle_cedar_boundary.setStyle({
+                        "color": "#0000ff",
+                        "weight": 5,
+                        "fill": false
+                    })
+                }
+            });
+
             //----------------------------------------------------------------------
             // Setup map selection handlers
             //----------------------------------------------------------------------
             map.addEventListener('mousemove', function(e){
-                curSelPoly = getPolyAround(e.latlng, SELECTION_SIZE)
+
+                var ss = SELECTION_SIZE
+                if(newClass != "unchanged"){
+                    ss = 5;
+                }
+
+                curSelPoly = getPolyAround(e.latlng, ss)
 
                 if(selectionBox === null){
                     selectionBox = L.polygon(curSelPoly, {
@@ -661,25 +709,42 @@
                     });
                     selectionBox.addTo(map);
                 }else{
+
+                    if(newClass == "unchanged"){
+                        selectionBox.setStyle({
+                            color: "#000000",
+                            fillColor: "#ffffff",
+                            weight: 2
+                        });
+                    }else{
+                        selectionBox.setStyle({
+                            color: classColors[newClass],
+                            fillColor: "#ffffff",
+                            weight: 2
+                        });
+                    }
+
                     selectionBox.setLatLngs(curSelPoly);
                 }
             });
 
             map.addEventListener('click', function(e){
-                curSelPoly = getPolyAround(e.latlng, SELECTION_SIZE);
+                if(newClass == "unchanged"){
+                    curSelPoly = getPolyAround(e.latlng, SELECTION_SIZE);
 
-                if(currentSelection === null){ // This condition creates the red selection box on the first click
-                    currentSelection = L.polygon(curSelPoly, {
-                        color: "#ff0000",
-                        fillColor: "#ffffff",
-                        weight: 2
-                    });
-                    currentSelection.addTo(map);
-                }else{
-                    currentSelection.setLatLngs(curSelPoly);
+                    if(currentSelection === null){ // This condition creates the red selection box on the first click
+                        currentSelection = L.polygon(curSelPoly, {
+                            color: "#ff0000",
+                            fillColor: "#ffffff",
+                            weight: 2
+                        });
+                        currentSelection.addTo(map);
+                    }else{
+                        currentSelection.setLatLngs(curSelPoly);
+                    }
+                    
+                    requestPatches(curSelPoly, weights, map);
                 }
-                
-                requestPatches(curSelPoly, weights, map);
             });
 
             map.on('contextmenu',function(e){}); // disables the context menu
@@ -695,13 +760,57 @@
 
                     if(newClass != "unchanged"){
                         if(isPointInsidePolygon(e.latlng, currentSelection)){
-                            var tempPoly = getPolyAround(e.latlng, 1);
-                            L.circle(e.latlng, {
-                                radius: 1.5,
-                                fillColor: classColors[newClass],
-                                weight: 0,
-                                fillOpacity: 1.0
-                            }).addTo(map);
+
+                            var latlonProjected = L.CRS.EPSG3857.project(e.latlng);
+                            var x = latlonProjected.x;
+                            var y = latlonProjected.y
+                            var request = {
+                                "extent": {
+                                    "xmax": x+1,
+                                    "xmin": x,
+                                    "ymax": y,
+                                    "ymin": y-1,
+                                    "spatialReference": {
+                                        "latestWkid": 3857
+                                    }
+                                },
+                                "value" : newClass
+                            };
+                            
+                            selectionBox.setStyle({
+                                weight: 10
+                            });
+
+
+                            $.ajax({
+                                type: "POST",
+                                url: processingServiceURL + "recordCorrection",
+                                data: JSON.stringify(request),
+                                success: function(data, textStatus, jqXHR){
+                                    var resp = data;
+                                    console.debug("Successfully recorded correction");
+                                    // TODO: Here is where we could replace the current image from the backend
+
+                                    var srcs = [
+                                        "data:image/png;base64," + resp.output_soft,
+                                        "data:image/png;base64," + resp.output_hard,
+                                    ];
+                                    var last_idx = currentPatchSrcs.length-1;
+                                    currentPatchSrcs[last_idx][active_im_id] = srcs;
+                                    currentPatches[last_idx].setUrl(srcs[soft0_hard1]);
+                                    exampleImgsList[active_im_id].attr("src", srcs[soft0_hard1]);
+                                    selectionBox.setStyle({
+                                        weight: 2
+                                    });
+                                },
+                                error: function(jqXHR, textStatus, errorThrown){
+                                    var response = $.parseJSON(jqXHR.responseText);
+                                    console.log("Error in processing server: " + response.error);
+                                },
+                                dataType: "json",
+                                contentType: "application/json"
+                            });
+
                         }else{
                             console.debug("Click not in selection");
                         }
@@ -713,6 +822,29 @@
                 if(!map.dragging.enabled()){
                     map.dragging.enable();
                 }
+            });
+
+            $("#btnRetrain").click(function(){
+                console.debug("Retraining...")
+                // Tell the server to retrain
+                var request = {
+                    "retrain": true
+                };
+                $.ajax({
+                    type: "POST",
+                    url: processingServiceURL + "retrainModel",
+                    data: JSON.stringify(request),
+                    success: function(data, textStatus, jqXHR){
+                        var resp = data;
+                        console.debug("Successfully retrained");
+                    },
+                    error: function(jqXHR, textStatus, errorThrown){
+                        var response = $.parseJSON(jqXHR.responseText);
+                        console.log("Error in processing server: " + response.error);
+                    },
+                    dataType: "json",
+                    contentType: "application/json"
+                });
             });
 
 
