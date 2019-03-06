@@ -119,13 +119,13 @@ def get_data_by_extent(naip_fn, extent, geo_data_type, return_transforms=False):
         fn = naip_fn.replace("/esri-naip/", "/resampled-buildings/")[:-4] + "_building.tif"
     elif geo_data_type == GeoDataTypes.LANDCOVER:
         # TODO: Add existence check
-        fn = naip_fname.replace("/esri-naip/", "/resampled-lc/")[:-4] + "_lc.tif"
+        fn = naip_fn.replace("/esri-naip/", "/resampled-lc/")[:-4] + "_lc.tif"
     else:
         raise ValueError("GeoDataType not recognized")
 
     f = rasterio.open(fn, "r")
     f_index = f.index
-    f_crs = f.crs.to_epsg()
+    f_crs = f.crs["init"]
     geom = GeoTools.extent_to_transformed_geom(extent, f.crs["init"])
     pad_rad = 15 # TODO: this might need to be changed for much larger inputs
     buffed_geom = shapely.geometry.shape(geom).buffer(pad_rad)

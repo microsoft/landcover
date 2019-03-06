@@ -22,14 +22,22 @@ import utils
 
 import ServerModelsICLRFormat, ServerModelsCachedFormat
 
-from sklearn.linear_model import LogisticRegression
+from sklearn.neural_network import MLPClassifier
 
 current_transform = None
 current_predictions = None
 
 corrections_x = []
 corrections_y = []
-augment_model = LogisticRegression(C=0.1, class_weight="balanced")
+augment_model = MLPClassifier(
+    hidden_layer_sizes=(),
+    activation='relu',
+    alpha=0.001,
+    solver='lbfgs',
+    verbose=True,
+    validation_fraction=0.0,
+    n_iter_no_change=10
+)
 model_fit = False
 
 #---------------------------------------------------------------------------------------
@@ -60,7 +68,15 @@ def reset_model():
 
     corrections_x = []
     corrections_y = []
-    augment_model = LogisticRegression(C=0.1, class_weight="balanced")
+    augment_model = augment_model = MLPClassifier(
+        hidden_layer_sizes=(),
+        activation='relu',
+        alpha=0.001,
+        solver='lbfgs',
+        verbose=True,
+        validation_fraction=0.0,
+        n_iter_no_change=10
+    )
     model_fit = False
 
     data["message"] = "Reset model"
