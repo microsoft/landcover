@@ -80,7 +80,7 @@ Output example:
 Input example:
 ```js
 {
-   "latitude": ...,
+    "latitude": ...,
     "longitude": ...,
     "patchSize":500, 
     "latestWkid":3857, // CRS of the coordinates
@@ -106,7 +106,7 @@ Output example:
 Input example:
 ```js
 {
-   "latitude": ...,
+    "latitude": ...,
     "longitude": ...,
     "patchSize":500, 
     "latestWkid":3857, // CRS of the coordinates
