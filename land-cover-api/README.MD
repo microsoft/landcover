@@ -75,6 +75,52 @@ Output example:
 }
 ```
 
+### *POST `/predPatchLatLong`*
+
+Input example:
+```js
+{
+   "latitude": ...,
+    "longitude": ...,
+    "patchSize":500, 
+    "latestWkid":3857, // CRS of the coordinates
+    "weights":[0.25,0.25,0.25,0.25]  // reweighting of the softmax outputs, there should be one number (per class)
+}
+```
+
+Output example:
+```js
+{
+    "extent": ..., // copied from input
+    "weights": ..., // copied from input
+    "model_name": "Full-US-prerun", // name of the model being served
+    "input_naip": "..." // base64 encoding of input NAIP imagery used to generate the model output, as PNG
+    "output_hard": "..." // base64 encoding of hard class estimates, also as PNG
+    "output_soft": "..." // base64 encoding of soft class estimates, see `utils.class_prediction_to_img()` for how image is generated
+
+}
+```
+
+### *POST `/getInputLatlong`*
+
+Input example:
+```js
+{
+   "latitude": ...,
+    "longitude": ...,
+    "patchSize":500, 
+    "latestWkid":3857, // CRS of the coordinates
+    "weights":[0.25,0.25,0.25,0.25]  // reweighting of the softmax outputs, there should be one number (per class)
+}
+
+Output example:
+```js
+{
+    "extent": ..., // copied from input
+    "input_naip": "..." // base64 encoding of input NAIP imagery used to generate the model output, as PNG
+}
+```
+
 
 ## Setup
 1.  Copy the files from `//mslandcoverstorageeast.file.core.windows.net/chesapeake/demo_data/` into `api/data/`. This should include: `list_all_naip.txt`, `tile_index.dat`, `tile_index.idx`, `tiles.p`.
