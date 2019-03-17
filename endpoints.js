@@ -1,3 +1,3 @@
 ENDPOINTS = [
-    {"name": "Logistic Regression Accessory", "url": "http://msrcalebubuntu.eastus.cloudapp.azure.com:4444/"}
+    {"name": "mrscalebubuntu", "url": "http://msrcalebubuntu.eastus.cloudapp.azure.com:4444/"}
 ];
