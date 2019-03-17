@@ -3,6 +3,7 @@
 # vim:fenc=utf-8
 import sys
 import os
+import time
 
 import bottle
 import argparse
@@ -20,17 +21,22 @@ import DataLoader
 import GeoTools
 import utils
 
-import ServerModelsICLRFormat, ServerModelsCachedFormat
+import pickle
+import joblib
+
+import ServerModelsICLRFormat, ServerModelsCachedFormat, ServerModelsICLRDynamicFormat
 
 from sklearn.neural_network import MLPClassifier
 
 current_transform = None
 current_predictions = None
+current_features = None
 
+correction_pts = []
 corrections_x = []
 corrections_y = []
 augment_model = MLPClassifier(
-    hidden_layer_sizes=(),
+    hidden_layer_sizes=(8),
     activation='relu',
     alpha=0.001,
     solver='lbfgs',
@@ -42,6 +48,10 @@ model_fit = False
 
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
+
+def get_random_string(length):
+    alphabet = "abcdefghijklmnopqrstuvwxyz"
+    return ''.join([alphabet[np.random.randint(0, len(alphabet))] for i in range(length)])
 
 def enable_cors():
     '''From https://gist.github.com/richard-flosi/3789163
@@ -61,6 +71,30 @@ def do_options():
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
 
+def save_model():
+    global corrections_x, corrections_y, correction_pts, augment_model, model_fit
+    bottle.response.content_type = 'application/json'
+    data = bottle.request.json
+
+    if model_fit:
+        snapshot_id = get_random_string(8)
+        data["message"] = "Saved model '%s'" % (snapshot_id)
+        data["success"] = True
+
+        print("Saving snapshot %s" % (snapshot_id))
+        np.save("output/%s_x.npy" % (snapshot_id), corrections_x)
+        np.save("output/%s_y.npy" % (snapshot_id), corrections_y)
+        joblib.dump(correction_pts, "output/%s_pts.p" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)
+        joblib.dump(augment_model, "output/%s_x.model" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)
+
+    else:
+        data["message"] = "There is not a trained model to save"
+        data["success"] = False
+
+
+    bottle.response.status = 200
+    return json.dumps(data)
+
 def reset_model():
     global corrections_x, corrections_y, augment_model, model_fit
     bottle.response.content_type = 'application/json'
@@ -68,8 +102,8 @@ def reset_model():
 
     corrections_x = []
     corrections_y = []
-    augment_model = augment_model = MLPClassifier(
-        hidden_layer_sizes=(),
+    augment_model = MLPClassifier(
+        hidden_layer_sizes=(8),
         activation='relu',
         alpha=0.001,
         solver='lbfgs',
@@ -129,9 +163,13 @@ def retrain_model():
     return json.dumps(data)
 
 def record_correction():
-    global corrections_x, corrections_y
+    global current_transform, current_predictions, current_features, corrections_x, corrections_y
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
+
+
+    data["time"] = time.ctime()
+    correction_pts.append(dict(data))
 
     tlat, tlon = data["extent"]["ymax"], data["extent"]["xmin"]
     blat, blon = data["extent"]["ymin"], data["extent"]["xmax"]
@@ -167,7 +205,7 @@ def record_correction():
     tdst_row, bdst_row = min(tdst_row, bdst_row)-padding, max(tdst_row, bdst_row)-padding
     tdst_col, bdst_col = min(tdst_col, bdst_col)-padding, max(tdst_col, bdst_col)-padding
 
-    x_train = current_predictions[tdst_row:bdst_row+1, tdst_col:bdst_col+1, :].copy().reshape(-1,4)
+    x_train = current_features[tdst_row:bdst_row+1, tdst_col:bdst_col+1, :].copy().reshape(-1, current_features.shape[2])
     y_train = np.zeros((x_train.shape[0]), dtype=np.uint8)
     y_train[:] = class_idx
 
@@ -194,7 +232,7 @@ def record_correction():
     return json.dumps(data)
 
 def pred_patch(model):
-    global augment_model, model_fit, current_predictions, current_transform
+    global augment_model, model_fit, current_transform, current_predictions, current_features
     ''' Method called for POST `/predPatch`
 
     `model` is a method created in main() based on the `--model` command line argument
@@ -250,7 +288,7 @@ def pred_patch(model):
     # ------------------------------------------------------
     #output, name = ServerModels_Baseline_Blg_test.run_cnn(naip_data, landsat_data, blg_data, with_smooth=False)
     #name += "_with_smooth_False"
-    output, name = model.run(naip_data, naip_fn, extent, padding)
+    (output, output_features), name = model.run(naip_data, naip_fn, extent, padding)
     assert output.shape[2] == 4, "The model function should return an image shaped as (height, width, num_classes)"
     output *= weights[np.newaxis, np.newaxis, :] # multiply by the weight vector
     sum_vals = output.sum(axis=2) # need to normalize sums to 1 in order for the rendered output to be correct
@@ -258,14 +296,16 @@ def pred_patch(model):
     
     if padding > 0:
         output = output[padding:-padding,padding:-padding,:]
+        output_features = output_features[padding:-padding,padding:-padding,:]
 
     if model_fit:
         print("Augmenting output")
         original_shape = output.shape
-        output = output.reshape(-1,4)
+        output = output_features.reshape(-1, output_features.shape[2])
         output = augment_model.predict_proba(output)
         output = output.reshape(original_shape)
     
+    current_features = output_features.copy()
     current_predictions = output.copy()
     current_transform = transform
 
@@ -355,7 +395,7 @@ def main():
             return
         model = ServerModelsCachedFormat.CachedModel(args.model_fn)
     elif args.model == "keras":
-        model = ServerModelsICLRFormat.KerasModel(args.model_fn, args.gpuid)
+        model = ServerModelsICLRDynamicFormat.KerasModel(args.model_fn, args.gpuid)
     elif args.model == "iclr":
         model = ServerModelsICLRFormat.CNTKModel(args.model_fn, args.gpuid)
     else:
@@ -383,6 +423,9 @@ def main():
 
     app.route("/resetModel", method="OPTIONS", callback=do_options)
     app.route('/resetModel', method="POST", callback=reset_model)
+
+    app.route("/saveModel", method="OPTIONS", callback=do_options)
+    app.route('/saveModel', method="POST", callback=save_model)
 
 
     app.route('/', method="GET", callback=do_get)

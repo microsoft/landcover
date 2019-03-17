@@ -243,6 +243,7 @@ def pred_patch(model):
     
     if padding > 0:
         output = output[padding:-padding,padding:-padding,:]
+        output_features = output_features[padding:-padding,padding:-padding,:]
 
     if model_fit:
         print("Augmenting output")
