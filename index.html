@@ -286,7 +286,7 @@
 
     <!-- List of backend URLS to query
     ================================================== -->
-    <script src="endpoints.1.js" type="text/javascript"></script>
+    <script src="endpoints.js" type="text/javascript"></script>
 
     <script type="text/javascript">
 
@@ -313,8 +313,7 @@
         var currentPatchSrcs = [];
         var currentPatchModelIDs = [];
 
-        var middle_cedar_boundary = new L.geoJson();
-        var middle_cedar_qa_boundary = new L.geoJson();
+        var training_set_1_boundary = new L.geoJson();
 
         var soft0_hard1 = 1;
         var active_im_id = 0;
@@ -697,33 +696,17 @@
             sidebar.open("home")
 
 
-            middle_cedar_qa_boundary.addTo(map);
+            training_set_1_boundary.addTo(map);
             $.ajax({
                 dataType: "json",
-                url: "data/middle_cedar_qa.geojson",
+                url: "data/training_set_1.geojson",
                 success: function(data) {
                     $(data.features).each(function(key, data) {
-                        middle_cedar_qa_boundary.addData(data);
+                        training_set_1_boundary.addData(data);
                     });
-                    middle_cedar_qa_boundary.setStyle({
+                    training_set_1_boundary.setStyle({
                         "color": "#ff7800",
                         "weight": 4,
-                        "fill": false
-                    })
-                }
-            });
-
-            middle_cedar_boundary.addTo(map);
-            $.ajax({
-                dataType: "json",
-                url: "data/middle_cedar.geojson",
-                success: function(data) {
-                    $(data.features).each(function(key, data) {
-                        middle_cedar_boundary.addData(data);
-                    });
-                    middle_cedar_boundary.setStyle({
-                        "color": "#0000ff",
-                        "weight": 5,
                         "fill": false
                     })
                 }
