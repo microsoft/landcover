@@ -46,7 +46,7 @@ correction_model_predictions = []
 correction_sizes = []
 
 augment_model = MLPClassifier(
-    hidden_layer_sizes=(10),
+    hidden_layer_sizes=(),
     activation='relu',
     alpha=0.001,
     solver='lbfgs',
@@ -116,7 +116,7 @@ def reset_model():
     correction_features = []
     correction_targets = []
     augment_model = MLPClassifier(
-        hidden_layer_sizes=(10),
+        hidden_layer_sizes=(),
         activation='relu',
         alpha=0.001,
         solver='lbfgs',
