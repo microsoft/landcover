@@ -24,19 +24,29 @@ import utils
 import pickle
 import joblib
 
-import ServerModelsICLRFormat, ServerModelsCachedFormat, ServerModelsICLRDynamicFormat
+import ServerModelsICLRFormat, ServerModelsCachedFormat, ServerModelsICLRDynamicFormat, ServerModelsICCVDynamicFormat
 
 from sklearn.neural_network import MLPClassifier
+
+def get_random_string(length):
+    alphabet = "abcdefghijklmnopqrstuvwxyz"
+    return ''.join([alphabet[np.random.randint(0, len(alphabet))] for i in range(length)])
 
 current_transform = None
 current_predictions = None
 current_features = None
 
-correction_pts = []
-corrections_x = []
-corrections_y = []
+current_snapshot_string = get_random_string(8) + "_%s_%03d"
+current_snapshot_idx = 0
+
+correction_json = []
+correction_features = []
+correction_targets = []
+correction_model_predictions = []
+correction_sizes = []
+
 augment_model = MLPClassifier(
-    hidden_layer_sizes=(),
+    hidden_layer_sizes=(10),
     activation='relu',
     alpha=0.001,
     solver='lbfgs',
@@ -48,10 +58,6 @@ model_fit = False
 
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
-
-def get_random_string(length):
-    alphabet = "abcdefghijklmnopqrstuvwxyz"
-    return ''.join([alphabet[np.random.randint(0, len(alphabet))] for i in range(length)])
 
 def enable_cors():
     '''From https://gist.github.com/richard-flosi/3789163
@@ -72,21 +78,28 @@ def do_options():
 #---------------------------------------------------------------------------------------
 
 def save_model():
-    global corrections_x, corrections_y, correction_pts, augment_model, model_fit
+    global correction_features, correction_targets, correction_json, augment_model, model_fit, current_snapshot_idx, \
+         current_snapshot_string, correction_model_predictions, correction_sizes
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
 
     if model_fit:
-        snapshot_id = get_random_string(8)
+        snapshot_id = current_snapshot_string % (data["model"], current_snapshot_idx)
+        print("Saving snapshot %s" % (snapshot_id))
+
         data["message"] = "Saved model '%s'" % (snapshot_id)
         data["success"] = True
 
-        print("Saving snapshot %s" % (snapshot_id))
-        np.save("output/%s_x.npy" % (snapshot_id), corrections_x)
-        np.save("output/%s_y.npy" % (snapshot_id), corrections_y)
-        joblib.dump(correction_pts, "output/%s_pts.p" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)
-        joblib.dump(augment_model, "output/%s_x.model" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)
+        np.save("output/%s_x.npy" % (snapshot_id), correction_features)
+        np.save("output/%s_y.npy" % (snapshot_id), correction_targets)
 
+        np.save("output/%s_base_y.npy" % (snapshot_id), correction_model_predictions)
+        np.save("output/%s_sizes.npy" % (snapshot_id), correction_sizes)
+
+        joblib.dump(correction_json, "output/%s_pts.p" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)
+        joblib.dump(augment_model, "output/%s.model" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)
+
+        current_snapshot_idx += 1
     else:
         data["message"] = "There is not a trained model to save"
         data["success"] = False
@@ -96,14 +109,14 @@ def save_model():
     return json.dumps(data)
 
 def reset_model():
-    global corrections_x, corrections_y, augment_model, model_fit
+    global correction_features, correction_targets, augment_model, model_fit, current_snapshot_string, current_snapshot_idx
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
 
-    corrections_x = []
-    corrections_y = []
+    correction_features = []
+    correction_targets = []
     augment_model = MLPClassifier(
-        hidden_layer_sizes=(),
+        hidden_layer_sizes=(10),
         activation='relu',
         alpha=0.001,
         solver='lbfgs',
@@ -113,6 +126,9 @@ def reset_model():
     )
     model_fit = False
 
+    current_snapshot_string = get_random_string(8) + "_%s_%03d"
+    current_snapshot_idx = 0
+
     data["message"] = "Reset model"
     data["success"] = True
 
@@ -120,13 +136,13 @@ def reset_model():
     return json.dumps(data)
 
 def retrain_model():
-    global corrections_x, corrections_y, augment_model, model_fit
+    global correction_features, correction_targets, augment_model, model_fit
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
 
-    if len(corrections_x) > 0:
-        x_train = np.concatenate(corrections_x, axis=0)
-        y_train = np.concatenate(corrections_y, axis=0)
+    if len(correction_features) > 0:
+        x_train = np.concatenate(correction_features, axis=0)
+        y_train = np.concatenate(correction_targets, axis=0)
 
         print(x_train.shape, y_train.shape)
 
@@ -163,13 +179,13 @@ def retrain_model():
     return json.dumps(data)
 
 def record_correction():
-    global current_transform, current_predictions, current_features, corrections_x, corrections_y
+    global current_transform, current_predictions, current_features, correction_features, correction_targets, correction_json, correction_sizes, correction_model_predictions
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
 
 
     data["time"] = time.ctime()
-    correction_pts.append(dict(data))
+    correction_json.append(dict(data))
 
     tlat, tlon = data["extent"]["ymax"], data["extent"]["xmin"]
     blat, blon = data["extent"]["ymin"], data["extent"]["xmax"]
@@ -206,6 +222,7 @@ def record_correction():
     tdst_col, bdst_col = min(tdst_col, bdst_col)-padding, max(tdst_col, bdst_col)-padding
 
     x_train = current_features[tdst_row:bdst_row+1, tdst_col:bdst_col+1, :].copy().reshape(-1, current_features.shape[2])
+    y_pred = current_predictions[tdst_row:bdst_row+1, tdst_col:bdst_col+1, :].copy().reshape(-1, current_predictions.shape[2])
     y_train = np.zeros((x_train.shape[0]), dtype=np.uint8)
     y_train[:] = class_idx
 
@@ -222,8 +239,10 @@ def record_correction():
     img_hard = base64.b64encode(img_hard).decode("utf-8")
     data["output_hard"] = img_hard
 
-    corrections_x.append(x_train)
-    corrections_y.append(y_train)
+    correction_features.append(x_train)
+    correction_targets.append(y_train)
+    correction_sizes.append((bdst_row-tdst_row, bdst_col-tdst_col))
+    correction_model_predictions.append(y_pred)
 
     data["message"] = "Successfully submitted correction"
     data["success"] = True
@@ -382,7 +401,7 @@ def main():
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debugging", default=False)
     parser.add_argument("--host", action="store", dest="host", type=str, help="Host to bind to", default="0.0.0.0")
     parser.add_argument("--port", action="store", dest="port", type=int, help="Port to listen on", default=4444)
-    parser.add_argument("--model", action="store", dest="model", choices=["cached", "keras", "iclr"], help="Model to use", required=True)
+    parser.add_argument("--model", action="store", dest="model", choices=["cached", "iclr_keras", "iclr_cntk", "iccv_sr", "iccv_hr"], help="Model to use", required=True)
     parser.add_argument("--model_fn", action="store", dest="model_fn", type=str, help="Model fn to use", default=None)
     parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", default=0)
 
@@ -394,10 +413,14 @@ def main():
             print("When using `cached` model you must specify either '7_10_2018', or '1_3_2019'. Exiting...")
             return
         model = ServerModelsCachedFormat.CachedModel(args.model_fn)
-    elif args.model == "keras":
+    elif args.model == "iclr_keras":
         model = ServerModelsICLRDynamicFormat.KerasModel(args.model_fn, args.gpuid)
-    elif args.model == "iclr":
+    elif args.model == "iclr_cntk":
         model = ServerModelsICLRFormat.CNTKModel(args.model_fn, args.gpuid)
+    elif args.model == "iccv_sr":
+        model = ServerModelsICCVDynamicFormat.KerasModel(args.model_fn, args.gpuid, superres=True)
+    elif args.model == "iccv_hr":
+        model = ServerModelsICCVDynamicFormat.KerasModel(args.model_fn, args.gpuid, superres=False)
     else:
         print("Model isn't implemented, aborting")
         return

@@ -154,6 +154,10 @@
             width:300px;
         }
 
+        .noty_theme__metroui.noty_type__success{
+            background-color: #19715E !important;
+        }
+
     </style>
 
 </head>
@@ -192,13 +196,10 @@
 
                 <div style="margin-bottom:10px;" id="classChanges">
 
-                    <h3 style="text-align: center;">Dense Layer Accessory</h3>
+                    <h3 style="text-align: center;">Correction type:</h3>
                     <div style="padding-left:20px">
                         <div class="radio radio-selected">
-                            <label><input type="radio" name="new-class" value="unchanged" checked>Unchanged</label>
-                        </div>
-                        <div class="radio">
-                            <label><input type="radio" name="new-class" value="water">Water</label>
+                            <label><input type="radio" name="new-class" value="water" checked>Water</label>
                         </div>
                         <div class="radio">
                             <label><input type="radio" name="new-class" value="forest">Forest</label>
@@ -215,9 +216,9 @@
                         <div style="text-align: center; margin-top:10px;">
                             <label><input type="button" id="btnReset" value="Reset"></label>
                         </div>
-                        <div style="text-align: center; margin-top:10px;">
+                        <!-- <div style="text-align: center; margin-top:10px;">
                             <label><input type="button" id="btnSave" value="Save"></label>
-                        </div>
+                        </div> -->
                     </div>
                 </div>
 
@@ -291,21 +292,24 @@
     <script type="text/javascript">
 
         var processingServiceURL = ENDPOINTS[0]["url"];
+        var EXP_NAME = "TEST";
 
         var START_CENTER = [38, -94]; // lat, lon
         var START_ZOOM = 4;
 
         var SELECTION_SIZE = 200; // in meters, probably
+        var CORRECTION_SIZE = 5;
 
         var selectionBox = null;
         var currentSelection = null;
-        var newClass = "unchanged";
+        var newClass = "water";
         var classColors = {
             "water":"#0000FF",
             "forest":"#008000",
             "field":"#80FF80",
             "built":"#806060"
         }
+        var rightMouseDown = false;
 
         var exampleImgsList = [];
 
@@ -321,6 +325,54 @@
         var weights = [0.25, 0.25, 0.25, 0.25];
 
         var map = null;
+
+
+
+
+        var sendCorrection = function(polygon){
+            var topleft = L.latLng(polygon[0][0], polygon[0][1]);
+            var topleftProjected = L.CRS.EPSG3857.project(topleft);
+            var bottomright = L.latLng(polygon[2][0], polygon[2][1]);
+            var bottomrightProjected = L.CRS.EPSG3857.project(bottomright);
+            
+            var request = {
+                "extent": {
+                    "xmax": bottomrightProjected.x,
+                    "xmin": topleftProjected.x,
+                    "ymax": topleftProjected.y,
+                    "ymin": bottomrightProjected.y,
+                    "spatialReference": {
+                        "latestWkid": 3857
+                    }
+                },
+                "value" : newClass
+            };
+
+
+            $.ajax({
+                type: "POST",
+                url: processingServiceURL + "recordCorrection",
+                data: JSON.stringify(request),
+                success: function(data, textStatus, jqXHR){
+                    console.debug("Successfully recorded correction");
+                    //notifySuccess(data, textStatus, jqXHR);
+
+
+                    var srcs = [
+                        "data:image/png;base64," + data.output_soft,
+                        "data:image/png;base64," + data.output_hard,
+                    ];
+                    var last_idx = currentPatchSrcs.length-1;
+                    currentPatchSrcs[last_idx][active_im_id] = srcs;
+                    currentPatches[last_idx].setUrl(srcs[soft0_hard1]);
+                    exampleImgsList[active_im_id].attr("src", srcs[soft0_hard1]);
+
+                },
+                error: notifyFail,
+                dataType: "json",
+                contentType: "application/json"
+            });
+        };
 
         var requestPatches = function(polygon, weights_save, map){
 
@@ -540,8 +592,7 @@
                 L.marker([47.60, -122.15]).bindPopup('Bellevue, WA'),
                 L.marker([39.74, -104.99]).bindPopup('Denver, CO'),
                 L.marker([37.53,  -77.44]).bindPopup('Richmond, VA'),
-                L.marker([42.3197,  -92.7033]).bindPopup('Middle Cedar QA Area, IA'),
-                L.marker([42.526395, -92.441995]).bindPopup('Cedar Falls, IA'),
+                L.marker([42.451603, -76.493649]).bindPopup('Training Set 1'),
             ];
             var cities = L.layerGroup(interesting_locations);
 
@@ -558,8 +609,7 @@
             // Setup AI4E Branding
             //----------------------------------------------------------------------
             var logoControl = $("<div class='leaflet-control logo-area'></div>");
-            logoControl.append("<a href='.' style='text-decoration: underline;' class='.m-0'><span class='logo-text'> AI for Earth </span></a>");
-            logoControl.append("<a href='https://www.microsoft.com/en-us/ai-for-earth/land-cover-mapping-api' style='text-decoration: underline;'><span class='logo-link'>About</span></a>");
+            logoControl.append("<span class='logo-text'> Land Cover Mapping </span>");
             
             $(".leaflet-top.leaflet-left").append(logoControl)
 
@@ -667,6 +717,23 @@
                     size: "171px"
                 }
             ).addTo(map);
+            
+            L.control.slider( // correction size slider
+                function(value){
+                    CORRECTION_SIZE = value;
+                }, {
+                    position: 'bottomleft',
+                    id: 'selection_size_slider',
+                    orientation: 'horizontal',
+                    collapsed: true,
+                    syncSlider: true,
+                    min: 1,
+                    max: 10,
+                    value: 1,
+                    logo: "Correction Size",
+                    size: "171px"
+                }
+            ).addTo(map);
 
             L.control.slider( // window size slider
                 function(value){
@@ -677,8 +744,8 @@
                     orientation: 'horizontal',
                     collapsed: true,
                     syncSlider: true,
-                    min: 50,
-                    max: 700,
+                    min: 250,
+                    max: 1000,
                     value: 500,
                     logo: "Patch Size",
                     size: "171px"
@@ -716,57 +783,54 @@
             // Setup map selection handlers
             //----------------------------------------------------------------------
             map.addEventListener('mousemove', function(e){
-                curSelPoly = getPolyAround(e.latlng, SELECTION_SIZE)
+                // Make sure we haven't right click scrolled away
+                if(rightMouseDown && !isPointInsidePolygon(e.latlng, currentSelection)){
+                    rightMouseDown = false;
+                }
 
-                var ss = SELECTION_SIZE
-                if(newClass != "unchanged"){
-                    ss = 5;
+                // Choose style
+                var curSelPoly = null;
+                var lineWidth = null;
+                if(rightMouseDown){
+                    curSelPoly = getPolyAround(e.latlng, CORRECTION_SIZE);
+                    lineWidth = 4;
+                }else{
+                    curSelPoly = getPolyAround(e.latlng, SELECTION_SIZE);
+                    lineWidth = 2;
                 }
 
                 if(selectionBox === null){
                     selectionBox = L.polygon(curSelPoly, {
-                        color: "#000000",
+                        color: classColors[newClass],
                         fillColor: "#ffffff",
-                        weight: 2
+                        weight: lineWidth
                     });
                     selectionBox.addTo(map);
                 }else{
-
-                    if(newClass == "unchanged"){
-                        selectionBox.setStyle({
-                            color: "#000000",
-                            fillColor: "#ffffff",
-                            weight: 2
-                        });
-                    }else{
-                        selectionBox.setStyle({
-                            color: classColors[newClass],
-                            fillColor: "#ffffff",
-                            weight: 2
-                        });
-                    }
-
+                    selectionBox.setStyle({
+                        color: classColors[newClass],
+                        fillColor: "#ffffff",
+                        weight: lineWidth
+                    });
                     selectionBox.setLatLngs(curSelPoly);
                 }
             });
 
             map.addEventListener('click', function(e){
-                if(newClass == "unchanged"){
-                    curSelPoly = getPolyAround(e.latlng, SELECTION_SIZE);
+                curSelPoly = getPolyAround(e.latlng, SELECTION_SIZE);
 
-                    if(currentSelection === null){ // This condition creates the red selection box on the first click
-                        currentSelection = L.polygon(curSelPoly, {
-                            color: "#ff0000",
-                            fillColor: "#ffffff",
-                            weight: 2
-                        });
-                        currentSelection.addTo(map);
-                    }else{
-                        currentSelection.setLatLngs(curSelPoly);
-                    }
-                    
-                    requestPatches(curSelPoly, weights, map);
+                if(currentSelection === null){ // This condition creates the red selection box on the first click
+                    currentSelection = L.polygon(curSelPoly, {
+                        color: "#ff0000",
+                        fillColor: "#ffffff",
+                        weight: 2
+                    });
+                    currentSelection.addTo(map);
+                }else{
+                    currentSelection.setLatLngs(curSelPoly);
                 }
+                
+                requestPatches(curSelPoly, weights, map);
             });
 
             map.on('contextmenu',function(e){}); // disables the context menu
@@ -774,6 +838,10 @@
             map.addEventListener('mousedown', function(e){
                 if(e.originalEvent.button == 2){
                     map.dragging.disable();
+
+                    if(isPointInsidePolygon(e.latlng, currentSelection)){
+                        rightMouseDown = true;
+                    }
                 }
             });
 
@@ -781,71 +849,19 @@
                 if(e.originalEvent.button == 2){
                     map.dragging.enable();
 
-                    if(newClass != "unchanged"){
-                        if(isPointInsidePolygon(e.latlng, currentSelection)){
-                            var latlonProjected = L.CRS.EPSG3857.project(e.latlng);
-                            var x = latlonProjected.x;
-                            var y = latlonProjected.y
-                            var request = {
-                                "extent": {
-                                    "xmax": x+1,
-                                    "xmin": x,
-                                    "ymax": y,
-                                    "ymin": y-1,
-                                    "spatialReference": {
-                                        "latestWkid": 3857
-                                    }
-                                },
-                                "value" : newClass
-                            };
-                            
-                            selectionBox.setStyle({
-                                weight: 10
-                            });
+                    if(rightMouseDown){
+                        rightMouseDown = false;
 
-
-                            $.ajax({
-                                type: "POST",
-                                url: processingServiceURL + "recordCorrection",
-                                data: JSON.stringify(request),
-                                success: function(data, textStatus, jqXHR){
-                                    var resp = data;
-                                    console.debug("Successfully recorded correction");
-                                    // TODO: Here is where we could replace the current image from the backend
-
-                                    var srcs = [
-                                        "data:image/png;base64," + resp.output_soft,
-                                        "data:image/png;base64," + resp.output_hard,
-                                    ];
-                                    var last_idx = currentPatchSrcs.length-1;
-                                    currentPatchSrcs[last_idx][active_im_id] = srcs;
-                                    currentPatches[last_idx].setUrl(srcs[soft0_hard1]);
-                                    exampleImgsList[active_im_id].attr("src", srcs[soft0_hard1]);
-                                    selectionBox.setStyle({
-                                        weight: 2
-                                    });
-
-                                    new Noty({
-                                        type: 'success',
-                                        text: resp.message,
-                                        layout: 'topCenter',
-                                        timeout: 500,
-                                        theme: 'metroui'
-                                    }).show();
-
-                                },
-                                error: function(jqXHR, textStatus, errorThrown){
-                                    var response = $.parseJSON(jqXHR.responseText);
-                                    console.log("Error in processing server: " + response.error);
-                                },
-                                dataType: "json",
-                                contentType: "application/json"
-                            });
-                        }else{
-                            console.debug("Click not in selection");
+                        if(currentSelection !== null){
+                            if(isPointInsidePolygon(e.latlng, currentSelection)){
+                                curSelPoly = getPolyAround(e.latlng, CORRECTION_SIZE);
+                                sendCorrection(curSelPoly);
+                            }else{
+                                console.debug("Click not in selection");
+                            }
                         }
                     }
-
+                    
                 }
             });
             map.addEventListener('mouseout', function(e){
@@ -857,14 +873,24 @@
 
             //TODO these can all be combined into one function
             $("#btnRetrain").click(function(){
-                var request = {
-                    "retrain": true
-                };
                 $.ajax({
                     type: "POST",
                     url: processingServiceURL + "retrainModel",
-                    data: JSON.stringify(request),
-                    success: notifySuccess,
+                    data: JSON.stringify({"retrain": true}),
+                    success: function(data, textStatus, jqXHR){
+                        if(data["success"]){
+                            notifySuccess(data, textStatus, jqXHR);
+                            $.ajax({
+                                type: "POST",
+                                url: processingServiceURL + "saveModel",
+                                data: JSON.stringify({"save": true, "model": EXP_NAME}),
+                                success: notifySuccess,
+                                error: notifyFail,
+                                dataType: "json",
+                                contentType: "application/json"
+                            });
+                        }
+                    },
                     error: notifyFail,
                     dataType: "json",
                     contentType: "application/json"
@@ -886,20 +912,20 @@
                 });
             });
 
-            $("#btnSave").click(function(){
-                var request = {
-                    "save": true
-                };
-                $.ajax({
-                    type: "POST",
-                    url: processingServiceURL + "saveModel",
-                    data: JSON.stringify(request),
-                    success: notifySuccess,
-                    error: notifyFail,
-                    dataType: "json",
-                    contentType: "application/json"
-                });
-            });
+            // $("#btnSave").click(function(){
+            //     var request = {
+            //         "save": true
+            //     };
+            //     $.ajax({
+            //         type: "POST",
+            //         url: processingServiceURL + "saveModel",
+            //         data: JSON.stringify(request),
+            //         success: notifySuccess,
+            //         error: notifyFail,
+            //         dataType: "json",
+            //         contentType: "application/json"
+            //     });
+            // });
 
 
             //----------------------------------------------------------------------
