@@ -321,6 +321,7 @@
         ]
 
         var soft0_hard1 = 1;
+        var pred0_naip1 = 0;
         var activeImgIdx = 0;
 
         var weights = [0.25, 0.25, 0.25, 0.25];
@@ -363,9 +364,11 @@
 
                     var tActiveImgIdx = currentPatches[idx]["activeImgIdx"];
                     currentPatches[idx]["patches"][tActiveImgIdx]["srcs"] = srcs;
-                    currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
                     $("#exampleImage_"+tActiveImgIdx).attr("src", srcs[soft0_hard1]);
-
+                    
+                    if(pred0_naip1 == 0){
+                        currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
+                    }
                 },
                 error: notifyFail,
                 dataType: "json",
@@ -422,6 +425,11 @@
                     var naipImg = "data:image/png;base64," + resp.input_naip;
                     currentPatches[idx]["naipImg"] = naipImg 
                     $("#inputNAIP").attr("src", naipImg);
+
+                    if(pred0_naip1 == 1){
+                        var imageLayer = L.imageOverlay(naipImg, L.polygon(polygon).getBounds()).addTo(map);
+                        currentPatches[idx]["imageLayer"] = imageLayer;
+                    }
                 },
                 error: notifyFail,
                 dataType: "json",
@@ -466,10 +474,14 @@
                     img.attr("data-name", resp.model_name);
                     img.attr("data-weights", JSON.stringify(resp.weights));
                     
+
                     if(currentImgIdx == currentPatches[idx]["activeImgIdx"]){
                         img.addClass("active");
-                        var imageLayer = L.imageOverlay(srcs[soft0_hard1], L.polygon(polygon).getBounds()).addTo(map);
-                        currentPatches[idx]["imageLayer"] = imageLayer;
+
+                        if(pred0_naip1 == 0){
+                            var imageLayer = L.imageOverlay(srcs[soft0_hard1], L.polygon(polygon).getBounds()).addTo(map);
+                            currentPatches[idx]["imageLayer"] = imageLayer;
+                        }
                     }
                     currentPatches[idx]["patches"][currentImgIdx]["srcs"] = srcs;
                 },
@@ -702,7 +714,7 @@
                 }
             ).addTo(map);
 
-            
+            /*
             L.control.slider( // sharpness slider
                 function(value){
                     soft0_hard1 = value;
@@ -734,7 +746,7 @@
                     size: "171px"
                 }
             ).addTo(map);
-            
+            */
             
             /*
             L.control.slider( // correction size slider
@@ -754,6 +766,55 @@
                 }
             ).addTo(map);
             */
+
+            L.control.slider( // Show NAIP slider
+                function(value){
+                    pred0_naip1 = value;
+
+                    for(idx=0; idx<currentPatches.length; idx++){
+                        if(pred0_naip1 == 1){
+                            var naipImg = currentPatches[idx]["naipImg"];
+                            currentPatches[idx]["imageLayer"].setUrl(naipImg);
+                        }else{
+                            var tActiveImgIdx = currentPatches[idx]["activeImgIdx"];
+                            var srcs = currentPatches[idx]["patches"][tActiveImgIdx]["srcs"];
+                            currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
+                        }
+                    }
+                }, {
+                    position: 'bottomleft',
+                    id: 'selection_size_slider',
+                    orientation: 'horizontal',
+                    collapsed: true,
+                    syncSlider: true,
+                    min: 0,
+                    max: 1,
+                    value: 0,
+                    logo: "Show NAIP",
+                    size: "171px"
+                }
+            ).addTo(map);
+
+            $(document).keypress(function( e ) {
+                if(e.which == 65 || e.which == 97) {
+                    e.preventDefault();
+                    pred0_naip1 = 0;
+
+                    for(idx=0; idx<currentPatches.length; idx++){
+                        var tActiveImgIdx = currentPatches[idx]["activeImgIdx"];
+                        var srcs = currentPatches[idx]["patches"][tActiveImgIdx]["srcs"];
+                        currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
+                    }
+                }else if(e.which == 68 || e.which == 100){
+                    e.preventDefault();
+                    pred0_naip1 = 1;
+
+                    for(idx=0; idx<currentPatches.length; idx++){
+                        var naipImg = currentPatches[idx]["naipImg"];
+                        currentPatches[idx]["imageLayer"].setUrl(naipImg);
+                    }
+                }
+            });
 
             L.control.slider( // window size slider
                 function(value){
