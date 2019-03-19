@@ -38,6 +38,7 @@ current_features = None
 
 current_snapshot_string = get_random_string(8) + "_%s_%03d"
 current_snapshot_idx = 0
+print("Loaded with snapshot %s" % (current_snapshot_string))
 
 correction_json = []
 correction_features = []
@@ -128,6 +129,7 @@ def reset_model():
 
     current_snapshot_string = get_random_string(8) + "_%s_%03d"
     current_snapshot_idx = 0
+    print("Loaded with snapshot %s" % (current_snapshot_string))
 
     data["message"] = "Reset model"
     data["success"] = True
