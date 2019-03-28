@@ -195,7 +195,7 @@
 
                 <div style="margin-bottom:10px;" id="classChanges">
 
-                    <h3 style="text-align: center;">Correction type:</h3>
+                    <h3 style="text-align: center; margin-top:20px;">Correction type:</h3>
                     <div style="padding-left:20px">
                         <div class="radio radio-selected">
                             <label><input type="radio" name="new-class" value="water" checked>Water</label>
@@ -221,7 +221,8 @@
                     </div>
                 </div>
 
-                <div style="text-align: center; margin-bottom:10px;" id="classAdjustments">
+                
+                <div style="text-align: center; margin-bottom:10px; display:none;" id="classAdjustments">
                     <h3>Change Class Weights</h3>
                     <table style="width:100%;">
                         <tr>
@@ -291,13 +292,13 @@
     <script type="text/javascript">
 
         var processingServiceURL = ENDPOINTS[0]["url"];
-        var EXP_NAME = "hr_md";
+        var EXP_NAME = "TEST";
 
         var START_CENTER = [38, -94]; // lat, lon
         var START_ZOOM = 4;
 
         var SELECTION_SIZE = 200; // in meters, probably
-        var CORRECTION_SIZE = 5;
+        var CORRECTION_SIZE = 1;
 
         var selectionBox = null;
         var currentSelection = null;
@@ -381,7 +382,7 @@
             // Setup placeholders for the predictions from the current click to be saved to
             currentPatches.push({
                 "naipImg": null,
-                "imageLayer": null,
+                "imageLayer": L.imageOverlay("", L.polygon(polygon).getBounds()).addTo(map),
                 "patches": [],
                 "activeImgIdx": activeImgIdx
             });
@@ -427,8 +428,8 @@
                     $("#inputNAIP").attr("src", naipImg);
 
                     if(pred0_naip1 == 1){
-                        var imageLayer = L.imageOverlay(naipImg, L.polygon(polygon).getBounds()).addTo(map);
-                        currentPatches[idx]["imageLayer"] = imageLayer;
+                        //var imageLayer = L.imageOverlay(naipImg, L.polygon(polygon).getBounds()).addTo(map);
+                        currentPatches[idx]["imageLayer"].setUrl(naipImg);
                     }
                 },
                 error: notifyFail,
@@ -479,8 +480,8 @@
                         img.addClass("active");
 
                         if(pred0_naip1 == 0){
-                            var imageLayer = L.imageOverlay(srcs[soft0_hard1], L.polygon(polygon).getBounds()).addTo(map);
-                            currentPatches[idx]["imageLayer"] = imageLayer;
+                            //var imageLayer = L.imageOverlay(srcs[soft0_hard1], L.polygon(polygon).getBounds()).addTo(map);
+                            currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
                         }
                     }
                     currentPatches[idx]["patches"][currentImgIdx]["srcs"] = srcs;
@@ -611,12 +612,12 @@
 
             var interesting_locations = [
                 L.marker([47.60, -122.15]).bindPopup('Bellevue, WA'),
-                L.marker([39.74, -104.99]).bindPopup('Denver, CO'),
+                L.marker([39.74, -105.01]).bindPopup('Denver, CO'),
                 L.marker([37.53,  -77.44]).bindPopup('Richmond, VA'),
-                L.marker([42.406254468291763, -77.187540176872204]).bindPopup('Training Set 1'),
-                L.marker([42.406255520348218, -76.875036986871578]).bindPopup('Training Set 2'),
-                L.marker([42.46875623949721, -76.500032913576661]).bindPopup('Training Set 3'),
-                L.marker([43.093755876006497, -76.187541172857053]).bindPopup('Training Set 4'),
+                //L.marker([42.406254468291763, -77.187540176872204]).bindPopup('Training Set 1'),
+                //L.marker([42.406255520348218, -76.875036986871578]).bindPopup('Training Set 2'),
+                //L.marker([42.46875623949721, -76.500032913576661]).bindPopup('Training Set 3'),
+                //L.marker([43.093755876006497, -76.187541172857053]).bindPopup('Training Set 4'),
             ];
 
             var cities = L.layerGroup(interesting_locations);
@@ -626,7 +627,7 @@
                 crs: L.CRS.EPSG3857, // this is a default, but I'm setting it to be explicit about what CRS we are in	
                 center: START_CENTER,
                 zoom: START_ZOOM,
-                layers: [Esri_WorldImagery, cities]
+                layers: [OpenStreetMap_Mapnik, cities]
             });
 
 
@@ -714,6 +715,7 @@
                 }
             ).addTo(map);
 
+            
             /*
             L.control.slider( // sharpness slider
                 function(value){
@@ -748,25 +750,6 @@
             ).addTo(map);
             */
             
-            /*
-            L.control.slider( // correction size slider
-                function(value){
-                    CORRECTION_SIZE = value;
-                }, {
-                    position: 'bottomleft',
-                    id: 'selection_size_slider',
-                    orientation: 'horizontal',
-                    collapsed: true,
-                    syncSlider: true,
-                    min: 1,
-                    max: 10,
-                    value: 1,
-                    logo: "Correction Size",
-                    size: "171px"
-                }
-            ).addTo(map);
-            */
-
             L.control.slider( // Show NAIP slider
                 function(value){
                     pred0_naip1 = value;
@@ -795,9 +778,26 @@
                 }
             ).addTo(map);
 
+            L.control.slider( // correction size slider
+                function(value){
+                    CORRECTION_SIZE = value;
+                }, {
+                    position: 'bottomleft',
+                    id: 'selection_size_slider',
+                    orientation: 'horizontal',
+                    collapsed: true,
+                    syncSlider: true,
+                    min: 1,
+                    max: 10,
+                    value: 1,
+                    logo: "Correction Size",
+                    size: "171px"
+                }
+            ).addTo(map);
+
             $(document).keypress(function( e ) {
                 if(e.which == 65 || e.which == 97) {
-                    e.preventDefault();
+                    //e.preventDefault();
                     pred0_naip1 = 0;
 
                     for(idx=0; idx<currentPatches.length; idx++){
@@ -806,7 +806,7 @@
                         currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
                     }
                 }else if(e.which == 68 || e.which == 100){
-                    e.preventDefault();
+                    //e.preventDefault();
                     pred0_naip1 = 1;
 
                     for(idx=0; idx<currentPatches.length; idx++){
@@ -847,9 +847,9 @@
             //----------------------------------------------------------------------
             // Setup the geojson boundaries around our training sets
             //----------------------------------------------------------------------
-            for(var i=0;i<training_set_boundaries.length;i++){
-                setupTrainingSets(i);
-            }
+            //for(var i=0;i<training_set_boundaries.length;i++){
+            //    setupTrainingSets(i);
+            //}
 
             //----------------------------------------------------------------------
             // Setup map selection handlers
