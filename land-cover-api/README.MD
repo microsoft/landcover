@@ -19,7 +19,7 @@
 
 Contains the follwing methods:
 
-### *POST `/predPatch`*
+### *POST `/classify_by_extent`*
 
 Input example:
 ```js
@@ -50,7 +50,7 @@ Output example:
 }
 ```
 
-### *POST `/getInput`*
+### *POST `/tile_by_extent`*
 
 Input example:
 ```js
@@ -75,7 +75,7 @@ Output example:
 }
 ```
 
-### *POST `/predPatchLatLong`*
+### *POST `/classify`*
 
 Input example:
 ```js
@@ -101,7 +101,7 @@ Output example:
 }
 ```
 
-### *POST `/getInputLatlong`*
+### *POST `/tile`*
 
 Input example:
 ```js
