@@ -21,6 +21,8 @@ import glob
 
 import GeoTools
 
+import logging
+
 class GeoDataTypes(Enum):
     NAIP = 1
     NLCD = 2
@@ -92,13 +94,10 @@ def lookup_tile_by_geom(geom):
 
     geom = shapely.geometry.shape(geom)
     intersected_indices = list(tile_index.intersection(geom.bounds))
-
     for idx in intersected_indices:
-
         intersected_fn = TILES[idx][0]
         intersected_geom = TILES[idx][1]
         if intersected_geom.contains(geom):
-            print(intersected_fn)
             return intersected_fn
 
     if len(intersected_indices) > 0:
@@ -109,6 +108,11 @@ def lookup_tile_by_geom(geom):
 # ------------------------------------------------------------------------------
 
 def get_data_by_extent(naip_fn, extent, geo_data_type):
+    
+    start2 = time.time()
+
+    logging.debug(start2)
+
     if geo_data_type == GeoDataTypes.NAIP:
         fn = naip_fn
     elif geo_data_type == GeoDataTypes.NLCD:
@@ -125,6 +129,8 @@ def get_data_by_extent(naip_fn, extent, geo_data_type):
     else:
         raise ValueError("GeoDataType not recognized")
     
+    
+    #with rasterio.open(fn) as f:
     f = rasterio.open(fn, "r")
     geom = GeoTools.extent_to_transformed_geom(extent, f.crs["init"])
     pad_rad = 15 # TODO: this might need to be changed for much larger inputs
@@ -135,7 +141,7 @@ def get_data_by_extent(naip_fn, extent, geo_data_type):
     src_crs = f.crs.copy()
     f.close()
     
-    dst_crs = {"init": "EPSG:%s" % (extent["spatialReference"]["latestWkid"])}
+    dst_crs = {"init": "EPSG:%s" % (extent["spatialreference"]["latestwkid"])}
     dst_transform, width, height = rasterio.warp.calculate_default_transform(
         src_crs,
         dst_crs,
@@ -273,4 +279,3 @@ def center_to_tile_geom(centerp):
     return None, None
 
 # ------------------------------------------------------------------------------
-

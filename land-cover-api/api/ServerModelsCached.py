@@ -27,7 +27,7 @@ def get_cached_by_extent(fn, extent, buffer):
     src_crs = f.crs.copy()
     f.close()
     
-    dst_crs = {"init": "EPSG:%s" % (extent["spatialReference"]["latestWkid"])}
+    dst_crs = {"init": "EPSG:%s" % (extent["spatialreference"]["latestwkid"])}
     dst_transform, width, height = rasterio.warp.calculate_default_transform(
         src_crs,
         dst_crs,

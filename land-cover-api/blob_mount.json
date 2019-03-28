@@ -1,13 +1,13 @@
 [
     {
         "accountName":"mslandcoverstorageeast",
-        "accountKey":"<add accountKey>",
+        "accountKey":"dOfg/OFvE7h+/td1v7oHCCnTSnJTDtDd8S34imebd4VcZMHLXzmZdQ56Peja5U7b8gqzMulsxdIjSk/zHpfZGg==",
         "containerName":"esri-naip",
         "mappedDirectory":"/mnt/blobfuse/esri-naip"
     },
     {
         "accountName":"modeloutput",
-        "accountKey":"<add accountKey>",
+        "accountKey":"biU1WPtC4pJ3HRBUkgLRH70rWBl4pbyTMemRvDEoRjPFLs04gNTkutKMxQlktC98LZaap6j4iTOzm3vlOEw6AQ==",
         "containerName":"full-usa-output",
         "mappedDirectory":"/mnt/blobfuse/full-usa-output"
     }

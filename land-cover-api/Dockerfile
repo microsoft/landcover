@@ -15,6 +15,7 @@ RUN echo "source activate ai4e_py_api" >> ~/.bashrc \
     && conda update conda \
     && conda install -c conda-forge -n ai4e_py_api numpy pandas scipy \
     && conda install -c conda-forge gdal=2.2.2 \
+    #&& conda install -c conda-forge -n ai4e_py_api rasterio \
     && conda install -c conda-forge -n ai4e_py_api fiona shapely pyproj rtree \
     && conda install -c conda-forge -n ai4e_py_api opencv 
 

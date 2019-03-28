@@ -43,8 +43,8 @@ def get_extent_values( lat, lon):
         "xmin": topleftProjected[0],
         "ymax": topleftProjected[1],
         "ymin": bottomrightProjected[1],
-        "spatialReference": {
-            "latestWkid": latest_wkid
+        "spatialreference": {
+            "latestwkid": latest_wkid
         }
     }
 
