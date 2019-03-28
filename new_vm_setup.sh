@@ -5,7 +5,7 @@ sudo apt-get update
 sudo apt-get install blobfuse
 
 # install our python geospatial library dependencies
-source activate py35
+source activate /data/anaconda/envs/py35
 conda install rasterio fiona shapely rtree
 source deactivate
 

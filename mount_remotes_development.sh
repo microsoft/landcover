@@ -39,9 +39,9 @@ blobfuse /mnt/blobfuse/resampled-buildings --tmp-path=/mnt/resource/resampled-bu
 
 # large output blobs
 blobfuse /mnt/blobfuse/full-usa-output --tmp-path=/mnt/resource/full-usa-output --config-file=/home/$(whoami)/blobfusecfgs/full-usa-output.cfg -o attr_timeout=240 -o entry_timeout=240 -o negative_timeout=120
-blobfuse /mnt/blobfuse/middle-cedar-watershed-data --tmp-path=/mnt/resource/middle-cedar  --config-file=/home/caleb/blobfusecfgs/middle-cedar-watershed-data.cfg -o attr_timeout=240 -o entry_timeout=240 -o negative_timeout=120
+blobfuse /mnt/blobfuse/middle-cedar-watershed-data --tmp-path=/mnt/resource/middle-cedar  --config-file=/home/$(whoami)/blobfusecfgs/middle-cedar-watershed-data.cfg -o attr_timeout=240 -o entry_timeout=240 -o negative_timeout=120
 
 # Le blobs
-blobfuse /mnt/blobfuse/pred-output --tmp-path=/mnt/resource/pred-output  --config-file=/home/caleb/blobfusecfgs/pred-output.cfg -o attr_timeout=240 -o entry_timeout=240 -o negative_timeout=120
-blobfuse /mnt/blobfuse/train-output --tmp-path=/mnt/resource/train-output  --config-file=/home/caleb/blobfusecfgs/train-output.cfg -o attr_timeout=240 -o entry_timeout=240 -o negative_timeout=120
-blobfuse /mnt/blobfuse/cnn-minibatches --tmp-path=/mnt/resource/cnn-minibatches  --config-file=/home/caleb/blobfusecfgs/cnn-minibatches.cfg -o attr_timeout=240 -o entry_timeout=240 -o negative_timeout=120
+blobfuse /mnt/blobfuse/pred-output --tmp-path=/mnt/resource/pred-output  --config-file=/home/$(whoami)/blobfusecfgs/pred-output.cfg -o attr_timeout=240 -o entry_timeout=240 -o negative_timeout=120
+blobfuse /mnt/blobfuse/train-output --tmp-path=/mnt/resource/train-output  --config-file=/home/$(whoami)/blobfusecfgs/train-output.cfg -o attr_timeout=240 -o entry_timeout=240 -o negative_timeout=120
+blobfuse /mnt/blobfuse/cnn-minibatches --tmp-path=/mnt/resource/cnn-minibatches  --config-file=/home/$(whoami)/blobfusecfgs/cnn-minibatches.cfg -o attr_timeout=240 -o entry_timeout=240 -o negative_timeout=120
