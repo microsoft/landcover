@@ -91,6 +91,7 @@ def save_model():
         data["message"] = "Saved model '%s'" % (snapshot_id)
         data["success"] = True
 
+        os.makedirs("output/", exist_ok=True)
         np.save("output/%s_x.npy" % (snapshot_id), correction_features)
         np.save("output/%s_y.npy" % (snapshot_id), correction_targets)
 
