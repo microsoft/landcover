@@ -1,7 +1,7 @@
 # Land Cover Mapping Tool
 
 
-This repository hold both the "frontend" web-application and "backend" web API server that make up our "Land Cover Mapping" demo. An instance of this demo is live, [here](http://msrcalebubuntu.eastus.cloudapp.azure.com:4040/).
+This repository holds both the "frontend" web-application and "backend" web API server that make up our "Land Cover Mapping" demo. An instance of this demo is live, [here](http://msrcalebubuntu.eastus.cloudapp.azure.com:4040/).
 
 
 ## Overview
@@ -9,6 +9,8 @@ This repository hold both the "frontend" web-application and "backend" web API s
 - "Frontend"
   - `index.html`, `endpoints.js`
   - Whenever an user clicks somewhere on the map, the app will query each server defined in `endpoints.js` and show the results overlayed on the map.
+  - Upon new installation, copy `endpoints.js` to `endpoints.mine.js`. This copy allows customizing the back-end server to use, and will be ignored by Git.
+  - When changing the host-name and port number, the URL must end with `/` (eg. `http://msrcalebubuntu.eastus.cloudapp.azure.com:4444/`).
 - "Backend"
   - Consists of `backend_server.py`, `ServerModels*.py`, `DataLoader.py`
   - `backend_server.py` starts a bottle server to serve the API
