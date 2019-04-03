@@ -273,7 +273,7 @@ def pred_patch(model):
     # ------------------------------------------------------
     geom = GeoTools.extent_to_transformed_geom(extent, "EPSG:4269")
     try:
-        naip_fn = DataLoader.lookup_tile_by_geom(geom)
+        naip_file_name = DataLoader.lookup_tile_by_geom(geom)
     except ValueError as e:
         print(e)
         bottle.response.status = 400
@@ -284,22 +284,22 @@ def pred_patch(model):
     #   Load the input data sources for the given tile  
     # ------------------------------------------------------
 
-    naip_data, padding, transform = DataLoader.get_data_by_extent(naip_fn, extent, DataLoader.GeoDataTypes.NAIP, return_transforms=True)
+    naip_data, padding, transform = DataLoader.get_data_by_extent(naip_file_name, extent, DataLoader.GeoDataTypes.NAIP, return_transforms=True)
     naip_data = np.rollaxis(naip_data, 0, 3)
 
     
-    #landsat_data = DataLoader.get_landsat_by_extent(naip_fn, extent, padding)
+    #landsat_data = DataLoader.get_landsat_by_extent(naip_file_name, extent, padding)
     #landsat_data = np.rollaxis(landsat_data, 0, 3)
     
-    #nlcd_data = DataLoader.get_nlcd_by_extent(naip_fn, extent, padding)
+    #nlcd_data = DataLoader.get_nlcd_by_extent(naip_file_name, extent, padding)
     #nlcd_data = np.rollaxis(to_one_hot(nlcd_data, 22), 0, 3)
     #nlcd_data = np.squeeze(nlcd_data)
     #nlcd_data = np.vectorize(utils.NLCD_CLASS_TO_IDX.__getitem__)(nlcd_data)
 
-    #lc_data = DataLoader.get_lc_by_extent(naip_fn, extent, padding)
+    #lc_data = DataLoader.get_lc_by_extent(naip_file_name, extent, padding)
     #lc_data = np.rollaxis(to_one_hot(lc_data, 7), 0, 3)
 
-    #blg_data = DataLoader.get_blg_by_extent(naip_fn, extent, padding)
+    #blg_data = DataLoader.get_blg_by_extent(naip_file_name, extent, padding)
     #blg_data = np.rollaxis(blg_data, 0, 3)
     
     # ------------------------------------------------------
@@ -310,7 +310,7 @@ def pred_patch(model):
     # ------------------------------------------------------
     #output, name = ServerModels_Baseline_Blg_test.run_cnn(naip_data, landsat_data, blg_data, with_smooth=False)
     #name += "_with_smooth_False"
-    (output, output_features), name = model.run(naip_data, naip_fn, extent, padding)
+    (output, output_features), name = model.run(naip_data, naip_file_name, extent, padding)
     assert output.shape[2] == 4, "The model function should return an image shaped as (height, width, num_classes)"
     output *= weights[np.newaxis, np.newaxis, :] # multiply by the weight vector
     sum_vals = output.sum(axis=2) # need to normalize sums to 1 in order for the rendered output to be correct
@@ -366,7 +366,7 @@ def get_input():
     # ------------------------------------------------------
     geom = GeoTools.extent_to_transformed_geom(extent, "EPSG:4269")
     try:
-        naip_fn = DataLoader.lookup_tile_by_geom(geom)
+        naip_file_name = DataLoader.lookup_tile_by_geom(geom)
     except ValueError as e:
         print(e)
         bottle.response.status = 400
@@ -377,7 +377,7 @@ def get_input():
     #   Load the input data sources for the given tile  
     # ------------------------------------------------------
 
-    naip_data, padding = DataLoader.get_data_by_extent(naip_fn, extent, DataLoader.GeoDataTypes.NAIP)
+    naip_data, padding = DataLoader.get_data_by_extent(naip_file_name, extent, DataLoader.GeoDataTypes.NAIP)
     naip_data = np.rollaxis(naip_data, 0, 3)
     naip_img = naip_data[:,:,:3].copy().astype(np.uint8) # keep the RGB channels to save as a color image later
     if padding > 0:
