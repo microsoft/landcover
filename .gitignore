@@ -4,3 +4,6 @@ __pycache__/
 .ipynb_checkpoints/
 *.pyc
 endpoints.mine.js
+files_to_sync.txt
+file_not_to_sync.txt
+sync_up.sh
