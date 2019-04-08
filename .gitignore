@@ -1,0 +1,8 @@
+__pycache__
+
+*.pyc
+*.ipynb
+
+sync_up.sh
+files_to_sync.txt
+files_not_to_sync.txt
