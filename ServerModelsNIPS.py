@@ -56,6 +56,8 @@ class KerasDenseFineTune(BackendModel):
         # ------------------------------------------------------
         self.current_features = None
 
+        self.augment_base_x_train = []
+        self.augment_base_y_train = []
 
         self.augment_x_train = []
         self.augment_y_train = []
@@ -71,9 +73,15 @@ class KerasDenseFineTune(BackendModel):
             seed_x_fn = "data/seed_data_hr_x.npy"
             seed_y_fn = "data/seed_data_hr_y.npy"
         for row in np.load(seed_x_fn):
-            self.augment_x_train.append(row)
+            self.augment_base_x_train.append(row)
         for row in np.load(seed_y_fn):
+            self.augment_base_y_train.append(row)
+
+        for row in self.augment_base_x_train:
+            self.augment_x_train.append(row)
+        for row in self.augment_base_y_train:
             self.augment_y_train.append(row)
+        
 
     def run(self, naip_data, naip_fn, extent, padding):
         output, output_features = self.run_model_on_tile(naip_data)
@@ -122,6 +130,11 @@ class KerasDenseFineTune(BackendModel):
         self.augment_y_train = []
         self.augment_model = sklearn.base.clone(AUGMENT_MODEL)
         self.augment_model_trained = False
+
+        for row in self.augment_base_x_train:
+            self.augment_x_train.append(row)
+        for row in self.augment_base_y_train:
+            self.augment_y_train.append(row)
 
     def run_model_on_tile(self, naip_tile, batch_size=32):
 

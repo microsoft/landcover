@@ -85,7 +85,7 @@
             width: 100%;
         }
 
-        input[type=button] {
+       button {
             color: #ccc;
             background-color: #595959;
             border: solid 3px #6e6e6e;
@@ -93,7 +93,7 @@
             height: 40px;
         }
 
-        input[type=button]:hover{
+        button:hover{
             cursor: pointer;
             cursor: hand;
             text-decoration: none;
@@ -198,26 +198,24 @@
                     <h3 style="text-align: center; margin-top:20px;">Correction type:</h3>
                     <div style="padding-left:20px">
                         <div class="radio radio-selected">
-                            <label><input type="radio" name="new-class" value="water" checked>Water</label>
+                            <label><input type="radio" name="new-class" value="water" checked>Water (<span id="label-water">0</span> samples)</label>
                         </div>
                         <div class="radio">
-                            <label><input type="radio" name="new-class" value="forest">Forest</label>
+                            <label><input type="radio" name="new-class" value="forest">Tree Canopy (<span id="label-forest">0</span> samples)</label>
                         </div>
                         <div class="radio">
-                            <label><input type="radio" name="new-class" value="field">Field</label>
+                            <label><input type="radio" name="new-class" value="field">Field (<span id="label-field">0</span> samples)</label>
                         </div>
                         <div class="radio">
-                            <label><input type="radio" name="new-class" value="built">Built</label>
+                            <label><input type="radio" name="new-class" value="built">Built (<span id="label-built">0</span> samples)</label>
+                        </div>
+
+                        <div style="text-align: center; margin-top:10px;">
+                            <button id="btnRetrain">Retrain (<span id="label-retrains">0</span> times)</button>
                         </div>
                         <div style="text-align: center; margin-top:10px;">
-                            <label><input type="button" id="btnRetrain" value="Retrain"></label>
+                            <button id="btnReset">Reset</button>
                         </div>
-                        <div style="text-align: center; margin-top:10px;">
-                            <label><input type="button" id="btnReset" value="Reset"></label>
-                        </div>
-                        <!-- <div style="text-align: center; margin-top:10px;">
-                            <label><input type="button" id="btnSave" value="Save"></label>
-                        </div> -->
                     </div>
                 </div>
 
@@ -328,6 +326,14 @@
 
         var weights = [0.25, 0.25, 0.25, 0.25];
 
+        var labelCounts = {
+            "water": 0,
+            "forest": 0,
+            "field": 0,
+            "built": 0
+        }
+        var retrainCounts = 0
+
         var map = null;
 
 
@@ -358,20 +364,26 @@
                 data: JSON.stringify(request),
                 success: function(data, textStatus, jqXHR){
                     console.debug("Successfully recorded correction");
+                    console.debug(data);
+
+                    labelCounts[data["value"]] += data["count"];
+
+                    $("#label-"+data["value"]).html(labelCounts[data["value"]]);
+
                     //notifySuccess(data, textStatus, jqXHR);
-
-                    var srcs = [
-                        "data:image/png;base64," + data.output_soft,
-                        "data:image/png;base64," + data.output_hard,
-                    ];
-
-                    var tActiveImgIdx = currentPatches[idx]["activeImgIdx"];
-                    currentPatches[idx]["patches"][tActiveImgIdx]["srcs"] = srcs;
-                    $("#exampleImage_"+tActiveImgIdx).attr("src", srcs[soft0_hard1]);
                     
-                    if(pred0_naip1 == 0){
-                        currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
-                    }
+                    // var srcs = [
+                    //     "data:image/png;base64," + data.output_soft,
+                    //     "data:image/png;base64," + data.output_hard,
+                    // ];
+
+                    // var tActiveImgIdx = currentPatches[idx]["activeImgIdx"];
+                    // currentPatches[idx]["patches"][tActiveImgIdx]["srcs"] = srcs;
+                    // $("#exampleImage_"+tActiveImgIdx).attr("src", srcs[soft0_hard1]);
+                    
+                    // if(pred0_naip1 == 0){
+                    //     currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
+                    // }
                 },
                 error: notifyFail,
                 dataType: "json",
@@ -955,15 +967,9 @@
                     success: function(data, textStatus, jqXHR){
                         if(data["success"]){
                             notifySuccess(data, textStatus, jqXHR);
-                            $.ajax({
-                                type: "POST",
-                                url: processingServiceURL + "saveModel",
-                                data: JSON.stringify({"save": true, "model": EXP_NAME}),
-                                success: notifySuccess,
-                                error: notifyFail,
-                                dataType: "json",
-                                contentType: "application/json"
-                            });
+                            retrainCounts += 1;
+
+                            $("#label-retrains").html(retrainCounts);
                         }
                     },
                     error: notifyFail,
@@ -987,21 +993,6 @@
                     contentType: "application/json"
                 });
             });
-
-            // $("#btnSave").click(function(){
-            //     var request = {
-            //         "save": true
-            //     };
-            //     $.ajax({
-            //         type: "POST",
-            //         url: processingServiceURL + "saveModel",
-            //         data: JSON.stringify(request),
-            //         success: notifySuccess,
-            //         error: notifyFail,
-            //         dataType: "json",
-            //         contentType: "application/json"
-            //     });
-            // });
 
 
             //----------------------------------------------------------------------
