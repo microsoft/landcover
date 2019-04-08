@@ -24,39 +24,53 @@ import utils
 import pickle
 import joblib
 
-import ServerModelsICLRFormat, ServerModelsCachedFormat, ServerModelsICLRDynamicFormat, ServerModelsICCVDynamicFormat
+import ServerModelsICLRFormat, ServerModelsCachedFormat, ServerModelsICLRDynamicFormat, ServerModelsNIPS
 
-from sklearn.neural_network import MLPClassifier
 
 def get_random_string(length):
     alphabet = "abcdefghijklmnopqrstuvwxyz"
     return ''.join([alphabet[np.random.randint(0, len(alphabet))] for i in range(length)])
 
-current_transform = None
-current_predictions = None
-current_features = None
+class AugmentationState():
+    current_snapshot_string = get_random_string(8) + "_%s"
+    current_snapshot_idx = 0
+    model = None
 
-current_snapshot_string = get_random_string(8) + "_%s_%03d"
-current_snapshot_idx = 0
-print("Loaded with snapshot %s" % (current_snapshot_string))
+    current_transform = None
+    current_naip = None
+    current_output = None
 
-correction_json = []
-correction_features = []
-correction_targets = []
-correction_model_predictions = []
-correction_sizes = []
+    request_list = []
 
-augment_model = MLPClassifier(
-    hidden_layer_sizes=(),
-    activation='relu',
-    alpha=0.001,
-    solver='lbfgs',
-    verbose=True,
-    validation_fraction=0.0,
-    n_iter_no_change=10
-)
-model_fit = False
+    @staticmethod
+    def reset():
+        AugmentationState.model.reset() # can't fail, so don't worry about it
+        AugmentationState.current_snapshot_string = get_random_string(8) + "_%s"
+        AugmentationState.current_snapshot_idx = 0
+        AugmentationState.request_list = []
 
+    @staticmethod
+    def save(model_name):
+        snapshot_id = AugmentationState.current_snapshot_string % (model_name)
+
+        joblib.dump(AugmentationState.model, "output/%s_model.p" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)    
+
+        # TODO: Save other stuff
+        '''
+        print("Saving snapshot %s" % (snapshot_id))
+
+        os.makedirs("output/", exist_ok=True)
+        np.save("output/%s_x.npy" % (snapshot_id), correction_features)
+        np.save("output/%s_y.npy" % (snapshot_id), correction_targets)
+
+        np.save("output/%s_base_y.npy" % (snapshot_id), correction_model_predictions)
+        np.save("output/%s_sizes.npy" % (snapshot_id), correction_sizes)
+
+        joblib.dump(correction_json, "output/%s_pts.p" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)
+        joblib.dump(augment_model, "output/%s.model" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)
+
+        current_snapshot_idx += 1    
+        '''
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
 
@@ -78,59 +92,14 @@ def do_options():
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
 
-def save_model():
-    global correction_features, correction_targets, correction_json, augment_model, model_fit, current_snapshot_idx, \
-         current_snapshot_string, correction_model_predictions, correction_sizes
-    bottle.response.content_type = 'application/json'
-    data = bottle.request.json
-
-    if model_fit:
-        snapshot_id = current_snapshot_string % (data["model"], current_snapshot_idx)
-        print("Saving snapshot %s" % (snapshot_id))
-
-        data["message"] = "Saved model '%s'" % (snapshot_id)
-        data["success"] = True
-
-        os.makedirs("output/", exist_ok=True)
-        np.save("output/%s_x.npy" % (snapshot_id), correction_features)
-        np.save("output/%s_y.npy" % (snapshot_id), correction_targets)
-
-        np.save("output/%s_base_y.npy" % (snapshot_id), correction_model_predictions)
-        np.save("output/%s_sizes.npy" % (snapshot_id), correction_sizes)
-
-        joblib.dump(correction_json, "output/%s_pts.p" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)
-        joblib.dump(augment_model, "output/%s.model" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)
-
-        current_snapshot_idx += 1
-    else:
-        data["message"] = "There is not a trained model to save"
-        data["success"] = False
-
-
-    bottle.response.status = 200
-    return json.dumps(data)
-
 def reset_model():
-    global correction_features, correction_targets, augment_model, model_fit, current_snapshot_string, current_snapshot_idx
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
+    data["time"] = time.ctime()
+    AugmentationState.request_list.append(data)
 
-    correction_features = []
-    correction_targets = []
-    augment_model = MLPClassifier(
-        hidden_layer_sizes=(),
-        activation='relu',
-        alpha=0.001,
-        solver='lbfgs',
-        verbose=True,
-        validation_fraction=0.0,
-        n_iter_no_change=10
-    )
-    model_fit = False
-
-    current_snapshot_string = get_random_string(8) + "_%s_%03d"
-    current_snapshot_idx = 0
-    print("Loaded with snapshot %s" % (current_snapshot_string))
+    AugmentationState.save(data["experiment"])
+    AugmentationState.reset()
 
     data["message"] = "Reset model"
     data["success"] = True
@@ -139,62 +108,36 @@ def reset_model():
     return json.dumps(data)
 
 def retrain_model():
-    global correction_features, correction_targets, augment_model, model_fit
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
+    data["time"] = time.ctime()
+    AugmentationState.request_list.append(data)
 
-    if len(correction_features) > 0:
-        x_train = np.concatenate(correction_features, axis=0)
-        y_train = np.concatenate(correction_targets, axis=0)
+    success, message = AugmentationState.model.retrain()
 
-        print(x_train.shape, y_train.shape)
-
-        vals, counts = np.unique(y_train, return_counts=True)
-        print(list(zip(vals, counts)))
-
-        if len(vals) == 4:
-            print("Fitting model with %d samples" % (x_train.shape[0]))
-            augment_model.fit(x_train, y_train)
-            model_fit = True
-            print("Finished fitting model")
-
-            data["message"] = "Fit accessory model with %d samples" % (x_train.shape[0])
-            data["success"] = True
-        else:
-            data["message"] = "Need to include training samples from each class"
-            data["success"] = False
+    if success:
+        bottle.response.status = 200
+        AugmentationState.save(data["experiment"])
     else:
-        data["message"] = "No training data submitted yet"
-        data["success"] = False
+        bottle.response.status = 500
 
-    # Perform validation set testing
-    # if model_fit and True:
-    #     # Test on all data
-    #     y_pred = augment_model.predict(ServerModelsKDD.x_test)
-    #     print(y_pred.shape)
-    #     print(ServerModelsKDD.y_test.shape)
-    #     print("acc", np.sum(y_pred == ServerModelsKDD.y_test) / y_pred.shape[0])
-    #     print("corrected", 10371631 - np.sum(ServerModelsKDD.y_test != y_pred))
-    #     print("\% for graph",  (10371631 - np.sum(ServerModelsKDD.y_test != y_pred)) / 10371631)
+    data["message"] = message
+    data["success"] = success
 
-
-    bottle.response.status = 200
     return json.dumps(data)
 
 def record_correction():
-    global current_transform, current_predictions, current_features, correction_features, correction_targets, correction_json, correction_sizes, correction_model_predictions
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
-
-
     data["time"] = time.ctime()
-    correction_json.append(dict(data))
+    AugmentationState.request_list.append(data)
+
 
     tlat, tlon = data["extent"]["ymax"], data["extent"]["xmin"]
     blat, blon = data["extent"]["ymin"], data["extent"]["xmax"]
-    value = data["value"]
+    value = data["value"] # what we want to switch the class to
 
-    src_crs, dst_crs, dst_transform, rev_dst_transform, padding = current_transform
+    src_crs, dst_crs, dst_transform, rev_dst_transform, padding = AugmentationState.current_transform
     #src_crs = "epsg:%s" % (src_crs) # Currently src_crs will be a string like 'epsg:####', this might change with different versions of rasterio --Caleb
     origin_crs = "epsg:%d" % (data["extent"]["spatialReference"]["latestWkid"])
 
@@ -224,14 +167,21 @@ def record_correction():
     tdst_row, bdst_row = min(tdst_row, bdst_row)-padding, max(tdst_row, bdst_row)-padding
     tdst_col, bdst_col = min(tdst_col, bdst_col)-padding, max(tdst_col, bdst_col)-padding
 
-    x_train = current_features[tdst_row:bdst_row+1, tdst_col:bdst_col+1, :].copy().reshape(-1, current_features.shape[2])
-    y_pred = current_predictions[tdst_row:bdst_row+1, tdst_col:bdst_col+1, :].copy().reshape(-1, current_predictions.shape[2])
+
+    y_pred = AugmentationState.current_output[tdst_row:bdst_row+1, tdst_col:bdst_col+1, :].copy().reshape(-1, AugmentationState.current_output.shape[2])
+    '''
+    x_train = AugmentationState.current_features[tdst_row:bdst_row+1, tdst_col:bdst_col+1, :].copy().reshape(-1, current_features.shape[2])
+
     y_train = np.zeros((x_train.shape[0]), dtype=np.uint8)
     y_train[:] = class_idx
 
     current_predictions[tdst_row:bdst_row+1, tdst_col:bdst_col+1, :] = 0
     current_predictions[tdst_row:bdst_row+1, tdst_col:bdst_col+1, class_idx] = 1
+    '''
 
+    AugmentationState.model.add_sample(tdst_row, bdst_row, tdst_col, bdst_col, class_idx)
+
+    '''
     img_soft = np.round(utils.class_prediction_to_img(current_predictions, False)*255,0).astype(np.uint8)
     img_soft = cv2.imencode(".png", cv2.cvtColor(img_soft, cv2.COLOR_RGB2BGR))[1].tostring()
     img_soft = base64.b64encode(img_soft).decode("utf-8")
@@ -241,30 +191,22 @@ def record_correction():
     img_hard = cv2.imencode(".png", cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGR))[1].tostring()
     img_hard = base64.b64encode(img_hard).decode("utf-8")
     data["output_hard"] = img_hard
-
-    correction_features.append(x_train)
-    correction_targets.append(y_train)
-    correction_sizes.append((bdst_row-tdst_row, bdst_col-tdst_col))
-    correction_model_predictions.append(y_pred)
+    '''
 
     data["message"] = "Successfully submitted correction"
+    data["count"] = y_pred.shape[0]
     data["success"] = True
 
     bottle.response.status = 200
     return json.dumps(data)
 
-def pred_patch(model):
-    global augment_model, model_fit, current_transform, current_predictions, current_features
-    ''' Method called for POST `/predPatch`
-
-    `model` is a method created in main() based on the `--model` command line argument
-    '''
+def pred_patch():
+    ''' Method called for POST `/predPatch`'''
     bottle.response.content_type = 'application/json'
 
     # Inputs
     data = bottle.request.json
     extent = data["extent"]
-    weights = np.array(data["weights"], dtype=np.float32)
 
     # ------------------------------------------------------
     # Step 1
@@ -285,51 +227,24 @@ def pred_patch(model):
     # ------------------------------------------------------
 
     naip_data, padding, transform = DataLoader.get_data_by_extent(naip_file_name, extent, DataLoader.GeoDataTypes.NAIP, return_transforms=True)
-    naip_data = np.rollaxis(naip_data, 0, 3)
-
+    naip_data = np.rollaxis(naip_data, 0, 3) # we do this here instead of get_data_by_extent because not all GeoDataTypes will have a channel dimension
     
-    #landsat_data = DataLoader.get_landsat_by_extent(naip_file_name, extent, padding)
-    #landsat_data = np.rollaxis(landsat_data, 0, 3)
-    
-    #nlcd_data = DataLoader.get_nlcd_by_extent(naip_file_name, extent, padding)
-    #nlcd_data = np.rollaxis(to_one_hot(nlcd_data, 22), 0, 3)
-    #nlcd_data = np.squeeze(nlcd_data)
-    #nlcd_data = np.vectorize(utils.NLCD_CLASS_TO_IDX.__getitem__)(nlcd_data)
+    # record what is going on incase a fine-tuning method needs to use it
+    AugmentationState.current_naip = naip_data[padding:-padding,padding:-padding,:].copy()
+    AugmentationState.current_transform = transform
 
-    #lc_data = DataLoader.get_lc_by_extent(naip_file_name, extent, padding)
-    #lc_data = np.rollaxis(to_one_hot(lc_data, 7), 0, 3)
-
-    #blg_data = DataLoader.get_blg_by_extent(naip_file_name, extent, padding)
-    #blg_data = np.rollaxis(blg_data, 0, 3)
-    
     # ------------------------------------------------------
     # Step 3
     #   Run a model on the input data
     #   Apply reweighting
     #   Fix padding
     # ------------------------------------------------------
-    #output, name = ServerModels_Baseline_Blg_test.run_cnn(naip_data, landsat_data, blg_data, with_smooth=False)
-    #name += "_with_smooth_False"
-    (output, output_features), name = model.run(naip_data, naip_file_name, extent, padding)
+    output = AugmentationState.model.run(naip_data, naip_file_name, extent, padding)
     assert output.shape[2] == 4, "The model function should return an image shaped as (height, width, num_classes)"
-    output *= weights[np.newaxis, np.newaxis, :] # multiply by the weight vector
-    sum_vals = output.sum(axis=2) # need to normalize sums to 1 in order for the rendered output to be correct
-    output = output / (sum_vals[:,:,np.newaxis] + 0.000001)
     
     if padding > 0:
         output = output[padding:-padding,padding:-padding,:]
-        output_features = output_features[padding:-padding,padding:-padding,:]
-
-    if model_fit:
-        print("Augmenting output")
-        original_shape = output.shape
-        output = output_features.reshape(-1, output_features.shape[2])
-        output = augment_model.predict_proba(output)
-        output = output.reshape(original_shape)
-    
-    current_features = output_features.copy()
-    current_predictions = output.copy()
-    current_transform = transform
+    AugmentationState.current_output = output.copy()
 
     # ------------------------------------------------------
     # Step 4
@@ -344,8 +259,6 @@ def pred_patch(model):
     img_hard = cv2.imencode(".png", cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGR))[1].tostring()
     img_hard = base64.b64encode(img_hard).decode("utf-8")
     data["output_hard"] = img_hard
-
-    data["model_name"] = name
 
     bottle.response.status = 200
     return json.dumps(data)
@@ -404,7 +317,16 @@ def main():
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debugging", default=False)
     parser.add_argument("--host", action="store", dest="host", type=str, help="Host to bind to", default="0.0.0.0")
     parser.add_argument("--port", action="store", dest="port", type=int, help="Port to listen on", default=4444)
-    parser.add_argument("--model", action="store", dest="model", choices=["cached", "iclr_keras", "iclr_cntk", "iccv_sr", "iccv_hr"], help="Model to use", required=True)
+    parser.add_argument("--model", action="store", dest="model",
+        choices=[
+            "cached",
+            "iclr_keras",
+            "iclr_cntk",
+            "nips_sr",
+            "nips_hr"
+        ],
+        help="Model to use", required=True
+    )
     parser.add_argument("--model_fn", action="store", dest="model_fn", type=str, help="Model fn to use", default=None)
     parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", default=0)
 
@@ -420,23 +342,22 @@ def main():
         model = ServerModelsICLRDynamicFormat.KerasModel(args.model_fn, args.gpuid)
     elif args.model == "iclr_cntk":
         model = ServerModelsICLRFormat.CNTKModel(args.model_fn, args.gpuid)
-    elif args.model == "iccv_sr":
-        model = ServerModelsICCVDynamicFormat.KerasModel(args.model_fn, args.gpuid, superres=True)
-    elif args.model == "iccv_hr":
-        model = ServerModelsICCVDynamicFormat.KerasModel(args.model_fn, args.gpuid, superres=False)
+    elif args.model == "nips_sr":
+        model = ServerModelsNIPS.KerasDenseFineTune(args.model_fn, args.gpuid, superres=True)
+    elif args.model == "nips_hr":
+        model = ServerModelsNIPS.KerasDenseFineTune(args.model_fn, args.gpuid, superres=False)
     else:
         print("Model isn't implemented, aborting")
         return
-    # We pass the dynamically loaded method to the `predPatch` callback as an argument 
-    custom_pred_patch = functools.partial(pred_patch, model=model)
 
+    AugmentationState.model = model
 
     # Setup the bottle server 
     app = bottle.Bottle()
 
     app.add_hook("after_request", enable_cors)
     app.route("/predPatch", method="OPTIONS", callback=do_options)
-    app.route('/predPatch', method="POST", callback=custom_pred_patch)
+    app.route('/predPatch', method="POST", callback=pred_patch)
     
     app.route("/getInput", method="OPTIONS", callback=do_options)
     app.route('/getInput', method="POST", callback=get_input)
@@ -449,10 +370,6 @@ def main():
 
     app.route("/resetModel", method="OPTIONS", callback=do_options)
     app.route('/resetModel', method="POST", callback=reset_model)
-
-    app.route("/saveModel", method="OPTIONS", callback=do_options)
-    app.route('/saveModel', method="POST", callback=save_model)
-
 
     app.route('/', method="GET", callback=do_get)
 

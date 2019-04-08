@@ -347,7 +347,8 @@
                         "latestWkid": 3857
                     }
                 },
-                "value" : newClass
+                "value" : newClass,
+                "experiment": EXP_NAME
             };
 
 
@@ -950,7 +951,7 @@
                 $.ajax({
                     type: "POST",
                     url: processingServiceURL + "retrainModel",
-                    data: JSON.stringify({"retrain": true}),
+                    data: JSON.stringify({"retrain": true, "experiment": EXP_NAME}),
                     success: function(data, textStatus, jqXHR){
                         if(data["success"]){
                             notifySuccess(data, textStatus, jqXHR);
@@ -973,7 +974,8 @@
 
             $("#btnReset").click(function(){
                 var request = {
-                    "reset": true
+                    "reset": true,
+                    "experiment": EXP_NAME
                 };
                 $.ajax({
                     type: "POST",

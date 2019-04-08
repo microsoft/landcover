@@ -12,7 +12,6 @@ class BackendModel(ABC):
         
         Outputs:
         `output` should be a (height, width, 4) softmax image (where the last axis sums to 1)
-        `name` should be an informative name describing the model
         '''
         raise NotImplementedError()
 
