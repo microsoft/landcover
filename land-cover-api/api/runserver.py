@@ -13,7 +13,7 @@ from ai4e_service import AI4EWrapper
 from input_validation import *
 from os import getenv
 from enum import Enum
-
+from datetime import datetime
 
 import sys
 import os
@@ -35,8 +35,6 @@ api_prefix = getenv('API_PREFIX')
 app = Flask(__name__)
 api = Api(app)
 
-
-app.config['JSON_SORT_KEYS'] = False
 
 #-re-enable for log
 # Log requests, traces and exceptions to the Application Insights service
@@ -133,7 +131,6 @@ def get_tile_by_extent():
                                            type=InputType.extent)
 
 def pred_patch(data, type):
-    
     ''' Method called for POST `/predPatchLatLon` and  POST `/predPatch`
     
     '''
@@ -162,7 +159,14 @@ def pred_patch(data, type):
         data["extent"] = extent
 
     try:
+        print('runserver, pred_patch, lookup tile by geom:')
+        start = datetime.now()        
+        
         naip_fn = DataLoader.lookup_tile_by_geom(geom)
+        
+        stop = datetime.now()
+        duration = start - stop
+        print('runserver, pred_patch, lookup tile by geom: {} seconds.'.format(duration))
     except ValueError as e:
         error_msg = 'Error occurred in tile retrieval, no data is available for the specified location'
         log.log_exception(error_msg + '(in pred_patch function) :' + str(e))
@@ -172,8 +176,16 @@ def pred_patch(data, type):
     # Step 2
     #   Load the input data sources for the given tile  
     # ------------------------------------------------------
+    print('runserver, pred_patch, load input data sources: ')
+    start = datetime.now()  
+    
     naip_data, padding = DataLoader.get_data_by_extent(naip_fn, extent, DataLoader.GeoDataTypes.NAIP)
     naip_data = np.rollaxis(naip_data, 0, 3)
+    
+    stop = datetime.now()
+    duration = start - stop
+    print('runserver, pred_patch, load input data sources: {} seconds.'.format(duration))
+
 
     # ------------------------------------------------------
     # Step 3
@@ -181,6 +193,8 @@ def pred_patch(data, type):
     #   Apply reweighting
     #   Fix padding
     # ------------------------------------------------------
+    print('runserver, pred_patch, get cached data for input: ') 
+    start = datetime.now()  
     
     output, name = model(naip_data, naip_fn, extent, padding)
     
@@ -189,10 +203,18 @@ def pred_patch(data, type):
     sum_vals = output.sum(axis=2) # need to normalize sums to 1 in order for the rendered output to be correct
     output = output / (sum_vals[:,:,np.newaxis] + 0.000001)
     
+    stop = datetime.now()
+    duration = start - stop
+    print('runserver, pred_patch, get cached data for input: {} seconds.'.format(duration))
+
     # ------------------------------------------------------
     # Step 4
     #   Convert images to base64 and return  
     # ------------------------------------------------------
+
+    print('runserver, pred_patch, return classification images: ')
+    start = datetime.now()  
+
     img_soft = np.round(utils.class_prediction_to_img(output, False)*255,0).astype(np.uint8)
     img_soft = cv2.imencode(".png", cv2.cvtColor(img_soft, cv2.COLOR_RGB2BGR))[1].tostring()
     img_soft = base64.b64encode(img_soft).decode("utf-8")
@@ -204,6 +226,10 @@ def pred_patch(data, type):
     data["output_hard"] = img_hard
 
     data["model_name"] = name
+
+    stop = datetime.now()
+    duration = start - stop
+    print('runserver, pred_patch, return classification images: {} seconds.'.format(duration))
 
     return json.dumps(data)
 
@@ -231,7 +257,14 @@ def get_input(data, type):
         extent, geom = GeoTools.get_geom(lat, lon, "EPSG:4326")
         data["extent"] = extent
     try:
+        print('runserver, get_input, lookupvtile by geom: ')
+        start = datetime.now()    
+        
         naip_fn = DataLoader.lookup_tile_by_geom(geom)
+        
+        stop = datetime.now()
+        duration = stop - start
+        print('runserver, get_input, lookup tile by geom: {} seconds.'.format(duration))
     except ValueError as e:
         error_msg = 'Error occurred in tile retrieval, no data is available for the specified location'
         log.log_exception(error_msg + '(in get_input function) :' + str(e))
@@ -241,6 +274,8 @@ def get_input(data, type):
     # Step 2
     #   Load the input data sources for the given tile  
     # ------------------------------------------------------
+    print('runserver, get_input, Load the input data sources for the given tile: ')
+    start = datetime.now()   
 
     naip_data, padding = DataLoader.get_data_by_extent(naip_fn, extent, DataLoader.GeoDataTypes.NAIP)
     naip_data = np.rollaxis(naip_data, 0, 3)
@@ -251,6 +286,10 @@ def get_input(data, type):
     img_naip = cv2.imencode(".png", cv2.cvtColor(naip_img, cv2.COLOR_RGB2BGR))[1].tostring()
     img_naip = base64.b64encode(img_naip).decode("utf-8")
     data["input_naip"] = img_naip
+
+    stop = datetime.now()
+    duration = stop - start
+    print('runserver, get_input, Load the input data sources for the given tile: {} seconds.'.format(duration))
 
     return json.dumps(data)
 

@@ -1,7 +1,6 @@
 FROM mcr.microsoft.com/aiforearth/blob-python:latest
 
-# Copy blob connection information
-COPY ./blob_mount.json /app/fuse/blob_mount.json
+#COPY ./blob_mount.json /app/fuse/blob_mount.json
 
 RUN apt-get update && apt-get upgrade -y
 RUN apt-get install -y libgl1-mesa-glx
@@ -44,7 +43,7 @@ ENV SERVICE_OWNER=AI4E_Test \
     SERVICE_MODEL_FRAMEOWRK_VERSION=3.6.6 \
     ENVSERVICE_MODEL_VERSION=1.0
 
-ENV API_PREFIX=/v1/api
+ENV API_PREFIX=/v2/landcover
 
 # Expose the port that is to be used when calling your API
 EXPOSE 80

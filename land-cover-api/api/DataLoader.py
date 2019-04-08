@@ -22,6 +22,7 @@ import glob
 import GeoTools
 
 import logging
+from azure_blob import *
 
 class GeoDataTypes(Enum):
     NAIP = 1
@@ -125,22 +126,25 @@ def get_data_by_extent(naip_fn, extent, geo_data_type):
         fn = naip_fn.replace("/esri-naip/", "/resampled-buildings/")[:-4] + "_building.tif"
     elif geo_data_type == GeoDataTypes.LANDCOVER:
         # TODO: Add existence check
-        fn = naip_fname.replace("/esri-naip/", "/resampled-lc/")[:-4] + "_lc.tif"
+        fn = naip_fn.replace("/esri-naip/", "/resampled-lc/")[:-4] + "_lc.tif"
     else:
         raise ValueError("GeoDataType not recognized")
     
-    
-    #with rasterio.open(fn) as f:
-    f = rasterio.open(fn, "r")
-    geom = GeoTools.extent_to_transformed_geom(extent, f.crs["init"])
-    pad_rad = 15 # TODO: this might need to be changed for much larger inputs
-    buffed_geom = shapely.geometry.shape(geom).buffer(pad_rad)
-    minx, miny, maxx, maxy = buffed_geom.bounds
-    geom = shapely.geometry.mapping(shapely.geometry.box(minx, miny, maxx, maxy, ccw=True))
-    out_image, out_transform = rasterio.mask.mask(f, [geom], crop=True)
-    src_crs = f.crs.copy()
-    f.close()
-    
+    fn, temp_folder = get_blob("esri-naip", fn.replace("/mnt/blobfuse/esri-naip/", ""))
+
+    with rasterio.open(fn) as f:
+        #f = rasterio.open(fn, "r")
+        geom = GeoTools.extent_to_transformed_geom(extent, f.crs["init"])
+        pad_rad = 15 # TODO: this might need to be changed for much larger inputs
+        buffed_geom = shapely.geometry.shape(geom).buffer(pad_rad)
+        minx, miny, maxx, maxy = buffed_geom.bounds
+        geom = shapely.geometry.mapping(shapely.geometry.box(minx, miny, maxx, maxy, ccw=True))
+        out_image, out_transform = rasterio.mask.mask(f, [geom], crop=True)
+        src_crs = f.crs.copy()
+        f.close()
+
+    delete_temp_folder(temp_folder)
+
     dst_crs = {"init": "EPSG:%s" % (extent["spatialreference"]["latestwkid"])}
     dst_transform, width, height = rasterio.warp.calculate_default_transform(
         src_crs,
