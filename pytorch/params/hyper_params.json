@@ -1,0 +1,56 @@
+{
+  "experiment_name": "unet_gn",
+  "checkpoint_file": "none",
+  "save_dir": "/mnt/blobfuse/train-output/conditioning/models/",
+  "backup_dir": "/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn/",
+  "validation_patches_fn":"data/md_1m_2013_val_patches.txt",
+  "training_patches_fn":"data/md_1m_2013_train_patches.txt",
+  "patch_size": 240,
+  "loader_opts": {
+      "batch_size": 16,
+      "shuffle": true,
+      "num_workers": 4,
+      "num_channels": 4
+  },
+  "train_opts": {
+    "n_epochs": 100,
+    "verbose": true,
+    "data_augmentation": false,
+    "early_stopping": false,
+    "early_stopping_patience": 10,
+    "parallelize": false,
+    "optimizer": "adam",
+    "optimizer_lr": 5e-4,
+    "scheduler_step_size": 20,
+    "scheduler_gamma": 0.1,
+    "loss": "ce",
+    "alpha_superres_loss": 1,
+    "superres": false
+  },
+  "model_opts": {
+    "model": "unet",
+    "unet_opts": {
+      "normalization_type": "GN",
+      "n_input_channels": 4,
+      "n_classes": 5,
+      "n_filters":32
+    },
+    "conditioning_nlcd_opts":{
+        "normalization_type":"GN",
+        "n_input_channels": 4,
+        "n_filters":32,
+        "n_classes": 22
+    },
+    "conditional_superres_net_opts": {
+        "end_to_end": true,
+        "normalization_type":"GN",
+        "conditioning_type":"CGN",
+        "conditioning_net_ckpt_path": "/dir2/conditioning_ckpt_path",
+        "n_input_channels": 4,
+        "n_hidden_cbn": 512,
+        "n_features_cbn": 1472,
+        "n_classes": 5,
+        "n_filters":32
+    }
+  }
+}
