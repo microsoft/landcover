@@ -345,9 +345,9 @@ def main():
     elif args.model == "iclr_cntk":
         model = ServerModelsICLRFormat.CNTKModel(args.model_fn, args.gpuid)
     elif args.model == "nips_sr":
-        model = ServerModelsNIPS.KerasDenseFineTune(args.model_fn, args.gpuid, superres=True)
+        model = ServerModelsNIPS.KerasBackPropFineTune(args.model_fn, args.gpuid, superres=True)
     elif args.model == "nips_hr":
-        model = ServerModelsNIPS.KerasDenseFineTune(args.model_fn, args.gpuid, superres=False)
+        model = ServerModelsNIPS.KerasBackPropFineTune(args.model_fn, args.gpuid, superres=False)
     elif args.model == "nips_gn":
         model = ServerModelsNIPSGroupNorm.UnetgnFineTune(args.model_fn, args.gpuid)
     else:
