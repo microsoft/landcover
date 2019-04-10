@@ -5,6 +5,7 @@ import pdb
 
 import sklearn.base
 from sklearn.neural_network import MLPClassifier
+from keras import optimizers
 
 from ServerModelsAbstract import BackendModel
 
@@ -210,7 +211,7 @@ class KerasBackPropFineTune(BackendModel):
             feature_layer_idx = -3
         
         self.model = keras.models.Model(inputs=tmodel.inputs, outputs=tmodel.outputs[0])
-        self.model.compile("sgd","mse")
+        self.model.compile("sgd","categorical_crossentropy")
         self.old_model = copy.deepcopy(self.model)
         
         self.output_channels = self.model.output_shape[3]
@@ -226,10 +227,10 @@ class KerasBackPropFineTune(BackendModel):
         self.stride_y = self.input_size - self.down_weight_padding*2
 
         
-        pdb.set_trace()
+        # pdb.set_trace()
         
     def run(self, naip_data, naip_fn, extent, padding):
-        pdb.set_trace()
+        # pdb.set_trace()
         
         output = self.run_model_on_tile(naip_data)
 
@@ -243,13 +244,11 @@ class KerasBackPropFineTune(BackendModel):
         
         return output
 
-    def retrain(self, **kwargs):
-        pdb.set_trace()
-        
-        if 'last_k_layers' in kwargs:
-            for layer in self.model.layers[:-k]:
-                layer.trainable = False
-
+    def retrain(self, train_steps=10, last_k_layers=1, **kwargs):
+        for layer in self.model.layers[:-last_k_layers]:
+            layer.trainable = False
+        self.model.compile(optimizers.SGD(lr=0.003, decay=1e-6), "categorical_crossentropy")
+            
         num_labels = np.count_nonzero(self.correction_labels)
         print("Fitting model with %d new labels" % num_labels)
         
@@ -269,9 +268,11 @@ class KerasBackPropFineTune(BackendModel):
                 batch_y.append(correction_labels)
                 batch_count+=1
 
-        
-        self.model.train_on_batch(np.array(batch_x),
-                                  np.array(batch_y))
+        pdb.set_trace()
+            
+        for i in range(train_steps):
+            self.model.train_on_batch(np.array(batch_x),
+                                      np.array(batch_y))
         
         success = True
         message = "Re-trained model with %d samples" % num_labels
@@ -291,7 +292,7 @@ class KerasBackPropFineTune(BackendModel):
         self.model = self.old_model
         
     def run_model_on_tile(self, naip_tile, batch_size=32):
-        pdb.set_trace()
+        # pdb.set_trace()
         
         naip_tile = naip_tile / 255.0
 
