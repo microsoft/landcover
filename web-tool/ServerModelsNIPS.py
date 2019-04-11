@@ -246,12 +246,12 @@ class KerasBackPropFineTune(BackendModel):
         
         return output
 
-    def retrain(self, train_steps=10, last_k_layers=3, corrections_from_ui=True, **kwargs):
+    def retrain(self, train_steps=10, last_k_layers=3, corrections_from_ui=True, learning_rate=0.3, **kwargs):
         pdb.set_trace()
         
         for layer in self.model.layers[:-last_k_layers]:
             layer.trainable = False
-        self.model.compile(optimizers.SGD(lr=0.3, decay=1e-6), "categorical_crossentropy")
+        self.model.compile(optimizers.SGD(lr=learning_rate, decay=1e-6), "categorical_crossentropy")
             
         num_labels = np.count_nonzero(self.correction_labels)
         print("Fitting model with %d new labels" % num_labels)
@@ -302,7 +302,7 @@ class KerasBackPropFineTune(BackendModel):
                                tdst_col + padding : bdst_col + 1 + padding, :] = 0.0
         self.correction_labels[tdst_row + padding : bdst_row + 1 + padding,
                                tdst_col + padding : bdst_col + 1 + padding,
-                               class_idx] = 1.0
+                               class_idx + 1] = 1.0
         
     def reset(self):
         self.model = self.old_model
