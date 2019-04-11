@@ -303,7 +303,7 @@
             "built":"#806060"
         }
         var rightMouseDown = false;
-        var controlKeyDown = false;
+        var shiftKeyDown = false;
 
         var currentPatches = [];
 
@@ -821,7 +821,7 @@
 
                 // Choose style
                 var curSelPoly = null;
-                if(!controlKeyDown){
+                if(!shiftKeyDown){
                     curSelPoly = getPolyAround(e.latlng, CORRECTION_SIZE);
                 }else{
                     curSelPoly = getPolyAround(e.latlng, SELECTION_SIZE);
@@ -849,7 +849,7 @@
             map.addEventListener('click', function(e){
                 
                 var curSelPoly = null;
-                if(controlKeyDown){
+                if(shiftKeyDown){
                     // Run the inference path
                     curSelPoly = getPolyAround(e.latlng, SELECTION_SIZE);
                     console.debug(curSelPoly);
@@ -884,13 +884,14 @@
             map.doubleClickZoom.disable(); 
 
             $(document).keydown(function(e){
-                controlKeyDown = e.ctrlKey;
+                shiftKeyDown = e.shiftKey;
             });
             $(document).keyup(function(e){
-                controlKeyDown = e.ctrlKey;
+                shiftKeyDown = e.shiftKey;
             });
 
             $(document).keypress(function(e) {
+                console.debug(e.which);
                 if(e.which == 97 || e.which == 65) { // "a"
                     visible = false;
                     map.getPane('labels').style.opacity = 0.0;
