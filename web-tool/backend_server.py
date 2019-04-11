@@ -114,7 +114,7 @@ def retrain_model():
     data["time"] = time.ctime()
     AugmentationState.request_list.append(data)
 
-    success, message = AugmentationState.model.retrain(last_k_layers=1, train_steps=10)
+    success, message = AugmentationState.model.retrain()
 
     if success:
         bottle.response.status = 200
