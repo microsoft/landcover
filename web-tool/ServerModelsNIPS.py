@@ -241,13 +241,17 @@ class KerasBackPropFineTune(BackendModel):
             output_trimmed = output[padding:-padding, padding:-padding, :]
         self.naip_data = naip_data  # keep non-trimmed size, i.e. with padding
         self.correction_labels = np.zeros((naip_data.shape[0], naip_data.shape[1], self.output_channels), dtype=np.float32)
+
+        self.last_output = output
         
         return output
 
-    def retrain(self, train_steps=10, last_k_layers=1, **kwargs):
+    def retrain(self, train_steps=10, last_k_layers=3, corrections_from_ui=True, **kwargs):
+        pdb.set_trace()
+        
         for layer in self.model.layers[:-last_k_layers]:
             layer.trainable = False
-        self.model.compile(optimizers.SGD(lr=0.003, decay=1e-6), "categorical_crossentropy")
+        self.model.compile(optimizers.SGD(lr=0.3, decay=1e-6), "categorical_crossentropy")
             
         num_labels = np.count_nonzero(self.correction_labels)
         print("Fitting model with %d new labels" % num_labels)
@@ -259,13 +263,23 @@ class KerasBackPropFineTune(BackendModel):
         batch_y = []
         batch_count = 0
 
+        if corrections_from_ui:
+            correction_labels = self.correction_labels
+        else:
+            correction_labels = np.zeros((self.last_output.shape[0], self.last_output.shape[1], 5))
+            for i in range(correction_labels.shape[0]):
+                for j in range(correction_labels.shape[1]):
+                    label_index = self.last_output[i][j].argmax()
+                    correction_labels[i, j, label_index + 1] = 1.0
+
         for y_index in (list(range(0, height - self.input_size, self.stride_y)) + [height - self.input_size,]):
             for x_index in (list(range(0, width - self.input_size, self.stride_x)) + [width - self.input_size,]):
                 naip_im = self.naip_data[y_index:y_index+self.input_size, x_index:x_index+self.input_size, :]
-                correction_labels = self.correction_labels[y_index:y_index+self.input_size, x_index:x_index+self.input_size, :]
+                correction_labels_slice = correction_labels[y_index:y_index+self.input_size, x_index:x_index+self.input_size, :]
+                # correction_labels = test_correction_labels[y_index:y_index+self.input_size, x_index:x_index+self.input_size, :]
 
                 batch_x.append(naip_im)
-                batch_y.append(correction_labels)
+                batch_y.append(correction_labels_slice)
                 batch_count+=1
 
         pdb.set_trace()
@@ -273,7 +287,9 @@ class KerasBackPropFineTune(BackendModel):
         for i in range(train_steps):
             self.model.train_on_batch(np.array(batch_x),
                                       np.array(batch_y))
-        
+
+        pdb.set_trace()
+            
         success = True
         message = "Re-trained model with %d samples" % num_labels
         
