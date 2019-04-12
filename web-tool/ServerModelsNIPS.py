@@ -226,6 +226,9 @@ class KerasBackPropFineTune(BackendModel):
         self.stride_x = self.input_size - self.down_weight_padding*2
         self.stride_y = self.input_size - self.down_weight_padding*2
 
+        self.batch_x = []
+        self.batch_y = []
+        self.num_corrected_pixels = 0
         
         # pdb.set_trace()
         
@@ -246,13 +249,12 @@ class KerasBackPropFineTune(BackendModel):
         
         return output
 
-    def retrain(self, train_steps=10, last_k_layers=3, corrections_from_ui=True, learning_rate=0.3, **kwargs):
-        pdb.set_trace()
+    def retrain(self, train_steps=10, last_k_layers=3, corrections_from_ui=True, learning_rate=0.003, **kwargs):
+        #pdb.set_trace()
         
         for layer in self.model.layers[:-last_k_layers]:
             layer.trainable = False
-        self.model.compile(optimizers.SGD(lr=learning_rate, decay=1e-6), "categorical_crossentropy")
-            
+        
         num_labels = np.count_nonzero(self.correction_labels)
         print("Fitting model with %d new labels" % num_labels)
         
@@ -263,6 +265,8 @@ class KerasBackPropFineTune(BackendModel):
         batch_y = []
         batch_count = 0
 
+        number_corrected_pixels = 0.0
+        
         if corrections_from_ui:
             correction_labels = self.correction_labels
         else:
@@ -280,15 +284,26 @@ class KerasBackPropFineTune(BackendModel):
 
                 batch_x.append(naip_im)
                 batch_y.append(correction_labels_slice)
+                
                 batch_count+=1
+                number_corrected_pixels += len(correction_labels_slice.nonzero()[0])
 
-        pdb.set_trace()
+        self.batch_x.append(batch_x)
+        self.batch_y.append(batch_y)
+        self.num_corrected_pixels += number_corrected_pixels
+                
+        learning_rate *= (self.input_size * self.input_size * len(batch_x) * len(self.batch_x)) / self.num_corrected_pixels
+
+        self.model.compile(optimizers.SGD(lr=learning_rate, decay=1e-6), "categorical_crossentropy")
+        
+        # pdb.set_trace()
             
         for i in range(train_steps):
-            self.model.train_on_batch(np.array(batch_x),
-                                      np.array(batch_y))
+            for batch_x, batch_y in zip(self.batch_x, self.batch_y):
+                self.model.train_on_batch(np.array(batch_x),
+                                          np.array(batch_y))
 
-        pdb.set_trace()
+        # pdb.set_trace()
             
         success = True
         message = "Re-trained model with %d samples" % num_labels
