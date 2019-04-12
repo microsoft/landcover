@@ -284,6 +284,7 @@ class KerasBackPropFineTune(BackendModel):
 
                 batch_x.append(naip_im)
                 batch_y.append(correction_labels_slice)
+                
                 batch_count+=1
                 number_corrected_pixels += len(correction_labels_slice.nonzero()[0])
 
