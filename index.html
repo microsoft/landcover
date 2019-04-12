@@ -881,7 +881,8 @@
 
             map.on('contextmenu',function(e){}); // disables the context menu
             map.on('dblclick',function(e){});
-            map.doubleClickZoom.disable(); 
+            map.doubleClickZoom.disable();
+            map.boxZoom.disable();
 
             $(document).keydown(function(e){
                 shiftKeyDown = e.shiftKey;
