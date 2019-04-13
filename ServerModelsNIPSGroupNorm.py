@@ -131,8 +131,8 @@ class FusionnetgnFineTune(BackendModel):
         naip_data = x / 255.0
         if padding > 0:
             self.tile_padding = padding
-            naip_data_trimmed = naip_data[:, padding:-padding, padding:-padding]
-            output_trimmed = output[:, padding:-padding, padding:-padding]
+          #  naip_data_trimmed = naip_data[:, padding:-padding, padding:-padding]
+          #  output_trimmed = output[:, padding:-padding, padding:-padding]
         self.naip_data = naip_data  # keep non-trimmed size, i.e. with padding
         self.correction_labels = np.zeros((naip_data.shape[1], naip_data.shape[2], self.output_channels),
                                           dtype=np.float32)
@@ -239,14 +239,10 @@ class FusionnetgnFineTune(BackendModel):
         return softmax(output)
 
     def predict_entire_image_fusionnet_fine(self, x):
-        x = np.swapaxes(x, 0, 2)
-        x = np.swapaxes(x, 1, 2)
         self.augment_model.eval()
         if torch.cuda.is_available():
             self.augment_model.cuda()
-        x = np.rollaxis(x, 2, 1)
-        x = x[:4, :, :]
-        naip_tile = x / 255.0
+        naip_tile = x
 
         down_weight_padding = 40
         height = naip_tile.shape[1]
