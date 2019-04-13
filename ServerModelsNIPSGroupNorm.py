@@ -119,6 +119,10 @@ class FusionnetgnFineTune(BackendModel):
 
         self.stride_x = self.input_size - self.down_weight_padding * 2
         self.stride_y = self.input_size - self.down_weight_padding * 2
+        self.batch_x = []
+        self.batch_y = []
+        self.num_corrected_pixels = 0
+        self.batch_count = 0
 
     def run(self, naip_data, naip_fn, extent, padding):
 
@@ -181,15 +185,16 @@ class FusionnetgnFineTune(BackendModel):
         self.batch_x.append(batch_x)
         self.batch_y.append(batch_y)
         self.num_corrected_pixels += number_corrected_pixels
+        self.batch_count += batch_count
 
-        batch_arr_x = np.zeros((batch_count, 4, self.input_size, self.input_size))
-        batch_arr_y = np.zeros((batch_count, self.input_size, self.input_size))
+        batch_arr_x = np.zeros((self.batch_count, 4, self.input_size, self.input_size))
+        batch_arr_y = np.zeros((self.batch_count, self.input_size, self.input_size))
         i, j = 0
-        for im in batch_x:
+        for im in self.batch_x:
             batch_arr_x[i, :, :, :] = im
             i += 1
         batch_x = torch.from_numpy(batch_arr_x).float().to(device)
-        for y in batch_y:
+        for y in self.batch_y:
             batch_arr_y[j, :, :] = np.argmax(y, axis=2)
             j += 1
         batch_y = torch.from_numpy(batch_arr_y).float().to(device)
