@@ -123,12 +123,18 @@ class FusionnetgnFineTune(BackendModel):
     def run(self, naip_data, naip_fn, extent, padding):
         output = self.run_model_on_tile(naip_data), os.path.basename(self.model_fn)
         # apply padding to the output_features
+        x=naip_data
+        x = np.swapaxes(x, 0, 2)
+        x = np.swapaxes(x, 1, 2)
+        x = np.rollaxis(x, 2, 1)
+        x = x[:4, :, :]
+        naip_data = x / 255.0
         if padding > 0:
             self.tile_padding = padding
-            naip_data_trimmed = naip_data[padding:-padding, padding:-padding, :]
-            output_trimmed = output[padding:-padding, padding:-padding, :]
+            naip_data_trimmed = naip_data[:, padding:-padding, padding:-padding]
+            output_trimmed = output[:, padding:-padding, padding:-padding]
         self.naip_data = naip_data  # keep non-trimmed size, i.e. with padding
-        self.correction_labels = np.zeros((naip_data.shape[0], naip_data.shape[1], self.output_channels),
+        self.correction_labels = np.zeros((naip_data.shape[1], naip_data.shape[2], self.output_channels),
                                           dtype=np.float32)
 
         self.last_output = output
@@ -139,8 +145,8 @@ class FusionnetgnFineTune(BackendModel):
         num_labels = np.count_nonzero(self.correction_labels)
         print("Fitting model with %d new labels" % num_labels)
 
-        height = self.naip_data.shape[0]
-        width = self.naip_data.shape[1]
+        height = self.naip_data.shape[1]
+        width = self.naip_data.shape[2]
 
         batch_x = []
         batch_y = []
@@ -152,7 +158,7 @@ class FusionnetgnFineTune(BackendModel):
         if corrections_from_ui:
             correction_labels = self.correction_labels
         else:
-            correction_labels = np.zeros((self.last_output.shape[0], self.last_output.shape[1], 5))
+            correction_labels = np.zeros(( self.last_output.shape[0], self.last_output.shape[1], 5))
             for i in range(correction_labels.shape[0]):
                 for j in range(correction_labels.shape[1]):
                     label_index = self.last_output[i][j].argmax()
@@ -160,7 +166,7 @@ class FusionnetgnFineTune(BackendModel):
 
         for y_index in (list(range(0, height - self.input_size, self.stride_y)) + [height - self.input_size, ]):
             for x_index in (list(range(0, width - self.input_size, self.stride_x)) + [width - self.input_size, ]):
-                naip_im = self.naip_data[y_index:y_index + self.input_size, x_index:x_index + self.input_size, :]
+                naip_im = self.naip_data[:, y_index:y_index + self.input_size, x_index:x_index + self.input_size]
                 correction_labels_slice = correction_labels[y_index:y_index + self.input_size,
                                           x_index:x_index + self.input_size, :]
                 # correction_labels = test_correction_labels[y_index:y_index+self.input_size, x_index:x_index+self.input_size, :]
@@ -175,7 +181,7 @@ class FusionnetgnFineTune(BackendModel):
         self.batch_y.append(batch_y)
         self.num_corrected_pixels += number_corrected_pixels
 
-        batch_arr_x = np.zeros((batch_count, self.input_size, self.input_size, 4))
+        batch_arr_x = np.zeros((batch_count, 4, self.input_size, self.input_size))
         batch_arr_y = np.zeros((batch_count, self.input_size, self.input_size))
         i, j = 0
         for im in batch_x:
@@ -183,7 +189,7 @@ class FusionnetgnFineTune(BackendModel):
             i += 1
         batch_x = torch.from_numpy(batch_arr_x).float().to(device)
         for y in batch_y:
-            batch_arr_y[j, :, :] = np.argmax(y, axis=1)
+            batch_arr_y[j, :, :] = np.argmax(y, axis=2)
             j += 1
         batch_y = torch.from_numpy(batch_arr_y).float().to(device)
 
