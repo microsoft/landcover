@@ -121,7 +121,7 @@ class FusionnetgnFineTune(BackendModel):
         self.stride_y = self.input_size - self.down_weight_padding * 2
 
     def run(self, naip_data, naip_fn, extent, padding):
-        output = self.run_model_on_tile(naip_data), os.path.basename(self.model_fn)
+
         # apply padding to the output_features
         x=naip_data
         x = np.swapaxes(x, 0, 2)
@@ -129,6 +129,7 @@ class FusionnetgnFineTune(BackendModel):
         x = np.rollaxis(x, 2, 1)
         x = x[:4, :, :]
         naip_data = x / 255.0
+        output = self.run_model_on_tile(naip_data), os.path.basename(self.model_fn)
         if padding > 0:
             self.tile_padding = padding
           #  naip_data_trimmed = naip_data[:, padding:-padding, padding:-padding]
