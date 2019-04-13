@@ -1,9 +1,10 @@
 from ServerModelsAbstract import BackendModel
 import torch
 import numpy as np
+import torch.nn as nn
 from fusionnet import Fusionnet
-from unet import Unet
 import os, json
+from torch.autograd import Variable
 
 def softmax(output):
     output_max = np.max(output, axis=2, keepdims=True)
@@ -11,85 +12,30 @@ def softmax(output):
     exp_sums = np.sum(exps, axis=2, keepdims=True)
     return exps/exp_sums
 
-class UnetgnFineTune(BackendModel):
+class multiclass_ce(nn.modules.Module):
+    def __init__(self):
+        super(multiclass_ce, self).__init__()
+        self.crossentropy = nn.CrossEntropyLoss()
 
-    def __init__(self, model_fn, gpuid, superres=False):
+    def __call__(self,y_true, y_pred):
+        loss = self.crossentropy(y_pred, y_true)
+        return loss
 
-        os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-        os.environ["CUDA_VISIBLE_DEVICES"] = str(gpuid)
-        self.model_fn = model_fn
-        self.opts = json.load(open("/mnt/blobfuse/train-output/conditioning/models/backup_conditional_superres512/training/params.json", "r"))["model_opts"]
+class GroupParamsFusionnet(nn.Module):
 
-    def run(self, naip_data, naip_fn, extent, padding):
-        return self.run_model_on_tile(naip_data), os.path.basename(self.model_fn)
+    def __init__(self, model):
+        super(GroupParamsFusionnet, self).__init__()
+        self.gammas = nn.Parameter(torch.ones((1, 32, 1, 1)))
+        self.betas = nn.Parameter(torch.zeros((1, 32, 1, 1)))
+        self.gammas2 = nn.Parameter(torch.ones((1, 64, 1, 1)))
+        self.betas2 = nn.Parameter(torch.zeros((1, 64, 1, 1)))
+        self.model = model
 
-    def retrain(self):
-        return
+    def forward(self, input):
 
-    def add_sample(self, tdst_row, bdst_row, tdst_col, bdst_col, class_idx):
-        return
-
-    def reset(self):
-        return
-
-    def run_model_on_tile(self, naip_tile, batch_size=32):
-        inf_framework = InferenceFramework(Fusionnet, self.opts)
-        inf_framework.load_model(self.model_fn)
-        y_hat = inf_framework.predict_entire_image_fusionnet(naip_tile)
-        output = y_hat[:, :, 1:5]
-        return softmax(output)
-
-class FusionnetgnFineTune(BackendModel):
-
-    def __init__(self, model_fn, gpuid, superres=False):
-
-        os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-        os.environ["CUDA_VISIBLE_DEVICES"] = str(gpuid)
-        self.model_fn = model_fn
-        self.opts = \
-        json.load(open("/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn/training/params.json", "r"))[
-            "model_opts"]
-
-    def run(self, naip_data, naip_fn, extent, padding):
-        return self.run_model_on_tile(naip_data), os.path.basename(self.model_fn)
-
-    def retrain(self):
-        return
-
-    def add_sample(self, tdst_row, bdst_row, tdst_col, bdst_col, class_idx):
-        return
-
-    def reset(self):
-        return
-
-    def run_model_on_tile(self, naip_tile, batch_size=32):
-        inf_framework = InferenceFramework(Unet, self.opts)
-        inf_framework.load_model(self.model_fn)
-        y_hat = inf_framework.predict_entire_image_unet(naip_tile)
-        output = y_hat[:, :, 1:5]
-        return softmax(output)
-
-
-
-
-class InferenceFramework():
-    def __init__(self, model, opts):
-        self.opts = opts
-        self.model = model(self.opts)
-        self.output_channels = 5
-        self.input_size = 512
-
-
-    def load_model(self, path_2_saved_model):
-        checkpoint = torch.load(path_2_saved_model)
-        self.model.load_state_dict(checkpoint['model'])
-        self.model.eval()
-
-
-    def fusionnet_gn_fun(self, x):
-
-        down_1 = self.model.down_1(x)
+        down_1 = self.model.down_1(input)
         pool_1 = self.model.pool_1(down_1)
+        #pool_1 = pool_1 * self.gammas + self.betas
         down_2 = self.model.down_2(pool_1)
         pool_2 = self.model.pool_2(down_2)
         down_3 = self.model.down_3(pool_2)
@@ -108,96 +54,188 @@ class InferenceFramework():
         deconv_3 = self.model.deconv_3(up_2)
         skip_3 = (deconv_3 + down_2) / 2
         up_3 = self.model.up_3(skip_3)
+        up_3 = up_3 * self.gammas2 + self.betas2
+
         deconv_4 = self.model.deconv_4(up_3)
         skip_4 = (deconv_4 + down_1) / 2
         up_4 = self.model.up_4(skip_4)
-
-     #   gammas = np.zeros((1, 32, 1, 1))
-    #    gammas[0, :8, 0, 0] = gamma[0]
-    #    gammas[0, 8:16, 0, 0] = gamma[1]
-   #     gammas[0, 16:24, 0, 0] = gamma[2]
-   #     gammas[0, 24:32, 0, 0] = gamma[3]
-
-    #    betas = np.zeros((1, 32, 1, 1))
-   #     betas[0, :8, 0, 0] = beta[0]
-   #     betas[0, 8:16, 0, 0] = beta[1]
-    #    betas[0, 16:24, 0, 0] = beta[2]
-    #    betas[0, 24:32, 0, 0] = beta[3]
-    #    for id in dropouts:
-    #        gammas[0, id, 0, 0] = 0
-    #    gammas = torch.Tensor(gammas).to('cuda')
-    #    betas = torch.Tensor(betas).to('cuda')
-    #    up_4 = up_4 * gammas + betas
+        up_4 = up_4 * self.gammas + self.betas
 
         out = self.model.out(up_4)
-
-        #out = self.model.out_2(out)
-
+        out = self.model.out_2(out)
+        # out = torch.clamp(out, min=-1, max=1)
         return out
 
-    def unet_gn_fun(self, x):
 
-        x, conv1_out, conv1_dim = self.model.down_1(x)
+class FusionnetgnFineTune(BackendModel):
 
-        # gammas = np.zeros((1, 32, 1, 1))
-        # gammas[0, :8, 0, 0] = gamma[0]
-        # gammas[0, 8:16, 0, 0] = gamma[1]
-        # gammas[0, 16:24, 0, 0] = gamma[2]
-        # gammas[0, 24:32, 0, 0] = gamma[3]
+    def __init__(self, model_fn, gpuid):
+
+        os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(gpuid)
+        self.model_fn = model_fn
+        self.opts = json.load(open("/mnt/blobfuse/train-output/conditioning/models/backup_fusionnet32_gn_8_isotropic/training/params.json", "r"))["model_opts"]
+        self.inf_framework = InferenceFramework(Fusionnet, self.opts)
+        self.inf_framework.load_model(self.model_fn)
+
+        # ------------------------------------------------------
+        # Step 2
+        #   Pre-load augment model seed data
+        # ------------------------------------------------------
+        self.current_features = None
+
+        self.augment_base_x_train = []
+        self.augment_base_y_train = []
+
+        self.augment_x_train = []
+        self.augment_y_train = []
+        self.augment_model = GroupParamsFusionnet(self.inf_framework.model)
+        self.augment_model_trained = False
+
+        seed_x_fn = ""
+        seed_y_fn = ""
+        # if superres:
+        #     seed_x_fn = "data/seed_data_hr+sr_x.npy"
+        #     seed_y_fn = "data/seed_data_hr+sr_y.npy"
+        # else:
+        #     seed_x_fn = "data/seed_data_hr_x.npy"
+        #     seed_y_fn = "data/seed_data_hr_y.npy"
+        # for row in np.load(seed_x_fn):
+        #     self.augment_base_x_train.append(row)
+        # for row in np.load(seed_y_fn):
+        #     self.augment_base_y_train.append(row)
         #
-        # betas = np.zeros((1, 32, 1, 1))
-        # betas[0, :8, 0, 0] = beta[0]
-        # betas[0, 8:16, 0, 0] = beta[1]
-        # betas[0, 16:24, 0, 0] = beta[2]
-        # betas[0, 24:32, 0, 0] = beta[3]
-        #
-        # for id in dropouts:
-        #     gammas[0, id, 0, 0] = 0
-        # gammas = torch.Tensor(gammas).to('cuda')
-        # betas = torch.Tensor(betas).to('cuda')
-        # x = x * gammas + betas
+        # for row in self.augment_base_x_train:
+        #     self.augment_x_train.append(row)
+        # for row in self.augment_base_y_train:
+        #     self.augment_y_train.append(row)
+        self.naip_data = None
+        self.correction_labels = None
+        self.tile_padding = 0
 
-        x, conv2_out, conv2_dim = self.model.down_2(x)
-        x, conv3_out, conv3_dim = self.model.down_3(x)
-        x, conv4_out, conv4_dim = self.model.down_4(x)
+        self.down_weight_padding = 40
 
-        # Bottleneck
-        x = self.model.conv5_block(x)
+        self.stride_x = self.input_size - self.down_weight_padding * 2
+        self.stride_y = self.input_size - self.down_weight_padding * 2
 
-        # up layers
-        x = self.model.up_1(x, conv4_out, conv4_dim)
-        x = self.model.up_2(x, conv3_out, conv3_dim)
-        x = self.model.up_3(x, conv2_out, conv2_dim)
-        x = self.model.up_4(x, conv1_out, conv1_dim)
+    def run(self, naip_data, naip_fn, extent, padding):
+        output = self.run_model_on_tile(naip_data), os.path.basename(self.model_fn)
+        # apply padding to the output_features
+        if padding > 0:
+            self.tile_padding = padding
+            naip_data_trimmed = naip_data[padding:-padding, padding:-padding, :]
+            output_trimmed = output[padding:-padding, padding:-padding, :]
+        self.naip_data = naip_data  # keep non-trimmed size, i.e. with padding
+        self.correction_labels = np.zeros((naip_data.shape[0], naip_data.shape[1], self.output_channels),
+                                          dtype=np.float32)
 
-        return self.model.conv_final(x)
+        self.last_output = output
+        return output
 
-    def predict_entire_image_unet(self, x):
-        x = np.swapaxes(x, 0, 2)
-        x = np.swapaxes(x, 1, 2)
-        if torch.cuda.is_available():
-            self.model.cuda()
-        x = np.rollaxis(x, 2, 1)
-        x = x[:4, :, :]
-        norm_image = x / 255.0
-        _, w, h = norm_image.shape
+#FIXME: add retrain method
+    def retrain(self, train_steps=10, corrections_from_ui=True, learning_rate=0.01):
+        num_labels = np.count_nonzero(self.correction_labels)
+        print("Fitting model with %d new labels" % num_labels)
+
+        height = self.naip_data.shape[0]
+        width = self.naip_data.shape[1]
+
+        batch_x = []
+        batch_y = []
+        batch_count = 0
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        out = np.zeros((5, w, h))
 
-        norm_image1 = norm_image[:, 130:w - (w % 892) + 130, 130:h - (h % 892) + 130]
-        x_c_tensor1 = torch.from_numpy(norm_image1).float().to(device)
-        y_pred1 = self.unet_gn_fun(x_c_tensor1.unsqueeze(0))
-        y_hat1 = (Variable(y_pred1).data).cpu().numpy()
-        out[:, 92 + 130:w - (w % 892) + 130 - 92, 92 + 130:h - (h % 892) - 92 + 130] = y_hat1
-        pred = np.rollaxis(out, 0, 3)
-        pred = np.moveaxis(pred, 0, 1)
-        return pred
+        number_corrected_pixels = 0.0
 
-    def predict_entire_image_fusionnet(self, x):
+        if corrections_from_ui:
+            correction_labels = self.correction_labels
+        else:
+            correction_labels = np.zeros((self.last_output.shape[0], self.last_output.shape[1], 5))
+            for i in range(correction_labels.shape[0]):
+                for j in range(correction_labels.shape[1]):
+                    label_index = self.last_output[i][j].argmax()
+                    correction_labels[i, j, label_index + 1] = 1.0
+
+        for y_index in (list(range(0, height - self.input_size, self.stride_y)) + [height - self.input_size, ]):
+            for x_index in (list(range(0, width - self.input_size, self.stride_x)) + [width - self.input_size, ]):
+                naip_im = self.naip_data[y_index:y_index + self.input_size, x_index:x_index + self.input_size, :]
+                correction_labels_slice = correction_labels[y_index:y_index + self.input_size,
+                                          x_index:x_index + self.input_size, :]
+                # correction_labels = test_correction_labels[y_index:y_index+self.input_size, x_index:x_index+self.input_size, :]
+
+                batch_x.append(naip_im)
+                batch_y.append(correction_labels_slice)
+
+                batch_count += 1
+                number_corrected_pixels += len(correction_labels_slice.nonzero()[0])
+
+        self.batch_x.append(batch_x)
+        self.batch_y.append(batch_y)
+        self.num_corrected_pixels += number_corrected_pixels
+
+        batch_arr_x = np.zeros((batch_count, self.input_size, self.input_size, 4))
+        batch_arr_y = np.zeros((batch_count, self.input_size, self.input_size))
+        i, j = 0
+        for im in batch_x:
+            batch_arr_x[i, :, :, :] = im
+            i += 1
+        batch_x = torch.from_numpy(batch_arr_x).float().to(device)
+        for y in batch_y:
+            batch_arr_y[j, :, :] = np.argmax(y, axis=1)
+            j += 1
+        batch_y = torch.from_numpy(batch_arr_y).float().to(device)
+
+        optimizer = torch.optim.Adam(self.augment_model.parameters(), lr=0.01)
+        optimizer.zero_grad()
+        criterion = multiclass_ce().to(device)
+        # pdb.set_trace()
+
+        for i in range(train_steps):
+            for batch_x, batch_y in zip(batch_x, batch_y):
+                with torch.set_grad_enabled(True):
+                    outputs = self.augment_model.forward(batch_x)
+                    loss = criterion(torch.squeeze(batch_y,1).long(), outputs)
+                    loss.backward()
+                    optimizer.step()
+
+        # pdb.set_trace()
+
+        success = True
+        message = "Re-trained model with %d samples" % num_labels
+
+        return success, message
+
+    def add_sample(self, tdst_row, bdst_row, tdst_col, bdst_col, class_idx):
+        padding = self.tile_padding
+
+        self.correction_labels[tdst_row + padding: bdst_row + 1 + padding,
+        tdst_col + padding: bdst_col + 1 + padding, :] = 0.0
+        self.correction_labels[tdst_row + padding: bdst_row + 1 + padding,
+        tdst_col + padding: bdst_col + 1 + padding,
+        class_idx + 1] = 1.0
+
+    def reset(self):
+        #self.augment_x_train = []
+        #self.augment_y_train = []
+        self.augment_model = GroupParamsFusionnet(self.inf_framework.model)
+        self.augment_model_trained = False
+
+        #for row in self.augment_base_x_train:
+        #    self.augment_x_train.append(row)
+        #for row in self.augment_base_y_train:
+        #    self.augment_y_train.append(row)
+
+    def run_model_on_tile(self, naip_tile, batch_size=32):
+        y_hat = self.predict_entire_image_fusionnet_fine(naip_tile)
+        output = y_hat[:, :, 1:5]
+        return softmax(output)
+
+    def predict_entire_image_fusionnet_fine(self, x):
         x = np.swapaxes(x, 0, 2)
         x = np.swapaxes(x, 1, 2)
+        self.augment_model.eval()
         if torch.cuda.is_available():
-            self.model.cuda()
+            self.augment_model.cuda()
         x = np.rollaxis(x, 2, 1)
         x = x[:4, :, :]
         naip_tile = x / 255.0
@@ -231,18 +269,29 @@ class InferenceFramework():
         batch_arr = np.zeros((batch_count, 4, self.input_size, self.input_size))
         i = 0
         for im in batch:
-            batch_arr[i,:,:,:] = im
-            i+=1
+            batch_arr[i, :, :, :] = im
+            i += 1
         batch = torch.from_numpy(batch_arr).float().to(device)
-        model_output = self.fusionnet_gn_fun(batch)
+        model_output = self.augment_model.forward(batch)
         model_output = (Variable(model_output).data).cpu().numpy()
         for i, (y, x) in enumerate(batch_indices):
-            output[:,y:y + self.input_size, x:x + self.input_size] += model_output[i] * kernel[np.newaxis, ...]
+            output[:, y:y + self.input_size, x:x + self.input_size] += model_output[i] * kernel[np.newaxis, ...]
             counts[y:y + self.input_size, x:x + self.input_size] += kernel
 
         output = output / counts[np.newaxis, ...]
         pred = np.rollaxis(output, 0, 3)
         pred = np.moveaxis(pred, 0, 1)
         return pred
+
+class InferenceFramework():
+    def __init__(self, model, opts):
+        self.opts = opts
+        self.model = model(self.opts)
+
+    def load_model(self, path_2_saved_model):
+        checkpoint = torch.load(path_2_saved_model)
+        self.model.load_state_dict(checkpoint['model'])
+        self.model.eval()
+
 
 

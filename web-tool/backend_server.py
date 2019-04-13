@@ -24,7 +24,7 @@ import utils
 import pickle
 import joblib
 
-import ServerModelsICLRFormat, ServerModelsCachedFormat, ServerModelsICLRDynamicFormat, ServerModelsNIPS
+import ServerModelsICLRFormat, ServerModelsCachedFormat, ServerModelsICLRDynamicFormat, ServerModelsNIPS, ServerModelsNIPSGroupNorm
 
 
 def get_random_string(length):
@@ -327,7 +327,8 @@ def main():
             "iclr_keras",
             "iclr_cntk",
             "nips_sr",
-            "nips_hr"
+            "nips_hr",
+            "nips_gn"
         ],
         help="Model to use", required=True
     )
@@ -350,6 +351,8 @@ def main():
         model = ServerModelsNIPS.KerasDenseFineTune(args.model_fn, args.gpuid, superres=True)
     elif args.model == "nips_hr":
         model = ServerModelsNIPS.KerasDenseFineTune(args.model_fn, args.gpuid, superres=False)
+    elif args.model == "nips_gn":
+        model = ServerModelsNIPSGroupNorm.FusionnetgnFineTune(args.model_fn, args.gpuid)
     else:
         print("Model isn't implemented, aborting")
         return
