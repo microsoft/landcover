@@ -73,6 +73,8 @@ class FusionnetgnFineTune(BackendModel):
 
         os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
         os.environ["CUDA_VISIBLE_DEVICES"] = str(gpuid)
+        self.output_channels = 5
+        self.input_size = 512
         self.model_fn = model_fn
         self.opts = json.load(open("/mnt/blobfuse/train-output/conditioning/models/backup_fusionnet32_gn_8_isotropic/training/params.json", "r"))["model_opts"]
         self.inf_framework = InferenceFramework(Fusionnet, self.opts)
