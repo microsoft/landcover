@@ -129,7 +129,7 @@ class FusionnetgnFineTune(BackendModel):
         x = np.rollaxis(x, 2, 1)
         x = x[:4, :, :]
         naip_data = x / 255.0
-        output = self.run_model_on_tile(naip_data), os.path.basename(self.model_fn)
+        output = self.run_model_on_tile(naip_data)
         if padding > 0:
             self.tile_padding = padding
           #  naip_data_trimmed = naip_data[:, padding:-padding, padding:-padding]
