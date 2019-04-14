@@ -51,14 +51,13 @@ class AugmentationState():
 
     @staticmethod
     def save(model_name):
-
         snapshot_id = AugmentationState.current_snapshot_string % (model_name, AugmentationState.current_snapshot_idx)
 
         print("Saving state for %s" % (snapshot_id))
         joblib.dump(AugmentationState.model, "output/%s_model.p" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)
         joblib.dump(AugmentationState.request_list, "output/%s_request_list.p" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)
         
-        AugmentationState.current_snapshot_idx += 1    
+        AugmentationState.current_snapshot_idx += 1
 
         # TODO: Save other stuff
         '''

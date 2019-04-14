@@ -79,6 +79,8 @@ class FusionnetgnFineTune(BackendModel):
         self.opts = json.load(open("/mnt/blobfuse/train-output/conditioning/models/backup_fusionnet32_gn_8_isotropic/training/params.json", "r"))["model_opts"]
         self.inf_framework = InferenceFramework(Fusionnet, self.opts)
         self.inf_framework.load_model(self.model_fn)
+        for param in self.inf_framework.model.parameters():
+            param.requires_grad = False
 
         # ------------------------------------------------------
         # Step 2
@@ -187,14 +189,14 @@ class FusionnetgnFineTune(BackendModel):
         self.num_corrected_pixels += number_corrected_pixels
         self.batch_count += batch_count
 
-        batch_arr_x = np.zeros((self.batch_count, 4, self.input_size, self.input_size))
-        batch_arr_y = np.zeros((self.batch_count, self.input_size, self.input_size))
-        i, j = 0
-        for im in self.batch_x:
+        batch_arr_x = np.zeros((batch_count, 4, self.input_size, self.input_size))
+        batch_arr_y = np.zeros((batch_count, self.input_size, self.input_size))
+        i, j = 0, 0
+        for im in batch_x:
             batch_arr_x[i, :, :, :] = im
             i += 1
         batch_x = torch.from_numpy(batch_arr_x).float().to(device)
-        for y in self.batch_y:
+        for y in batch_y:
             batch_arr_y[j, :, :] = np.argmax(y, axis=2)
             j += 1
         batch_y = torch.from_numpy(batch_arr_y).float().to(device)
@@ -205,12 +207,11 @@ class FusionnetgnFineTune(BackendModel):
         # pdb.set_trace()
 
         for i in range(train_steps):
-            for batch_x, batch_y in zip(batch_x, batch_y):
-                with torch.set_grad_enabled(True):
-                    outputs = self.augment_model.forward(batch_x)
-                    loss = criterion(torch.squeeze(batch_y,1).long(), outputs)
-                    loss.backward()
-                    optimizer.step()
+            with torch.set_grad_enabled(True):
+                outputs = self.augment_model.forward(batch_x)
+                loss = criterion(torch.squeeze(batch_y,1).long(), outputs)
+                loss.backward()
+                optimizer.step()
 
         # pdb.set_trace()
 
