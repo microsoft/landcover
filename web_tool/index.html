@@ -732,14 +732,16 @@
                 NAIP_Imagery = L.tileLayer('tiles/demo_set_1/{z}/{x}/{y}.png', {
                     attribution: 'Georeferenced Image', 
                     tms:true,
-                    maxZoom:18,
+                    maxZoom:20,
+                    maxNativeZoom: 18,
                     minZoom:13
                 });
             }else{
                 NAIP_Imagery = L.tileLayer('tiles/training_set_'+trainingSetID+'/{z}/{x}/{y}.png', {
                     attribution: 'Georeferenced Image', 
                     tms:true,
-                    maxZoom:18,
+                    maxZoom:20,
+                    maxNativeZoom: 18,
                     minZoom:13
                 });
             }
