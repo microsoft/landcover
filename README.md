@@ -82,6 +82,19 @@ Output example:
 
 ## Setup
 
+To get this working on a new Deep Learning Virtual Machine (DLVM) image on Azure:
+- Create a new DLVM Ubuntu image
+- Run `new_vm_setup.sh`, this will restart the machine at the end as I have faced GPU problems on newly provisioned DLVM image machines
+- Run `mount_remotes.sh` (must be re-run any time machine is re-started, as `/mnt/` directory is cleared on Azure DLVMs)
+- `git clone https://github.com/calebrob6/land-cover-mapping`
+- `cd land-cover-mapping`
+- `cp -r /mnt/afs/chesapeake/demo_data/ data/`
+- Open up ports 4040 and 4444 to the machine through the Azure Portal
+- `python frontend_server.py` this will start up a HTTP server on :4040 to serve the actual webpage
+- `python backend_server.py --model 1` will start up a HTTP server on :4444 that serves our precomputed results with the documented API
+  - alternatively use --model 2 to serve results that are computed from a CNTK model
+  - Edit endpoints.js to make the frontend webpage query whichever backend_server.py instances you want (you can set alternate ports from command line flags)
+
 Copy the files from `//mslandcoverstorageeast.file.core.windows.net/chesapeake/demo_data/` into `data/`. This should include: `list_all_naip.txt`, `tile_index.dat`, `tile_index.idx`, `tiles.p`.
 
 
