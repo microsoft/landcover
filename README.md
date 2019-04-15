@@ -4,6 +4,21 @@
 This repository holds both the "frontend" web-application and "backend" web API server that make up our "Land Cover Mapping" demo. An instance of this demo is live, [here](http://msrcalebubuntu.eastus.cloudapp.azure.com:4040/).
 
 
+## Setup Instructions
+
+- Create a new Deep Learning Virtual Machine (DLVM) Ubuntu image
+- Upload the two attached setup scripts (I didn't include these in the repo as they have API keys to the storage accounts) 
+- Run `new_vm_setup.sh`, this will restart the machine at the end as I have faced GPU problems on newly provisioned DLVM image machines
+- Run `mount_remotes.sh`
+- `git clone https://github.com/calebrob6/land-cover-mapping`
+- `cd land-cover-mapping`
+- `cp -r /mnt/afs/chesapeake/demo_data/ data/`
+- Open up ports 4040 and 4444 to the machine through the Azure Portal
+- `python frontend_server.py` this will start up a HTTP server on :4040 to serve the actual webpage
+- `python backend_server.py --model 1` will start up a HTTP server on :4444 that serves our precomputed results with the documented API
+  - alternatively use --model 2 to serve results that are computed from a CNTK model
+- `cp endpoints.js endpoints.mine.js`; Edit endpoints.mine.js to point to whichever backend server.py  instances you want (you can set alternate ports from command line flags)
+
 ## Overview
 
 - "Frontend"

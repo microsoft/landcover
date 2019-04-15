@@ -7,3 +7,4 @@ endpoints.mine.js
 files_to_sync.txt
 files_not_to_sync.txt
 sync_up.sh
+tiles/

@@ -158,6 +158,47 @@
             background-color: #19715E !important;
         }
 
+        .label-area{
+            background-color: #FFFFFF;
+            width:200px;
+            padding:20px;
+        }
+
+        .label-text{
+            font-size: 1em;
+            letter-spacing: .1rem;
+            font-weight: 400;
+            line-height: 1.5;
+            color: black;
+            padding: 2px;
+            padding-left: 1rem;
+        }
+
+        .endOfTrial{
+            font-size: 1.7em;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50% , -50%);
+            -webkit-transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 50px;
+            z-index: 9999;
+            border-radius: 3px;
+            max-width: 400px;
+        }
+
+        .endOfTrialMask{
+            position:absolute;
+            top: 0;
+            left: 0;
+            width:100%;
+            height:100%;
+            background-color: #77777777;
+            z-index: 9998;
+        }
+
+
     </style>
 
 </head>
@@ -198,16 +239,16 @@
                     <h3 style="text-align: center; margin-top:20px;">Correction type:</h3>
                     <div style="padding-left:20px">
                         <div class="radio radio-selected">
-                            <label><input type="radio" name="new-class" value="water" checked>Water (<span id="label-water">0</span> samples)</label>
+                            <label><input type="radio" name="new-class" value="water" checked>Water (<span id="label-water">0</span> samples since last retrain)</label>
                         </div>
                         <div class="radio">
-                            <label><input type="radio" name="new-class" value="forest">Tree Canopy (<span id="label-forest">0</span> samples)</label>
+                            <label><input type="radio" name="new-class" value="forest">Tree Canopy (<span id="label-forest">0</span> samples since last retrain)</label>
                         </div>
                         <div class="radio">
-                            <label><input type="radio" name="new-class" value="field">Field (<span id="label-field">0</span> samples)</label>
+                            <label><input type="radio" name="new-class" value="field">Field (<span id="label-field">0</span> samples since last retrain)</label>
                         </div>
                         <div class="radio">
-                            <label><input type="radio" name="new-class" value="built">Built (<span id="label-built">0</span> samples)</label>
+                            <label><input type="radio" name="new-class" value="built">Built (<span id="label-built">0</span> samples since last retrain)</label>
                         </div>
 
                         <div style="text-align: center; margin-top:10px;">
@@ -217,53 +258,6 @@
                             <button id="btnReset">Reset</button>
                         </div>
                     </div>
-                </div>
-
-                
-                <div style="text-align: center; margin-bottom:10px; display:none;" id="classAdjustments">
-                    <h3>Change Class Weights</h3>
-                    <table style="width:100%;">
-                        <tr>
-                            <td style="text-align: center;">Water</td>
-                            <td>
-                                <img src="css/images/Water.png" />
-                            </td>
-                            <td style="width:30px;" id="waterVal">25</td>
-                            <td>
-                                <input type="range" min="1" max="100" value="25" class="slider" id="waterRange">
-                            </td>
-                        </tr>
-                        <tr>
-                            <td style="text-align: center;">Forest</td>
-                            <td>
-                                <img src="css/images/Forest.png" />
-                            </td>
-                            <td style="width:30px;" id="forestVal">25</td>
-                            <td>
-                                <input type="range" min="1" max="100" value="25" class="slider" id="forestRange">
-                            </td>
-                        </tr>
-                        <tr>
-                            <td style="text-align: center;">Field</td>
-                            <td>
-                                <img src="css/images/Field.png" />
-                            </td>
-                            <td style="width:30px;" id="fieldVal">25</td>
-                            <td>
-                                <input type="range" min="1" max="100" value="25" class="slider" id="fieldRange">
-                            </td>
-                        </tr>
-                        <tr>
-                            <td style="text-align: center;">Built</td>
-                            <td>
-                                <img src="css/images/Built.png" />
-                            </td>
-                            <td style="width:30px;" id="builtVal">25</td>
-                            <td>
-                                <input type="range" min="1" max="100" value="25" class="slider" id="builtRange">
-                            </td>
-                        </tr>
-                    </table>
                 </div>
             </div>
             <!-- End of "home" tab -->
@@ -286,7 +280,6 @@
     <!-- List of backend URLS to query
     ================================================== -->
     <script src="endpoints.js" type="text/javascript"></script>
-    <script src="endpoints.mine.js" type="text/javascript"></script>
 
     <script type="text/javascript">
 
@@ -301,6 +294,7 @@
 
         var selectionBox = null;
         var currentSelection = null;
+
         var newClass = "water";
         var classColors = {
             "water":"#0000FF",
@@ -309,22 +303,33 @@
             "built":"#806060"
         }
         var rightMouseDown = false;
+        var shiftKeyDown = false;
 
-        
         var currentPatches = [];
 
-        var training_set_boundaries = [
+        var trainingSetBoundaries = [
+            new L.geoJson(),
             new L.geoJson(),
             new L.geoJson(),
             new L.geoJson(),
             new L.geoJson()
         ]
 
+        var visible = true;
+        var opacitySlider;
+        
+        var trainingSetLocations = [
+            [39.40625604822793804, -76.5937627969694006 ], // This is the demo set
+            [42.406253302897575  , -77.12504090737812135],
+            [42.40625552034823897, -76.87503698687157794],
+            [42.46875623949721046, -76.50003291357666058],
+            [43.09375587600650448, -76.18754117285706684]
+        ]
+
         var soft0_hard1 = 1;
         var pred0_naip1 = 0;
         var activeImgIdx = 0;
 
-        var weights = [0.25, 0.25, 0.25, 0.25];
 
         var labelCounts = {
             "water": 0,
@@ -335,6 +340,76 @@
         var retrainCounts = 0
 
         var map = null;
+        var animating = false;
+
+        var doRetrain = function(){
+            $.ajax({
+                type: "POST",
+                url: processingServiceURL + "retrainModel",
+                data: JSON.stringify({"retrain": true, "experiment": EXP_NAME}),
+                success: function(data, textStatus, jqXHR){
+                    if(data["success"]){
+                        notifySuccess(data, textStatus, jqXHR);
+                        retrainCounts += 1;
+
+                        $("#label-retrains").html(retrainCounts);
+                        for( k in labelCounts){
+                            labelCounts[k] = 0;
+                            $("#label-"+k).html("0");
+                        }
+
+                        var t = currentSelection._latlngs[0];
+                        var curSelPoly = [
+                            [t[0]["lat"], t[0]["lng"]],
+                            [t[1]["lat"], t[1]["lng"]],
+                            [t[2]["lat"], t[2]["lng"]],
+                            [t[3]["lat"], t[3]["lng"]]
+                        ];
+                        requestPatches(curSelPoly);
+                    }
+                },
+                error: notifyFail,
+                dataType: "json",
+                contentType: "application/json"
+            });
+        };
+
+        var doReset = function(notify=true){
+            var request = {
+                "reset": true,
+                "experiment": EXP_NAME
+            };
+            $.ajax({
+                type: "POST",
+                url: processingServiceURL + "resetModel",
+                data: JSON.stringify(request),
+                success: function(data, textStatus, jqXHR){
+                    if(data["success"] && notify){
+                        notifySuccess(data, textStatus, jqXHR);
+                        
+                        $("#label-retrains").html("0");
+
+                        for( k in labelCounts){
+                            labelCounts[k] = 0;
+                            $("#label-"+k).html("0");
+                        }
+                    }
+                },
+                error: notifyFail,
+                dataType: "json",
+                contentType: "application/json"
+            });
+        };
+
+        var animateSuccessfulCorrection = function(countdown, time){
+            animating = true;
+            selectionBox.setStyle({weight:countdown})
+            if(countdown > 2){
+                window.setTimeout(function(){animateSuccessfulCorrection(countdown-1);}, time);
+            }else{
+                animating = false;
+            }
+        }
 
 
         var sendCorrection = function(polygon, idx){
@@ -366,24 +441,25 @@
                     console.debug("Successfully recorded correction");
                     console.debug(data);
 
-                    labelCounts[data["value"]] += data["count"];
+                    //labelCounts[data["value"]] += data["count"];
+                    labelCounts[data["value"]] += 1;
 
                     $("#label-"+data["value"]).html(labelCounts[data["value"]]);
-
+                    animateSuccessfulCorrection(10, 80);
                     //notifySuccess(data, textStatus, jqXHR);
                     
-                    // var srcs = [
-                    //     "data:image/png;base64," + data.output_soft,
-                    //     "data:image/png;base64," + data.output_hard,
-                    // ];
+                    /* var srcs = [
+                        "data:image/png;base64," + data.output_soft,
+                        "data:image/png;base64," + data.output_hard,
+                    ];
 
-                    // var tActiveImgIdx = currentPatches[idx]["activeImgIdx"];
-                    // currentPatches[idx]["patches"][tActiveImgIdx]["srcs"] = srcs;
-                    // $("#exampleImage_"+tActiveImgIdx).attr("src", srcs[soft0_hard1]);
+                    var tActiveImgIdx = currentPatches[idx]["activeImgIdx"];
+                    currentPatches[idx]["patches"][tActiveImgIdx]["srcs"] = srcs;
+                    $("#exampleImage_"+tActiveImgIdx).attr("src", srcs[soft0_hard1]);
                     
-                    // if(pred0_naip1 == 0){
-                    //     currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
-                    // }
+                    if(pred0_naip1 == 0){
+                        currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
+                    } */
                 },
                 error: notifyFail,
                 dataType: "json",
@@ -396,7 +472,7 @@
             // Setup placeholders for the predictions from the current click to be saved to
             currentPatches.push({
                 "naipImg": null,
-                "imageLayer": L.imageOverlay("", L.polygon(polygon).getBounds()).addTo(map),
+                "imageLayer": L.imageOverlay("", L.polygon(polygon).getBounds(), {pane: "labels"}).addTo(map),
                 "patches": [],
                 "activeImgIdx": activeImgIdx
             });
@@ -468,8 +544,7 @@
                     "spatialReference": {
                         "latestWkid": 3857
                     }
-                },
-                "weights": weights,
+                }
             };
             
             $.ajax({
@@ -486,9 +561,7 @@
                     
                     var img = $("#exampleImage_"+currentImgIdx);
                     img.attr("src", srcs[soft0_hard1]);
-                    img.attr("data-name", resp.model_name);
-                    img.attr("data-weights", JSON.stringify(resp.weights));
-                    
+                    img.attr("data-name", resp.model_name);                    
 
                     if(currentImgIdx == currentPatches[idx]["activeImgIdx"]){
                         img.addClass("active");
@@ -580,15 +653,23 @@
         };
 
         var setupTrainingSets = function(i){
-            training_set_boundaries[i].addTo(map);
+
+            var url = null;
+            if(i==0){
+                url = "data/demo_set_1_boundary.geojson"
+            }else{
+                url = "data/training_set_"+(i)+"_boundary.geojson"
+            }
+
+            trainingSetBoundaries[i].addTo(map);
             $.ajax({
                 dataType: "json",
-                url: "data/training_set_"+(i+1)+".geojson",
+                url: url,
                 success: function(data) {
                     $(data.features).each(function(key, data) {
-                        training_set_boundaries[i].addData(data);
+                        trainingSetBoundaries[i].addData(data);
                     });
-                    training_set_boundaries[i].setStyle({
+                    trainingSetBoundaries[i].setStyle({
                         "color": "#ff7800",
                         "weight": 4,
                         "fill": false
@@ -596,54 +677,81 @@
                 }
             });
         };
+
+        var pad = function(n, width, z) {
+            z = z || '0';
+            n = n + '';
+            return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
+        }
+
+        var runTimer = function(timeRemaining){
+            if(timeRemaining > 0){
+                var minutes = Math.floor(timeRemaining / 60)
+                var seconds = timeRemaining % 60;
+                $("#timer").html(pad(minutes,2)+":"+pad(seconds,2));
+                window.setTimeout(function(){runTimer(timeRemaining-1)}, 1000);
+            } else{
+                $("#timer").html("00:00");
+                $("body").append("<div class='endOfTrial'> Thanks for labeling! Please move on to the next trial. </div>");
+                $("body").append("<div class='endOfTrialMask'></div>");
+            }
+        }
        
         $(document).ready(function(){
 
-            var sliderRanges = [
-                $("#waterRange"),
-                $("#forestRange"),
-                $("#fieldRange"),
-                $("#builtRange")
-            ];
-            var sliderVals = [
-                $("#waterVal"),
-                $("#forestVal"),
-                $("#fieldVal"),
-                $("#builtVal")
-            ];
+            //----------------------------------------------------------------------
+            // Parse URL arguments
+            //----------------------------------------------------------------------
+            var url = new URL(window.location.href);
+            var trainingSetID = url.searchParams.get("trainingSetID");
+            var userID = url.searchParams.get("userID");
+            var modelID = url.searchParams.get("modelID");
+            var maxTime = url.searchParams.get("maxTime");
+            if(trainingSetID === null){
+                trainingSetID = 0;
+            } else{
+                trainingSetID = parseInt(trainingSetID);
+            }
+            if(userID === null) userID = "test";
+            if(modelID === null) modelID = "test";
+            if(maxTime === null){
+                maxTime = 15*60;
+            } else{
+                maxTime = parseInt(maxTime);
+            }
+            runTimer(maxTime);
+            EXP_NAME = userID + "_" + modelID + "_" + trainingSetID;
+
 
             //----------------------------------------------------------------------
             // Setup map layers
             //----------------------------------------------------------------------
-            var OpenStreetMap_Mapnik  = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            });
-            var Esri_WorldImagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                maxZoom: 19,
-                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-            });
-
-            var interesting_locations = [
-                L.marker([47.60, -122.15]).bindPopup('Bellevue, WA'),
-                L.marker([39.74, -105.01]).bindPopup('Denver, CO'),
-                L.marker([37.53,  -77.44]).bindPopup('Richmond, VA'),
-                //L.marker([42.406254468291763, -77.187540176872204]).bindPopup('Training Set 1'),
-                //L.marker([42.406255520348218, -76.875036986871578]).bindPopup('Training Set 2'),
-                //L.marker([42.46875623949721, -76.500032913576661]).bindPopup('Training Set 3'),
-                //L.marker([43.093755876006497, -76.187541172857053]).bindPopup('Training Set 4'),
-            ];
-
-            var cities = L.layerGroup(interesting_locations);
+            var NAIP_Imagery = null;
+            if(trainingSetID == 0){
+                NAIP_Imagery = L.tileLayer('tiles/demo_set_1/{z}/{x}/{y}.png', {
+                    attribution: 'Georeferenced Image', 
+                    tms:true,
+                    maxZoom:18,
+                    minZoom:13
+                });
+            }else{
+                NAIP_Imagery = L.tileLayer('tiles/training_set_'+trainingSetID+'/{z}/{x}/{y}.png', {
+                    attribution: 'Georeferenced Image', 
+                    tms:true,
+                    maxZoom:18,
+                    minZoom:13
+                });
+            }
 
             map = L.map('map', {
                 zoomControl: false,
                 crs: L.CRS.EPSG3857, // this is a default, but I'm setting it to be explicit about what CRS we are in	
-                center: START_CENTER,
-                zoom: START_ZOOM,
-                layers: [OpenStreetMap_Mapnik, cities]
+                center: trainingSetLocations[trainingSetID],
+                zoom: 13,
+                layers: [NAIP_Imagery]
             });
-
+            map.createPane('labels');
+            map.getPane('labels').style.zIndex = 200;
 
             //---------------------------------------------------------------------
             // Setup AI4E Branding
@@ -654,16 +762,10 @@
             $(".leaflet-top.leaflet-left").append(logoControl)
 
             // Add div for displaying lat/lon
-            //$(".leaflet-top.leaflet-left").append("<div class='leaflet-control' style='background-color:white; padding:10px;width:120px;height:17px;' id='latlng'></div>")
+            var timerControl = $("<div class='leaflet-control label-area'></div>");
+            timerControl.append("<div class='label-text'>Time remaining <span id='timer'>00:00</span></div>");
+            $(".leaflet-top.leaflet-left").append(timerControl);
 
-            //----------------------------------------------------------------------
-            // Setup leaflet-control-geocoder plugin
-            //----------------------------------------------------------------------
-            L.Control.geocoder({
-                collapsed: false,
-                position:'topleft',
-                defaultMarkGeocode: true
-            }).addTo(map);
             
             //----------------------------------------------------------------------
             // Custom initialization of the map zoom controls so that we can 
@@ -674,47 +776,17 @@
             }).addTo(map);
 
             //----------------------------------------------------------------------
-            // Setup the leaflet-easybutton plugin to reset the map to its initial
-            // position
+            // Setup the geojson boundaries around our training sets
             //----------------------------------------------------------------------
-            L.easyButton(
-                'fa-undo', function(btn, map) {
-                    map.closePopup();
-                    map.setView(START_CENTER, START_ZOOM);
-                },
-            ).addTo(map);
-
-            //----------------------------------------------------------------------
-            // Setup layer picker and initialize the "interesting points" click
-            // handlers
-            //----------------------------------------------------------------------
-            var baseMaps = {
-                "OpenStreetMap Mapnik": OpenStreetMap_Mapnik,
-                "ESRI World Imagery": Esri_WorldImagery
-            };
-            var overlayMaps = {
-                "Interesting Points": cities
-            };
-
-            for(var i=0;i<interesting_locations.length;i++){
-                interesting_locations[i].on('click', function(e){
-                    map.setView(e.latlng, 13);
-                });
-            }
-            L.control.layers(
-                baseMaps, overlayMaps, {
-                    collapsed:false,
-                    position:"bottomleft"
-                }
-            ).addTo(map);
+            setupTrainingSets(trainingSetID);
 
             //----------------------------------------------------------------------
             // Setup leaflet-slider plugin, we make two sliders to control opacity
             // and selection window size
             //----------------------------------------------------------------------
-            L.control.slider( // opacity slider
+            opacitySlider = L.control.slider( // opacity slider
                 function(value){
-                    map.getPane('overlayPane').style.opacity = value / 100.0;
+                    map.getPane('labels').style.opacity = value / 100.0;
                 }, {
                     position: 'bottomleft',
                     id: 'opacity_slider',
@@ -727,125 +799,9 @@
                     logo: "Opacity",
                     size: "171px"
                 }
-            ).addTo(map);
-
+            );
+            opacitySlider.addTo(map);
             
-            /*
-            L.control.slider( // sharpness slider
-                function(value){
-                    soft0_hard1 = value;
-
-                    for(idx=0; idx<currentPatches.length; idx++){
-                        var tActiveImgIdx = currentPatches[idx]["activeImgIdx"];
-                        var srcs = currentPatches[idx]["patches"][tActiveImgIdx]["srcs"];
-                        currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
-                    }
-
-                    if(currentPatches.length>0){
-                        var idx = currentPatches.length - 1;
-                        for(var tActiveImgIdx=0; tActiveImgIdx<currentPatches[idx]["patches"].length; tActiveImgIdx++){
-                            var srcs = currentPatches[idx]["patches"][tActiveImgIdx]["srcs"];
-                            $("#exampleImage_"+tActiveImgIdx).attr("src", srcs[soft0_hard1]);
-                        }
-                    }
-
-                }, {
-                    position: 'bottomleft',
-                    id: 'soft_hard_slider',
-                    orientation: 'horizontal',
-                    collapsed: true,
-                    syncSlider: true,
-                    min: 0,
-                    max: 1,
-                    value: 1,
-                    logo: "Sharpness",
-                    size: "171px"
-                }
-            ).addTo(map);
-            */
-            
-            L.control.slider( // Show NAIP slider
-                function(value){
-                    pred0_naip1 = value;
-
-                    for(idx=0; idx<currentPatches.length; idx++){
-                        if(pred0_naip1 == 1){
-                            var naipImg = currentPatches[idx]["naipImg"];
-                            currentPatches[idx]["imageLayer"].setUrl(naipImg);
-                        }else{
-                            var tActiveImgIdx = currentPatches[idx]["activeImgIdx"];
-                            var srcs = currentPatches[idx]["patches"][tActiveImgIdx]["srcs"];
-                            currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
-                        }
-                    }
-                }, {
-                    position: 'bottomleft',
-                    id: 'selection_size_slider',
-                    orientation: 'horizontal',
-                    collapsed: true,
-                    syncSlider: true,
-                    min: 0,
-                    max: 1,
-                    value: 0,
-                    logo: "Show NAIP",
-                    size: "171px"
-                }
-            ).addTo(map);
-
-            L.control.slider( // correction size slider
-                function(value){
-                    CORRECTION_SIZE = value;
-                }, {
-                    position: 'bottomleft',
-                    id: 'selection_size_slider',
-                    orientation: 'horizontal',
-                    collapsed: true,
-                    syncSlider: true,
-                    min: 1,
-                    max: 10,
-                    value: 1,
-                    logo: "Correction Size",
-                    size: "171px"
-                }
-            ).addTo(map);
-
-            $(document).keypress(function( e ) {
-                if(e.which == 65 || e.which == 97) {
-                    //e.preventDefault();
-                    pred0_naip1 = 0;
-
-                    for(idx=0; idx<currentPatches.length; idx++){
-                        var tActiveImgIdx = currentPatches[idx]["activeImgIdx"];
-                        var srcs = currentPatches[idx]["patches"][tActiveImgIdx]["srcs"];
-                        currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
-                    }
-                }else if(e.which == 68 || e.which == 100){
-                    //e.preventDefault();
-                    pred0_naip1 = 1;
-
-                    for(idx=0; idx<currentPatches.length; idx++){
-                        var naipImg = currentPatches[idx]["naipImg"];
-                        currentPatches[idx]["imageLayer"].setUrl(naipImg);
-                    }
-                }
-            });
-
-            L.control.slider( // window size slider
-                function(value){
-                    SELECTION_SIZE = value;
-                }, {
-                    position: 'bottomleft',
-                    id: 'selection_size_slider',
-                    orientation: 'horizontal',
-                    collapsed: true,
-                    syncSlider: true,
-                    min: 250,
-                    max: 1000,
-                    value: 500,
-                    logo: "Patch Size",
-                    size: "171px"
-                }
-            ).addTo(map);
 
             //----------------------------------------------------------------------
             // Setup leaflet-sidebar-v2 and open the "#home" tab 
@@ -855,144 +811,119 @@
                     position: 'right'
                 }
             ).addTo(map);
-            sidebar.open("home")
-
-            
-            //----------------------------------------------------------------------
-            // Setup the geojson boundaries around our training sets
-            //----------------------------------------------------------------------
-            //for(var i=0;i<training_set_boundaries.length;i++){
-            //    setupTrainingSets(i);
-            //}
+            sidebar.open("home")        
 
             //----------------------------------------------------------------------
             // Setup map selection handlers
             //----------------------------------------------------------------------
             map.addEventListener('mousemove', function(e){
-                // Make sure we haven't right click scrolled away
-                if(rightMouseDown && !isPointInsidePolygon(e.latlng, currentSelection)){
-                    rightMouseDown = false;
-                }
+
 
                 // Choose style
                 var curSelPoly = null;
-                var lineWidth = null;
-                if(rightMouseDown){
+                if(!shiftKeyDown){
                     curSelPoly = getPolyAround(e.latlng, CORRECTION_SIZE);
-                    lineWidth = 4;
                 }else{
                     curSelPoly = getPolyAround(e.latlng, SELECTION_SIZE);
-                    lineWidth = 2;
                 }
 
                 if(selectionBox === null){
                     selectionBox = L.polygon(curSelPoly, {
-                        color: classColors[newClass],
+                        color: "#000000",
                         fillColor: "#ffffff",
-                        weight: lineWidth
+                        weight: 2
                     });
                     selectionBox.addTo(map);
                 }else{
-                    selectionBox.setStyle({
-                        color: classColors[newClass],
-                        fillColor: "#ffffff",
-                        weight: lineWidth
-                    });
+                    if(!animating){
+                        selectionBox.setStyle({
+                            color: "#000000",
+                            fillColor: "#ffffff",
+                            weight: 2
+                        });
+                    }
                     selectionBox.setLatLngs(curSelPoly);
                 }
             });
 
             map.addEventListener('click', function(e){
-                curSelPoly = getPolyAround(e.latlng, SELECTION_SIZE);
-
-                if(currentSelection === null){ // This condition creates the red selection box on the first click
-                    currentSelection = L.polygon(curSelPoly, {
-                        color: "#ff0000",
-                        fillColor: "#ffffff",
-                        weight: 2
-                    });
-                    currentSelection.addTo(map);
-                }else{
-                    currentSelection.setLatLngs(curSelPoly);
-                }
                 
-                requestPatches(curSelPoly, weights, map);
+                var curSelPoly = null;
+                if(shiftKeyDown){
+                    // Run the inference path
+                    curSelPoly = getPolyAround(e.latlng, SELECTION_SIZE);
+                    console.debug(curSelPoly);
+                    if(currentSelection === null){ // This condition creates the red selection box on the first click
+                        currentSelection = L.polygon(curSelPoly, {
+                            color: "#ff0000",
+                            fillColor: "#ffffff",
+                            weight: 2
+                        });
+                        currentSelection.addTo(map);
+                    }else{
+                        currentSelection.setLatLngs(curSelPoly);
+                    }
+   
+                    requestPatches(curSelPoly);
+                }else{
+                    // Run the add sample path
+                    if(currentSelection !== null){
+                        if(isPointInsidePolygon(e.latlng, currentSelection)){
+                            curSelPoly = getPolyAround(e.latlng, CORRECTION_SIZE);
+                            var idx = currentPatches.length-1;
+                            sendCorrection(curSelPoly, idx);
+                        }else{
+                            console.debug("Click not in selection");
+                        }
+                    }
+                }
             });
 
             map.on('contextmenu',function(e){}); // disables the context menu
+            map.on('dblclick',function(e){});
+            map.doubleClickZoom.disable();
+            map.boxZoom.disable();
 
-            map.addEventListener('mousedown', function(e){
-                if(e.originalEvent.button == 2){
-                    map.dragging.disable();
-
-                    if(isPointInsidePolygon(e.latlng, currentSelection)){
-                        rightMouseDown = true;
-                    }
-                }
+            $(document).keydown(function(e){
+                shiftKeyDown = e.shiftKey;
+            });
+            $(document).keyup(function(e){
+                shiftKeyDown = e.shiftKey;
             });
 
-            map.addEventListener('mouseup', function(e){
-                if(e.originalEvent.button == 2){
-                    map.dragging.enable();
-
-                    if(rightMouseDown){
-                        rightMouseDown = false;
-
-                        if(currentSelection !== null){
-                            if(isPointInsidePolygon(e.latlng, currentSelection)){
-                                curSelPoly = getPolyAround(e.latlng, CORRECTION_SIZE);
-                                var idx = currentPatches.length-1;
-                                sendCorrection(curSelPoly, idx);
-                            }else{
-                                console.debug("Click not in selection");
-                            }
-                        }
+            $(document).keypress(function(e) {
+                console.debug(e.which);
+                if(e.which == 97 || e.which == 65) { // "a"
+                    visible = false;
+                    map.getPane('labels').style.opacity = 0.0;
+                    opacitySlider.slider.value = 0;
+                    opacitySlider._updateValue();
+                } else if(e.which == 115 || e.which == 83) { // "s"
+                    if(visible){
+                        visible = false;
+                        map.getPane('labels').style.opacity = 0.0;
+                        opacitySlider.slider.value = 0;
+                        opacitySlider._updateValue();
+                    }else{
+                        visible = true;
+                        map.getPane('labels').style.opacity = 1.0;
+                        opacitySlider.slider.value = 100;
+                        opacitySlider._updateValue();
                     }
-                    
-                }
-            });
-            map.addEventListener('mouseout', function(e){
-                if(!map.dragging.enabled()){
-                    map.dragging.enable();
+                } else if(e.which == 100 || e.which == 68) { "d"
+                    visible = true;
+                    map.getPane('labels').style.opacity = 1.0;
+                    opacitySlider.slider.value = 100
+                    opacitySlider._updateValue();
+                } else if(e.which == 114 || e.which == 82){ "r"
+                    doRetrain();
                 }
             });
 
 
             //TODO these can all be combined into one function
-            $("#btnRetrain").click(function(){
-                $.ajax({
-                    type: "POST",
-                    url: processingServiceURL + "retrainModel",
-                    data: JSON.stringify({"retrain": true, "experiment": EXP_NAME}),
-                    success: function(data, textStatus, jqXHR){
-                        if(data["success"]){
-                            notifySuccess(data, textStatus, jqXHR);
-                            retrainCounts += 1;
-
-                            $("#label-retrains").html(retrainCounts);
-                        }
-                    },
-                    error: notifyFail,
-                    dataType: "json",
-                    contentType: "application/json"
-                });
-            });
-
-            $("#btnReset").click(function(){
-                var request = {
-                    "reset": true,
-                    "experiment": EXP_NAME
-                };
-                $.ajax({
-                    type: "POST",
-                    url: processingServiceURL + "resetModel",
-                    data: JSON.stringify(request),
-                    success: notifySuccess,
-                    error: notifyFail,
-                    dataType: "json",
-                    contentType: "application/json"
-                });
-            });
+            $("#btnRetrain").click(doRetrain);
+            $("#btnReset").click(doReset);
 
 
             //----------------------------------------------------------------------
@@ -1004,32 +935,6 @@
                 newClass = this.value;
                 console.debug(this.value);
             });
-
-            //----------------------------------------------------------------------
-            // Setup adjustment sliders
-            //----------------------------------------------------------------------
-            var updateWeights = function(){
-
-                var sumVal = 0;
-                for(var j=0;j<sliderRanges.length;j++){
-                    sumVal += parseFloat(sliderRanges[j].val());
-                }
-                for(var j=0;j<weights.length;j++){
-                    weights[j] = parseFloat(sliderRanges[j].val()) / sumVal;
-                }
-                
-                for(var j=0;j<weights.length;j++){
-                    var value = Math.round((Math.round(weights[j]*100)/100)*100);
-                    sliderRanges[j].val(value);
-                    sliderVals[j].html(value);
-                }
-            }
-
-            for(var i=0;i<sliderRanges.length;i++){
-                sliderRanges[i].on("input", function(){
-                    updateWeights();
-                });
-            }
             
             //----------------------------------------------------------------------
             // Setup the example images list
@@ -1055,14 +960,7 @@
             });
 
 
-
-            new Noty({
-                type: 'success',
-                text: 'Loaded application',
-                layout: 'topCenter',
-                timeout: 2000,
-                theme: 'metroui'
-            }).show();
+            doReset(false);
 
         });
 

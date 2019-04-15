@@ -12,7 +12,7 @@ AUGMENT_MODEL = MLPClassifier(
     activation='relu',
     alpha=0.001,
     solver='lbfgs',
-    verbose=True,
+    verbose=False,
     validation_fraction=0.0,
     n_iter_no_change=10
 )

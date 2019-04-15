@@ -32,7 +32,7 @@ def get_random_string(length):
     return ''.join([alphabet[np.random.randint(0, len(alphabet))] for i in range(length)])
 
 class AugmentationState():
-    current_snapshot_string = get_random_string(8) + "_%s"
+    current_snapshot_string = "%s_" + get_random_string(8) + "_%d"
     current_snapshot_idx = 0
     model = None
 
@@ -45,15 +45,20 @@ class AugmentationState():
     @staticmethod
     def reset():
         AugmentationState.model.reset() # can't fail, so don't worry about it
-        AugmentationState.current_snapshot_string = get_random_string(8) + "_%s"
+        AugmentationState.current_snapshot_string = "%s_" + get_random_string(8) + "_%d"
         AugmentationState.current_snapshot_idx = 0
         AugmentationState.request_list = []
 
     @staticmethod
     def save(model_name):
-        snapshot_id = AugmentationState.current_snapshot_string % (model_name)
 
-        joblib.dump(AugmentationState.model, "output/%s_model.p" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)    
+        snapshot_id = AugmentationState.current_snapshot_string % (model_name, AugmentationState.current_snapshot_idx)
+
+        print("Saving state for %s" % (snapshot_id))
+        joblib.dump(AugmentationState.model, "output/%s_model.p" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)
+        joblib.dump(AugmentationState.request_list, "output/%s_request_list.p" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)
+        
+        AugmentationState.current_snapshot_idx += 1    
 
         # TODO: Save other stuff
         '''
@@ -69,7 +74,6 @@ class AugmentationState():
         joblib.dump(correction_json, "output/%s_pts.p" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)
         joblib.dump(augment_model, "output/%s.model" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)
 
-        current_snapshot_idx += 1    
         '''
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
