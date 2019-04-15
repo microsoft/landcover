@@ -1,0 +1,3 @@
+ENDPOINTS = [
+    {"name": "hr_md-dense", "url": "http://dsvmdt4m2rv2x7s32.westus2.cloudapp.azure.com:4444/"}
+];
