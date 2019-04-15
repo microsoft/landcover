@@ -74,7 +74,7 @@ def get_input_data():
 
     return data
 
-@app.route('/', methods=['GET'])
+@app.route(api_prefix + '/', methods=['GET'])
 def health_check():
     return "Health check OK"
 
