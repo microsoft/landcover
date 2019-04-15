@@ -19,7 +19,7 @@
 
 Contains the follwing methods:
 
-### *POST `//classify_by_extent`*
+### *POST `/classify_by_extent`*
 
 Input example:
 ```js
@@ -80,8 +80,8 @@ Output example:
 Input example:
 ```js
 {
-    "latitude": ...,
-    "longitude": ...,
+    "lat": ...,
+    "lon": ...,
     "patchSize":500, 
     "latestWkid":3857, // CRS of the coordinates
     "weights":[0.25,0.25,0.25,0.25]  // reweighting of the softmax outputs, there should be one number (per class)
@@ -106,8 +106,8 @@ Output example:
 Input example:
 ```js
 {
-    "latitude": ...,
-    "longitude": ...,
+    "lat": ...,
+    "lon": ...,
     "patchSize":500, 
     "latestWkid":3857, // CRS of the coordinates
     "weights":[0.25,0.25,0.25,0.25]  // reweighting of the softmax outputs, there should be one number (per class)
