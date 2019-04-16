@@ -1,0 +1,12 @@
+Train 1
+/mnt/blobfuse/esri-naip/data/v1/2013/states/ny/ny_1m_2013/42076/m_4207637_nw_18_1_20130719.mrf
+/mnt/blobfuse/esri-naip/data/v1/2013/states/ny/ny_1m_2013/42076/m_4207636_ne_18_1_20130924.mrf
+Train 2
+/mnt/blobfuse/esri-naip/data/v1/2013/states/ny/ny_1m_2013/42076/m_4207633_se_18_1_20130718.mrf
+/mnt/blobfuse/esri-naip/data/v1/2013/states/ny/ny_1m_2013/42076/m_4207634_sw_18_1_20130718.mrf
+Train 3
+/mnt/blobfuse/esri-naip/data/v1/2013/states/ny/ny_1m_2013/42077/m_4207739_sw_18_1_20130530.mrf
+/mnt/blobfuse/esri-naip/data/v1/2013/states/ny/ny_1m_2013/42077/m_4207739_se_18_1_20130530.mrf
+Train 4
+/mnt/blobfuse/esri-naip/data/v1/2013/states/ny/ny_1m_2013/43076/m_4307663_nw_18_1_20130619.mrf
+/mnt/blobfuse/esri-naip/data/v1/2013/states/ny/ny_1m_2013/43076/m_4307663_ne_18_1_20130619.mrf

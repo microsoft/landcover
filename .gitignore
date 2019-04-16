@@ -2,6 +2,7 @@ data/
 output/
 __pycache__/
 .ipynb_checkpoints/
+*.ipynb
 *.pyc
 endpoints.mine.js
 files_to_sync.txt
