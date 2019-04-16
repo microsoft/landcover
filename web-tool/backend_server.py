@@ -351,7 +351,7 @@ def main():
     elif args.model == "nips_hr":
         model = ServerModelsNIPS.KerasDenseFineTune(args.model_fn, args.gpuid, superres=False)
     elif args.model == "nips_gn":
-        model = ServerModelsNIPSGroupNorm.FusionnetgnFineTune(args.model_fn, args.gpuid)
+        model = ServerModelsNIPSGroupNorm.UnetgnFineTune(args.model_fn, args.gpuid)
     else:
         print("Model isn't implemented, aborting")
         return
