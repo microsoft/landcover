@@ -42,7 +42,7 @@ class GroupParams(nn.Module):
 
         return self.model.conv_final(x)
 
-def finetune(path_2_saved_model, loss, gen_loaders,params, n_epochs=25):
+def finetune_group_params(path_2_saved_model, loss, gen_loaders,params, n_epochs=25):
     opts = params["model_opts"]
     unet = Unet(opts)
     checkpoint = torch.load(path_2_saved_model)
@@ -68,6 +68,34 @@ def finetune(path_2_saved_model, loss, gen_loaders,params, n_epochs=25):
     model_2_finetune = train_model(model_2_finetune, loss, optimizer,
                              exp_lr_scheduler, gen_loaders, num_epochs=n_epochs)
     return model_2_finetune
+
+def finetune_sgd(path_2_saved_model, loss, gen_loaders, params, n_epochs=25):
+    opts = params["model_opts"]
+    unet = Unet(opts)
+    checkpoint = torch.load(path_2_saved_model)
+    unet.load_state_dict(checkpoint['model'])
+    unet.eval()
+    for param in unet.parameters():
+        param.requires_grad = False
+
+    # Parameters of newly constructed modules have requires_grad=True by default
+    model_2_finetune = unet
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    model_2_finetune = model_2_finetune.to(device)
+    loss = loss().to(device)
+
+
+    # Observe that only parameters of final layer are being optimized as
+    # opposed to before.
+    optimizer = torch.optim.SGD(model_2_finetune.parameters(), lr=0.01, momentum=0.9)
+
+    # Decay LR by a factor of 0.1 every 7 epochs
+    exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
+
+    model_2_finetune = train_model(model_2_finetune, loss, optimizer,
+                             exp_lr_scheduler, gen_loaders, num_epochs=n_epochs)
+    return model_2_finetune
+
 
 def train_model(model, criterion, optimizer, scheduler, dataloaders, num_epochs=25):
     since = time.time()
