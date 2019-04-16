@@ -76,7 +76,7 @@ class UnetgnFineTune(BackendModel):
         self.output_channels = 5
         self.input_size = 512
         self.model_fn = model_fn
-        self.opts = json.load(open("/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn/training/params.json", "r"))["model_opts"]
+        self.opts = json.load(open("/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn8/training/params.json", "r"))["model_opts"]
         self.inf_framework = InferenceFramework(Unet, self.opts)
         self.inf_framework.load_model(self.model_fn)
         for param in self.inf_framework.model.parameters():
