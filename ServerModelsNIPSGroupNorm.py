@@ -32,7 +32,7 @@ class GroupParams(nn.Module):
 
     def forward(self, x):
         x, conv1_out, conv1_dim = self.model.down_1(x)
-        x = x * self.gammas + self.betas
+
 
         # gammas = np.zeros((1, 32, 1, 1))
         # gammas[0, :8, 0, 0] = self.gammas.detach().numpy()[0]
@@ -63,7 +63,7 @@ class GroupParams(nn.Module):
         x = self.model.up_2(x, conv3_out, conv3_dim)
         x = self.model.up_3(x, conv2_out, conv2_dim)
         x = self.model.up_4(x, conv1_out, conv1_dim)
-
+        x = x * self.gammas + self.betas
 
         return self.model.conv_final(x)
 

@@ -51,7 +51,7 @@ class Unet(nn.Module):
         # down transformations
         max2d = nn.MaxPool2d(kernel_size=2, stride=2)
         self.down_1 = Down(self.conv_block(self.n_input_channels, 32), max2d)
-        self.down_2 = Down(self.conv_block(32, 64), max2d)
+        self.down_2 = Down(self.conv_block2(32, 64), max2d)
         self.down_3 = Down(self.conv_block2(64, 128), max2d)
         self.down_4 = Down(self.conv_block2(128, 256), max2d)
 
@@ -62,7 +62,7 @@ class Unet(nn.Module):
         conv_tr = lambda x, y: nn.ConvTranspose2d(x, y, kernel_size=2, stride=2)
         self.up_1 = Up(conv_tr(512, 256), self.conv_block2(512, 256))
         self.up_2 = Up(conv_tr(256, 128), self.conv_block2(256, 128))
-        self.up_3 = Up(conv_tr(128, 64), self.conv_block(128, 64))
+        self.up_3 = Up(conv_tr(128, 64), self.conv_block2(128, 64))
         self.up_4 = Up(conv_tr(64, 32), self.conv_block(64, 32))
 
         # Final output
