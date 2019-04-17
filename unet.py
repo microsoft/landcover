@@ -96,7 +96,7 @@ class Unet(nn.Module):
                 nn.Conv2d(dim_in, dim_out, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias),
                 nn.ReLU(inplace=True),
                 nn.Conv2d(dim_out, dim_out, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias),
-                GroupNormNN(dim_out),
+                GroupNorm2d(dim_out, num_groups=8, affine=True, track_running_stats=True),
                 nn.ReLU(inplace=True),
             )
         else:

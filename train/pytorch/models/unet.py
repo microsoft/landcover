@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import json
 import os
-import pytorch.utils.pytorch_model_utils as nn_utils
+from group_norm import GroupNorm2d
 
 class Down(nn.Module):
     """
@@ -25,6 +25,7 @@ class Up(nn.Module):
 
     Similar to the down blocks, but incorporates input from skip connections.
     """
+
     def __init__(self, up, conv):
         super(Up, self).__init__()
         self.conv = conv
@@ -50,18 +51,18 @@ class Unet(nn.Module):
         # down transformations
         max2d = nn.MaxPool2d(kernel_size=2, stride=2)
         self.down_1 = Down(self.conv_block(self.n_input_channels, 32), max2d)
-        self.down_2 = Down(self.conv_block(32, 64), max2d)
-        self.down_3 = Down(self.conv_block(64, 128), max2d)
-        self.down_4 = Down(self.conv_block(128, 256), max2d)
+        self.down_2 = Down(self.conv_block2(32, 64), max2d)
+        self.down_3 = Down(self.conv_block2(64, 128), max2d)
+        self.down_4 = Down(self.conv_block2(128, 256), max2d)
 
         # midpoint
-        self.conv5_block = self.conv_block(256, 512)
+        self.conv5_block = self.conv_block2(256, 512)
 
         # up transformations
         conv_tr = lambda x, y: nn.ConvTranspose2d(x, y, kernel_size=2, stride=2)
-        self.up_1 = Up(conv_tr(512, 256), self.conv_block(512, 256))
-        self.up_2 = Up(conv_tr(256, 128), self.conv_block(256, 128))
-        self.up_3 = Up(conv_tr(128, 64), self.conv_block(128, 64))
+        self.up_1 = Up(conv_tr(512, 256), self.conv_block2(512, 256))
+        self.up_2 = Up(conv_tr(256, 128), self.conv_block2(256, 128))
+        self.up_3 = Up(conv_tr(128, 64), self.conv_block2(128, 64))
         self.up_4 = Up(conv_tr(64, 32), self.conv_block(64, 32))
 
         # Final output
@@ -95,12 +96,31 @@ class Unet(nn.Module):
                 nn.Conv2d(dim_in, dim_out, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias),
                 nn.ReLU(inplace=True),
                 nn.Conv2d(dim_out, dim_out, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias),
-                #FIXME add num_groups as hyper param on json
-                nn_utils.GroupNorm(dim_out),
+                GroupNorm2d(dim_out, num_groups=8, affine=True, track_running_stats=True),
                 nn.ReLU(inplace=True),
             )
         else:
             return nn.Sequential(
+                nn.Conv2d(dim_in, dim_out, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(dim_out, dim_out, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias),
+                nn.ReLU(inplace=True)
+            )
+
+    def conv_block2(self, dim_in, dim_out, kernel_size=3, stride=1, padding=0, bias=True):
+        """
+        This is the main conv block for Unet. Two conv2d
+        :param dim_in:
+        :param dim_out:
+        :param kernel_size:
+        :param stride:
+        :param padding:
+        :param bias:
+        :param useBN:
+        :param useGN:
+        :return:
+        """
+        return nn.Sequential(
                 nn.Conv2d(dim_in, dim_out, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias),
                 nn.ReLU(inplace=True),
                 nn.Conv2d(dim_out, dim_out, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias),
@@ -137,4 +157,3 @@ if __name__ == "__main__":
     print(x.shape)
     del model
     del x
-    # print(x.shape)
