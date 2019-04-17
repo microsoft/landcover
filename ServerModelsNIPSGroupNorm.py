@@ -247,7 +247,7 @@ class UnetgnFineTune(BackendModel):
 
     def predict_entire_image_unet_fine(self, x):
         if torch.cuda.is_available():
-            self.model.cuda()
+            self.augment_model.cuda()
         norm_image = x
         _, w, h = norm_image.shape
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -255,7 +255,7 @@ class UnetgnFineTune(BackendModel):
 
         norm_image1 = norm_image[:, 130:w - (w % 892) + 130, 130:h - (h % 892) + 130]
         x_c_tensor1 = torch.from_numpy(norm_image1).float().to(device)
-        y_pred1 = self.model.forward(x_c_tensor1.unsqueeze(0))
+        y_pred1 = self.augment_model.forward(x_c_tensor1.unsqueeze(0))
         y_hat1 = (Variable(y_pred1).data).cpu().numpy()
         out[:, 92 + 130:w - (w % 892) + 130 - 92, 92 + 130:h - (h % 892) - 92 + 130] = y_hat1
         pred = np.rollaxis(out, 0, 3)
