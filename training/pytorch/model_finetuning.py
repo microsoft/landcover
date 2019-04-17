@@ -177,7 +177,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, num_epochs=
     model.load_state_dict(best_model_wts)
     return model
 
-def main():
+def main(finetune_function):
     params = json.load(open("/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_runningstats4/training/params.json", "r"))
     training_patches_fn = "training/data/ny_1m_2013_finetuning_train.txt"
     validation_patches_fn = "training/data/ny_1m_2013_finetuning_val.txt"
@@ -227,7 +227,7 @@ def main():
 
     dataloaders = {'train': data.DataLoader(training_set, **params_train), 'val': data.DataLoader(validation_set, **params_train)}
 
-    model = finetune(path, loss, dataloaders, params, n_epochs=10)
+    model = finetune_function(path, loss, dataloaders, params, n_epochs=10)
 
     savedir = "/mnt/blobfuse/train-output/conditioning/models/finetuning/"
     if not os.path.exists(savedir):
@@ -238,4 +238,4 @@ def main():
     torch.save(model.state_dict(), finetunned_fn)
 
 if __name__ == "__main__":
-    main()
+    main(finetune_sgd)
