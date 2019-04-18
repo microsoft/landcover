@@ -2,12 +2,10 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 import sys
-import os
 import time
 
 import bottle
 import argparse
-import functools
 import base64
 import json
 

@@ -7,7 +7,7 @@ from keras.layers import Concatenate, Cropping2D, Lambda
 
 from keras.losses import categorical_crossentropy
 
-from unet import level_block
+from train.unet import level_block
 from utils import load_nlcd_stats
 
 def jaccard_loss(y_true, y_pred, smooth=0.001, num_classes=7):                                                                              
