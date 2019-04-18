@@ -5,6 +5,7 @@ import json
 import os
 from training.pytorch.utils.group_norm import GroupNorm2d, GroupNormNN
 
+
 class Down(nn.Module):
     """
     Down blocks in U-Net
