@@ -1,5 +1,5 @@
 import torch.nn as nn
-import pytorch.utils.pytorch_model_utils as nn_utils
+import train.pytorch.utils.pytorch_model_utils as nn_utils
 
 def conv_block(in_dim,out_dim,act_fn):
     model = nn.Sequential(

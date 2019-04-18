@@ -1,4 +1,4 @@
-from pytorch.utils.fusionnet_blocks import *
+from train.pytorch.utils.fusionnet_blocks import *
 import torch
 
 class Conv_residual_conv(nn.modules.Module):
