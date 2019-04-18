@@ -3,10 +3,7 @@ import torch
 import torch.nn as nn
 import json
 import os
-
 from training.pytorch.utils.group_norm import GroupNormNN
-
-
 
 class Down(nn.Module):
     """
