@@ -2,8 +2,8 @@ from ServerModelsAbstract import BackendModel
 import torch
 import numpy as np
 import torch.nn as nn
-from train.pytorch.models.fusionnet import Fusionnet
-from train.pytorch.models.unet import Unet
+from training.pytorch.models.fusionnet import Fusionnet
+from training.pytorch.models.unet import Unet
 import os, json
 from torch.autograd import Variable
 

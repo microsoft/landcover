@@ -1,16 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="395917af-27f8-47c9-8932-686e5e0e609c" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/ServerModelsNIPSGroupNorm.py" beforeDir="false" afterPath="$PROJECT_DIR$/web-tool/ServerModelsNIPSGroupNorm.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fusionnet.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/group_norm.py" beforeDir="false" afterPath="$PROJECT_DIR$/train/pytorch/utils/group_norm.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/run_server.sh" beforeDir="false" afterPath="$PROJECT_DIR$/web-tool/run_server.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/train/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/train/models.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/train/pytorch/models/unet.py" beforeDir="false" afterPath="$PROJECT_DIR$/train/pytorch/models/unet.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/unet.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/web-tool/backend_server.py" beforeDir="false" afterPath="$PROJECT_DIR$/web-tool/backend_server.py" afterDir="false" />
-    </list>
+    <list default="true" id="395917af-27f8-47c9-8932-686e5e0e609c" name="Default Changelist" comment="" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -88,8 +79,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/train/pytorch/model_finetuning.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-1061">
-              <caret line="111" column="40" lean-forward="true" selection-start-line="111" selection-start-column="40" selection-end-line="111" selection-end-column="40" />
+            <state relative-caret-position="567">
+              <caret line="185" column="15" lean-forward="true" selection-start-line="185" selection-start-column="15" selection-end-line="185" selection-end-column="15" />
               <folding>
                 <element signature="e#0#18#0" expanded="true" />
               </folding>
@@ -229,7 +220,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1554830136944</updated>
-      <workItem from="1554830138177" duration="35055000" />
+      <workItem from="1554830138177" duration="35836000" />
     </task>
     <task id="LOCAL-00001" summary="Adding input fusionnet">
       <created>1555120395601</created>
@@ -256,11 +247,10 @@
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="35055000" />
+    <option name="totallyTimeSpent" value="35836000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="3907" y="25" width="3773" height="2135" extended-state="6" />
-    <editor active="true" />
     <layout>
       <window_info id="Favorites" side_tool="true" />
       <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.24979876" />
@@ -445,8 +435,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/train/pytorch/model_finetuning.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-1061">
-          <caret line="111" column="40" lean-forward="true" selection-start-line="111" selection-start-column="40" selection-end-line="111" selection-end-column="40" />
+        <state relative-caret-position="567">
+          <caret line="185" column="15" lean-forward="true" selection-start-line="185" selection-start-column="15" selection-end-line="185" selection-end-column="15" />
           <folding>
             <element signature="e#0#18#0" expanded="true" />
           </folding>
