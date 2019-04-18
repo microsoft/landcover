@@ -4,9 +4,9 @@ import numpy as np
 import json
 import torch.nn as nn
 from time import time
-from pytorch.utils.eval_segm import mean_IoU
+from .utils.eval_segm import mean_IoU
 from torch.optim import lr_scheduler
-from pytorch.utils.experiments_utils import (saveLoss, CheckpointSaver, improve_reproducibility, NamespaceFromDict)
+from .utils.experiments_utils import (saveLoss, CheckpointSaver, improve_reproducibility, NamespaceFromDict)
 
 
 class Framework:

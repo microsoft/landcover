@@ -67,11 +67,11 @@ class KerasDenseFineTune(BackendModel):
         seed_x_fn = ""
         seed_y_fn = ""
         if superres:
-            seed_x_fn = "data/seed_data_hr+sr_x.npy"
-            seed_y_fn = "data/seed_data_hr+sr_y.npy"
+            seed_x_fn = "web-tool/data/seed_data_hr+sr_x.npy"
+            seed_y_fn = "web-tool/data/seed_data_hr+sr_y.npy"
         else:
-            seed_x_fn = "data/seed_data_hr_x.npy"
-            seed_y_fn = "data/seed_data_hr_y.npy"
+            seed_x_fn = "web-tool/data/seed_data_hr_x.npy"
+            seed_y_fn = "web-tool/data/seed_data_hr_y.npy"
         for row in np.load(seed_x_fn):
             self.augment_base_x_train.append(row)
         for row in np.load(seed_y_fn):

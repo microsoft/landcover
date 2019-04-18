@@ -2,14 +2,14 @@ import numpy as np
 import torch
 import torch.nn as nn
 import json
-from pytorch.models.unet import Unet
-from pytorch.models.fusionnet import Fusionnet
+from train.pytorch.models.unet import Unet
+from train.pytorch.models.fusionnet import Fusionnet
 import time
 from torch.optim import lr_scheduler
 import copy
-from pytorch.utils.eval_segm import mean_IoU
-from pytorch.losses import (multiclass_ce, multiclass_dice_loss, multiclass_jaccard_loss, multiclass_tversky_loss)
-from pytorch.data_loader import DataGenerator
+from train.pytorch.utils.eval_segm import mean_IoU
+from train.pytorch.losses import (multiclass_ce, multiclass_dice_loss, multiclass_jaccard_loss, multiclass_tversky_loss)
+from train.pytorch.data_loader import DataGenerator
 from torch.utils import data
 import os
 
