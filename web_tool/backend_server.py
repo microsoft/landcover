@@ -58,7 +58,7 @@ class AugmentationState():
     @staticmethod
     def save(model_name):
         snapshot_id = AugmentationState.current_snapshot_string % (model_name, AugmentationState.current_snapshot_idx)
-        
+
         print("Saving state for %s" % (snapshot_id))
         model_fn = os.path.join(AugmentationState.BASE_DIR, "%s_model.p" % (snapshot_id))
         request_list_fn = os.path.join(AugmentationState.BASE_DIR, "%s_request_list.p" % (snapshot_id))
