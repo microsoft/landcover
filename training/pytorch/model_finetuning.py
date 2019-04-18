@@ -151,8 +151,8 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, num_epochs=
 
 def main():
     params = json.load(open("/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_runningstats4/training/params.json", "r"))
-    training_patches_fn = "data/ny_1m_2013_finetuning_train.txt"
-    validation_patches_fn = "data/ny_1m_2013_finetuning_val.txt"
+    training_patches_fn = "training/data/ny_1m_2013_finetuning_train.txt"
+    validation_patches_fn = "training/data/ny_1m_2013_finetuning_val.txt"
     f = open(training_patches_fn, "r")
     training_patches = f.read().strip().split("\n")
     f.close()
