@@ -15,6 +15,8 @@ import cv2
 import fiona
 import fiona.transform
 
+import rasterio
+
 import DataLoader
 import GeoTools
 import utils
@@ -159,13 +161,7 @@ def record_correction():
     bdst_row = int(np.floor(bdst_row))
     bdst_col = int(np.floor(bdst_col))
 
-    value_to_class_idx = {
-        "water" : 0,
-        "forest" : 1,
-        "field" : 2,
-        "built" : 3,
-    }
-    class_idx = value_to_class_idx[value]
+    class_idx = value
 
     tdst_row, bdst_row = min(tdst_row, bdst_row)-padding, max(tdst_row, bdst_row)-padding
     tdst_col, bdst_col = min(tdst_col, bdst_col)-padding, max(tdst_col, bdst_col)-padding
@@ -210,6 +206,7 @@ def pred_patch():
     # Inputs
     data = bottle.request.json
     extent = data["extent"]
+    color_list = data["colors"]
 
     # ------------------------------------------------------
     # Step 1
@@ -243,7 +240,7 @@ def pred_patch():
     #   Fix padding
     # ------------------------------------------------------
     output = AugmentationState.model.run(naip_data, naip_file_name, extent, padding)
-    assert output.shape[2] == 4, "The model function should return an image shaped as (height, width, num_classes)"
+    #assert output.shape[2] == 4, "The model function should return an image shaped as (height, width, num_classes)"
     
     if padding > 0:
         output = output[padding:-padding,padding:-padding,:]
@@ -253,18 +250,74 @@ def pred_patch():
     # Step 4
     #   Convert images to base64 and return  
     # ------------------------------------------------------
-    img_soft = np.round(utils.class_prediction_to_img(output, False)*255,0).astype(np.uint8)
+    img_soft = np.round(utils.class_prediction_to_img(output, False, color_list)*255,0).astype(np.uint8)
     img_soft = cv2.imencode(".png", cv2.cvtColor(img_soft, cv2.COLOR_RGB2BGR))[1].tostring()
     img_soft = base64.b64encode(img_soft).decode("utf-8")
     data["output_soft"] = img_soft
 
-    img_hard = np.round(utils.class_prediction_to_img(output, True)*255,0).astype(np.uint8)
+    img_hard = np.round(utils.class_prediction_to_img(output, True, color_list)*255,0).astype(np.uint8)
     img_hard = cv2.imencode(".png", cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGR))[1].tostring()
     img_hard = base64.b64encode(img_hard).decode("utf-8")
     data["output_hard"] = img_hard
 
     bottle.response.status = 200
     return json.dumps(data)
+
+
+def pred_tile():
+    ''' Method called for POST `/predPatch`'''
+    bottle.response.content_type = 'application/json'
+
+    # Inputs
+    data = bottle.request.json
+    extent = data["extent"]
+    color_list = data["colors"]
+   
+    geom = GeoTools.extent_to_transformed_geom(extent, "EPSG:4269")
+    try:
+        naip_file_name = DataLoader.lookup_tile_by_geom(geom)
+    except ValueError as e:
+        print(e)
+        bottle.response.status = 400
+        return json.dumps({"error": str(e)})
+
+    print("Loading tile: %s" % (naip_file_name))
+    f = rasterio.open(naip_file_name, "r")
+    naip_profile = f.meta
+    naip_data = f.read()
+    f.close()
+    naip_data = np.rollaxis(naip_data, 0, 3)
+
+    print(naip_profile)
+    
+    print("Running on tile")
+    output = AugmentationState.model.run(naip_data, naip_file_name, extent, 0)
+
+    print("Finished, output dimensions:", output.shape)
+
+    # ------------------------------------------------------
+    # Step 4
+    #   Convert images to base64 and return  
+    # ------------------------------------------------------
+    tmp_id = get_random_string(8)
+    img_hard = np.round(utils.class_prediction_to_img(output, True, color_list)*255,0).astype(np.uint8)
+    img_hard = cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGR)
+    cv2.imwrite("tmp/%s.png" % (tmp_id), img_hard)
+    data["downloadPNG"] = "tmp/%s.png" % (tmp_id)
+
+    new_profile = naip_profile.copy()
+    new_profile['driver'] = 'GTiff'
+    new_profile['dtype'] = 'uint8'
+    new_profile['count'] = 1
+    f = rasterio.open("tmp/%s.tif" % (tmp_id), 'w', **new_profile)
+    f.write(output.argmax(axis=2).astype(np.uint8), 1)
+    f.close()
+    data["downloadTIFF"] = "tmp/%s.tif" % (tmp_id)
+
+
+    bottle.response.status = 200
+    return json.dumps(data)
+
 
 def get_input():
     ''' Method called for POST `/getInput`
@@ -379,6 +432,9 @@ def main():
     app.add_hook("after_request", enable_cors)
     app.route("/predPatch", method="OPTIONS", callback=do_options)
     app.route('/predPatch', method="POST", callback=pred_patch)
+
+    app.route("/predTile", method="OPTIONS", callback=do_options)
+    app.route('/predTile', method="POST", callback=pred_tile)
     
     app.route("/getInput", method="OPTIONS", callback=do_options)
     app.route('/getInput', method="POST", callback=get_input)
