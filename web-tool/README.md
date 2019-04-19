@@ -7,16 +7,18 @@ This repository holds both the "frontend" web-application and "backend" web API 
 ## Setup Instructions
 
 - Create a new Deep Learning Virtual Machine (DLVM) Ubuntu image on Azure
+- `git clone git@github.com:Microsoft/landcover.git`
+- `cd landcover/web-tool`
 - Run `new_vm_setup.sh`, this will restart the machine at the end as I have faced GPU problems on newly provisioned DLVM image machines
-- Run `mount_remotes.sh` (must be re-run any time machine is re-started, as `/mnt/` directory is cleared on Azure DLVMs)
-- `git clone https://github.com/calebrob6/land-cover-mapping`
-- `cd land-cover-mapping`
+- Run `mount_remotes_development.sh` (must be re-run any time machine is re-started, as `/mnt/` directory is cleared on Azure DLVMs)
 - `cp -r /mnt/afs/chesapeake/demo_data/ data/`
+- `cd ..`
 - Open up ports 4040 and 4444 to the machine through the Azure Portal
-- `python frontend_server.py` this will start up a HTTP server on :4040 to serve the actual webpage
-- `python backend_server.py --model 1` will start up a HTTP server on :4444 that serves our precomputed results with the documented API
+- `export PYTHONPATH=.`
+- `python web-tool/frontend_server.py` this will start up a HTTP server on :4040 to serve the actual webpage
+- `python web-tool/backend_server.py --model 1` will start up a HTTP server on :4444 that serves our precomputed results with the documented API
   - alternatively use --model 2 to serve results that are computed from a CNTK model
-- `cp endpoints.js endpoints.mine.js`; Edit endpoints.mine.js to point to whichever backend server.py  instances you want (you can set alternate ports from command line flags)
+- `cp web-tool/endpoints.js web-tool/endpoints.mine.js`; Edit endpoints.mine.js to point to whichever backend server.py  instances you want (you can set alternate ports from command line flags)
 
 
 ## Overview

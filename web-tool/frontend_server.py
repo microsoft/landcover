@@ -10,7 +10,7 @@ import argparse
 
 @bottle.get("/")
 def root_app():
-    return bottle.static_file("index.html", root="")
+    return bottle.static_file("index.html", root="./web-tool/")
 
 @bottle.get("/favicon.ico")
 def favicon():
@@ -18,7 +18,7 @@ def favicon():
 
 @bottle.get("/<filepath:re:.*>")
 def everything_else(filepath):
-    return bottle.static_file(filepath, root="")
+    return bottle.static_file(filepath, root="./web-tool/")
 
 def main():
     parser = argparse.ArgumentParser(description="Frontend Server")
