@@ -69,15 +69,17 @@ def finetune_group_params(path_2_saved_model, loss, gen_loaders,params, n_epochs
                              exp_lr_scheduler, gen_loaders, num_epochs=n_epochs)
     return model_2_finetune
 
-def finetune_sgd(path_2_saved_model, loss, gen_loaders, params, n_epochs=25):
+def finetune_sgd(path_2_saved_model, loss, gen_loaders, params, n_epochs=25, last_k_layers=3, learning_rate=0.003):
     opts = params["model_opts"]
     unet = Unet(opts)
     checkpoint = torch.load(path_2_saved_model)
     unet.load_state_dict(checkpoint['model'])
     unet.eval()
-    for param in unet.parameters():
-        param.requires_grad = False
 
+    for layer in list(unet.children())[:-last_k_layers]:
+        for param in layer.parameters():
+            param.requires_grad = False
+    
     # Parameters of newly constructed modules have requires_grad=True by default
     model_2_finetune = unet
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
