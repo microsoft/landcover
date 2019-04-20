@@ -240,4 +240,7 @@ def main(finetune_function):
     torch.save(model.state_dict(), finetunned_fn)
 
 if __name__ == "__main__":
+    print("Group params")
+    main(finetune_group_params)
+    print("SGD on last 3 layers")
     main(finetune_sgd)
