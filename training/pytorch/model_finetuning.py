@@ -1,10 +1,14 @@
 import numpy as np
+from pprint import pprint
+from functools import partial
+from attr import attrs, attrib
+from datetime import datetime, timedelta
+
 import torch
 import torch.nn as nn
 import json
 from training.pytorch.models.unet import Unet
 from training.pytorch.models.fusionnet import Fusionnet
-import time
 from torch.optim import lr_scheduler
 import copy
 from training.pytorch.utils.eval_segm import mean_IoU
@@ -42,6 +46,13 @@ class GroupParams(nn.Module):
 
         return self.model.conv_final(x)
 
+
+@attrs
+class FineTuneResult(object):
+    best_accuracy = attrib(type=float)
+    train_duration = attrib(type=timedelta)
+    
+    
 def finetune_group_params(path_2_saved_model, loss, gen_loaders,params, n_epochs=25):
     opts = params["model_opts"]
     unet = Unet(opts)
@@ -69,7 +80,7 @@ def finetune_group_params(path_2_saved_model, loss, gen_loaders,params, n_epochs
                              exp_lr_scheduler, gen_loaders, num_epochs=n_epochs)
     return model_2_finetune
 
-def finetune_sgd(path_2_saved_model, loss, gen_loaders, params, n_epochs=25, last_k_layers=3, learning_rate=0.003):
+def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, n_epochs=25, last_k_layers=3, learning_rate=0.005, optimizer_method=torch.optim.SGD):
     opts = params["model_opts"]
     unet = Unet(opts)
     checkpoint = torch.load(path_2_saved_model)
@@ -89,8 +100,13 @@ def finetune_sgd(path_2_saved_model, loss, gen_loaders, params, n_epochs=25, las
 
     # Observe that only parameters of final layer are being optimized as
     # opposed to before.
-    optimizer = torch.optim.SGD(model_2_finetune.parameters(), lr=0.01, momentum=0.9)
-
+    if optimizer_method == torch.optim.SGD:
+        optimizer = torch.optim.SGD(model_2_finetune.parameters(), lr=learning_rate, momentum=0.9)
+    elif optimizer_method == torch.optim.Adam:
+        optimizer = torch.optim.Adam(model_2_finetune.parameters(), lr=learning_rate, eps=1e-5)
+    else:
+        optimizer = torch.optim.SGD(model_2_finetune.parameters(), lr=learning_rate, momentum=0.9)
+        
     # Decay LR by a factor of 0.1 every 7 epochs
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
@@ -100,7 +116,7 @@ def finetune_sgd(path_2_saved_model, loss, gen_loaders, params, n_epochs=25, las
 
 
 def train_model(model, criterion, optimizer, scheduler, dataloaders, num_epochs=25):
-    since = time.time()
+    since = datetime.now()
 
     best_model_wts = copy.deepcopy(model.state_dict())
     best_acc = 0.0
@@ -170,16 +186,17 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, num_epochs=
 
         print()
 
-    time_elapsed = time.time() - since
+    duration = datetime.now() - since
+    seconds_elapsed = duration.total_seconds()
     print('Training complete in {:.0f}m {:.0f}s'.format(
-        time_elapsed // 60, time_elapsed % 60))
+        seconds_elapsed // 60, seconds_elapsed % 60))
     print('Best val Acc: {:4f}'.format(best_acc))
 
     # load best model weights
     model.load_state_dict(best_model_wts)
-    return model
+    return model, FineTuneResult(best_accuracy=best_acc, train_duration=duration)
 
-def main(finetune_function):
+def main(finetune_methods):
     params = json.load(open("/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_runningstats4/training/params.json", "r"))
     training_patches_fn = "training/data/ny_1m_2013_finetuning_train.txt"
     validation_patches_fn = "training/data/ny_1m_2013_finetuning_val.txt"
@@ -229,18 +246,24 @@ def main(finetune_function):
 
     dataloaders = {'train': data.DataLoader(training_set, **params_train), 'val': data.DataLoader(validation_set, **params_train)}
 
-    model = finetune_function(path, loss, dataloaders, params, n_epochs=10)
+    results = {}
+    for (finetune_method_name, finetune_function) in finetune_methods:
+        model, result = finetune_function(path, loss, dataloaders, params, n_epochs=10)
+        results[finetune_method_name] = result
+        
+        savedir = "/mnt/blobfuse/train-output/conditioning/models/finetuning/"
+        if not os.path.exists(savedir):
+            os.makedirs(savedir)
 
-    savedir = "/mnt/blobfuse/train-output/conditioning/models/finetuning/"
-    if not os.path.exists(savedir):
-        os.makedirs(savedir)
+        if model_opts["model"] == "unet":
+            finetunned_fn = savedir + "finetuned_unet_gn.pth.tar"
+            torch.save(model.state_dict(), finetunned_fn)
 
-    if model_opts["model"] == "unet":
-        finetunned_fn = savedir + "finetuned_unet_gn.pth.tar"
-    torch.save(model.state_dict(), finetunned_fn)
-
+    pprint(results)
+            
 if __name__ == "__main__":
-    print("Group params")
-    main(finetune_group_params)
-    print("SGD on last 3 layers")
-    main(finetune_sgd)
+    main([
+        ('Group params', finetune_group_params),
+        ('SGD on last 3 layers', partial(finetune_last_k_layers, optimizer_method=torch.optim.SGD)),
+        ('Adam on last 3 layers', partial(finetune_last_k_layers, optimizer_method=torch.optim.Adam)),
+    ])
