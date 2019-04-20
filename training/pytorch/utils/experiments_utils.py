@@ -12,7 +12,6 @@ class NamespaceFromDict(object):
     def __init__(self, d):
         self.__dict__.update(d)
 
-
 def improve_reproducibility(seed=0):
     """Takes steps for reproducibility
 
@@ -46,6 +45,7 @@ def seed_all_rngs(seed=0):
     np.random.seed(seed)
     random.seed(seed)
     torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
 
 def saveLoss(train_loss, val_loss, save_dir, name = 'loss_plots'):
     """
