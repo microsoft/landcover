@@ -12,10 +12,12 @@ from training.pytorch.models.fusionnet import Fusionnet
 from torch.optim import lr_scheduler
 import copy
 from training.pytorch.utils.eval_segm import mean_IoU
+from training.pytorch.utils.experiments_utils import improve_reproducibility
 from training.pytorch.losses import (multiclass_ce, multiclass_dice_loss, multiclass_jaccard_loss, multiclass_tversky_loss)
 from training.pytorch.data_loader import DataGenerator
 from torch.utils import data
 import os
+
 
 class GroupParams(nn.Module):
 
@@ -248,6 +250,7 @@ def main(finetune_methods):
 
     results = {}
     for (finetune_method_name, finetune_function) in finetune_methods:
+        improve_reproducibility()
         model, result = finetune_function(path, loss, dataloaders, params, n_epochs=10)
         results[finetune_method_name] = result
         
