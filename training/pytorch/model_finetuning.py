@@ -277,6 +277,10 @@ def main(finetune_methods):
 if __name__ == "__main__":
     main([
         ('Group params', finetune_group_params),
-        ('SGD on last 3 layers', partial(finetune_last_k_layers, optimizer_method=torch.optim.SGD)),
-        ('Adam on last 3 layers', partial(finetune_last_k_layers, optimizer_method=torch.optim.Adam)),
+        #('SGD on last 1 layers', partial(finetune_last_k_layers, optimizer_method=torch.optim.SGD, last_k_layers=1)),
+        ('Adam on last 1 layers', partial(finetune_last_k_layers, optimizer_method=torch.optim.Adam, last_k_layers=1)),
+        #('SGD on last 2 layers', partial(finetune_last_k_layers, optimizer_method=torch.optim.SGD, last_k_layers=2)),
+        ('Adam on last 2 layers', partial(finetune_last_k_layers, optimizer_method=torch.optim.Adam, last_k_layers=2)),
+        #('SGD on last 4 layers', partial(finetune_last_k_layers, optimizer_method=torch.optim.SGD, last_k_layers=4)),
+        ('Adam on last 4 layers', partial(finetune_last_k_layers, optimizer_method=torch.optim.Adam, last_k_layers=4)),
     ])
