@@ -16,7 +16,7 @@ This repository holds both the "frontend" web-application and "backend" web API 
 - Open up ports 4040 and 4444 to the machine through the Azure Portal
 - `export PYTHONPATH=.`
 - `python web-tool/frontend_server.py` this will start up a HTTP server on :4040 to serve the actual webpage
-- `python web-tool/backend_server.py --model 1` will start up a HTTP server on :4444 that serves our precomputed results with the documented API
+- `python web-tool/backend_server.py --port 4444 --model nips_sr --fine_tune last_layer --model_fn /mnt/blobfuse/train-output/ForICCV/ForICCV-landcover-batch_size-16-loss-superres-lr-0.003-model-unet2-schedule-stepped-note-replication_1/final_model.h5 --gpu 0 --verbose` will start up a HTTP server on :4444 that serves our precomputed results with the documented API
   - alternatively use --model 2 to serve results that are computed from a CNTK model
 - `cp web-tool/endpoints.js web-tool/endpoints.mine.js`; Edit endpoints.mine.js to point to whichever backend server.py  instances you want (you can set alternate ports from command line flags)
 

@@ -325,10 +325,19 @@ def main():
             "iclr_cntk",
             "nips_sr",
             "nips_hr",
-            "nips_gn"
+            "nips_gn",
         ],
         help="Model to use", required=True
     )
+    parser.add_argument("--fine_tune", action="store", dest="fine_tune",
+        choices=[
+            "last_layer",
+            "last_k_layers",
+            "group_norm"
+        ],
+        help="Model to use", required=True
+    )
+
     parser.add_argument("--model_fn", action="store", dest="model_fn", type=str, help="Model fn to use", default=None)
     parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", default=0)
 
@@ -345,13 +354,15 @@ def main():
     elif args.model == "iclr_cntk":
         model = ServerModelsICLRFormat.CNTKModel(args.model_fn, args.gpuid)
     elif args.model == "nips_sr":
-        model = ServerModelsNIPS.KerasDenseFineTune(args.model_fn, args.gpuid, superres=True)
+        if args.fine_tune == "last_layer":
+            model = ServerModelsNIPS.KerasDenseFineTune(args.model_fn, args.gpuid, superres=True)
+        elif args.fine_tune == "last_k_layers":
+            model = ServerModelsNIPS.KerasBackPropFineTune(args.model_fn, args.gpuid, superres=True)
     elif args.model == "nips_hr":
-        model = ServerModelsNIPS.KerasDenseFineTune(args.model_fn, args.gpuid, superres=False)
-    elif args.model == "nips_sr_last_k_fine_tune":
-        model = ServerModelsNIPS.KerasBackPropFineTune(args.model_fn, args.gpuid, superres=True)
-    elif args.model == "nips_hr_last_k_fine_tune":
-        model = ServerModelsNIPS.KerasBackPropFineTune(args.model_fn, args.gpuid, superres=False)
+        if args.fine_tune == "last_layer":
+            model = ServerModelsNIPS.KerasDenseFineTune(args.model_fn, args.gpuid, superres=False)
+        elif args.fine_tune == "last_k_layers":
+            model = ServerModelsNIPS.KerasBackPropFineTune(args.model_fn, args.gpuid, superres=False)
     elif args.model == "nips_gn":
         model = ServerModelsNIPSGroupNorm.UnetgnFineTune(args.model_fn, args.gpuid)
     else:
