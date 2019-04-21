@@ -22,7 +22,6 @@ class multiclass_ce(nn.modules.Module):
     def __init__(self):
         super(multiclass_ce, self).__init__()
         self.crossentropy = nn.CrossEntropyLoss(ignore_index = 0, size_average=True)
-
     def __call__(self,y_true, y_pred):
         loss = self.crossentropy(y_pred, y_true)
         return loss
