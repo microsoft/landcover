@@ -184,8 +184,8 @@ class UnetgnFineTune(BackendModel):
         self.num_corrected_pixels += number_corrected_pixels
         self.batch_count += batch_count
 
-        batch_arr_x = np.zeros((batch_count, 4, self.input_size, self.input_size))
-        batch_arr_y = np.zeros((batch_count, self.input_size, self.input_size))
+        batch_arr_x = np.zeros((1, 4, self.input_size, self.input_size))
+        batch_arr_y = np.zeros((1, self.input_size, self.input_size))
         i, j = 0, 0
         for im in batch_x:
             batch_arr_x[i, :, :, :] = im
@@ -195,9 +195,7 @@ class UnetgnFineTune(BackendModel):
             batch_arr_y[j, :, :] = np.argmax(y, axis=2)
             j += 1
         batch_y = torch.from_numpy(batch_arr_y).float().to(device)
-
-        learning_rate *= (self.input_size * self.input_size * len(batch_x) * len(self.batch_x)) / self.num_corrected_pixels
-
+        
         optimizer = torch.optim.Adam(self.augment_model.parameters(), lr=learning_rate, eps=1e-5)
         optimizer.zero_grad()
         criterion = multiclass_ce().to(device)
