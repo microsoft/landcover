@@ -177,11 +177,11 @@ class UnetgnFineTune(BackendModel):
                 correction_labels_slice = correction_labels[y_index:y_index + self.input_size,
                                           x_index:x_index + self.input_size, :]
                 # correction_labels = test_correction_labels[y_index:y_index+self.input_size, x_index:x_index+self.input_size, :]
-                if (correction_labels_slice.shape[0] == naip_im.shape[1] and correction_labels_slice.shape[1] == naip_im.shape[2]):
-                    batch_x.append(naip_im)
-                    batch_y.append(correction_labels_slice)
-                    batch_count += 1
-                    number_corrected_pixels += len(correction_labels_slice.nonzero()[0])
+                #if (correction_labels_slice.shape[0] == naip_im.shape[1] and correction_labels_slice.shape[1] == naip_im.shape[2]):
+                batch_x.append(naip_im)
+                batch_y.append(correction_labels_slice)
+                batch_count += 1
+                number_corrected_pixels += len(correction_labels_slice.nonzero()[0])
 
         self.batch_x.append(batch_x)
         self.batch_y.append(batch_y)
