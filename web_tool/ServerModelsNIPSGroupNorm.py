@@ -178,7 +178,6 @@ class UnetgnFineTune(BackendModel):
                 correction_labels_slice = correction_labels[y_index:y_index + self.input_size,
                                           x_index:x_index + self.input_size, :]
                 # correction_labels = test_correction_labels[y_index:y_index+self.input_size, x_index:x_index+self.input_size, :]
-
         self.batch_x.append(batch_x)
         self.batch_y.append(batch_y)
         self.num_corrected_pixels += number_corrected_pixels
