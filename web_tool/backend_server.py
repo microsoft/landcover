@@ -60,14 +60,10 @@ class AugmentationState():
     def save(model_name):
         snapshot_id = AugmentationState.current_snapshot_string % (model_name, AugmentationState.current_snapshot_idx)
 
-        print("Saving state for %s" % (snapshot_id))
-        model_fn = os.path.join(AugmentationState.BASE_DIR, "%s_model.p" % (snapshot_id))
-        request_list_fn = os.path.join(AugmentationState.BASE_DIR, "%s_request_list.p" % (snapshot_id))
+        #print("Saving state for %s" % (snapshot_id))
+        #joblib.dump(AugmentationState.model, "web-tool/output/%s_model.p" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)
+        #joblib.dump(AugmentationState.request_list, "web-tool/output/%s_request_list.p" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)
 
-        if not AugmentationState.debug_mode:
-            joblib.dump(AugmentationState.model, model_fn, protocol=pickle.HIGHEST_PROTOCOL)
-            joblib.dump(AugmentationState.request_list, request_list_fn, protocol=pickle.HIGHEST_PROTOCOL)
-        
         #AugmentationState.current_snapshot_idx += 1
 
         # TODO: Save other stuff
