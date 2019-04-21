@@ -184,8 +184,8 @@ class UnetgnFineTune(BackendModel):
         self.num_corrected_pixels += number_corrected_pixels
         self.batch_count += batch_count
 
-        batch_arr_x = np.zeros((1, 4, self.input_size, self.input_size))
-        batch_arr_y = np.zeros((1, self.input_size, self.input_size))
+        batch_arr_x = np.zeros((batch_count, 4, self.input_size, self.input_size))
+        batch_arr_y = np.zeros((batch_count, self.input_size, self.input_size))
         i, j = 0, 0
         for im in batch_x:
             batch_arr_x[i, :, :, :] = im
