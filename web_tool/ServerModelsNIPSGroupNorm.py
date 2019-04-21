@@ -215,7 +215,7 @@ class UnetgnFineTune(BackendModel):
         # pdb.set_trace()
 
         success = True
-        message = "Re-trained model with %d samples" % num_labels
+        message = "Fine-tuned Group norm params with %d samples. 4 Groups. 8 params, 1 layer." % num_labels
 
         return success, message
 
