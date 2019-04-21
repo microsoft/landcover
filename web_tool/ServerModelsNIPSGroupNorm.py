@@ -356,7 +356,7 @@ class FusionnetgnFineTune(BackendModel):
         self.correction_labels = None
         self.tile_padding = 0
 
-        self.down_weight_padding = 40
+        self.down_weight_padding = 20
 
         self.stride_x = self.input_size - self.down_weight_padding * 2
         self.stride_y = self.input_size - self.down_weight_padding * 2
