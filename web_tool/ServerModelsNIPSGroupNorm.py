@@ -117,7 +117,7 @@ class UnetgnFineTune(BackendModel):
         self.correction_labels = None
         self.tile_padding = 0
 
-        self.down_weight_padding = 20
+        self.down_weight_padding = 10
 
         self.stride_x = self.input_size - self.down_weight_padding * 2
         self.stride_y = self.input_size - self.down_weight_padding * 2
@@ -148,7 +148,7 @@ class UnetgnFineTune(BackendModel):
         return output
 
 #FIXME: add retrain method
-    def retrain(self, train_steps=10, corrections_from_ui=True, learning_rate=0.01):
+    def retrain(self, train_steps=20, corrections_from_ui=True, learning_rate=0.01):
         num_labels = np.count_nonzero(self.correction_labels)
         print("Fine tuning group norm params with %d new labels. 4 Groups, 8 Params" % num_labels)
 
