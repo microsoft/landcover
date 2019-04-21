@@ -148,7 +148,7 @@ class UnetgnFineTune(BackendModel):
         return output
 
 #FIXME: add retrain method
-    def retrain(self, train_steps=10, corrections_from_ui=True, learning_rate=0.01):
+    def retrain(self, train_steps=10, corrections_from_ui=True, learning_rate=0.005):
         num_labels = np.count_nonzero(self.correction_labels)
         print("Fitting model with %d new labels" % num_labels)
 
