@@ -178,19 +178,14 @@ class UnetgnFineTune(BackendModel):
                 correction_labels_slice = correction_labels[y_index:y_index + self.input_size,
                                           x_index:x_index + self.input_size, :]
                 # correction_labels = test_correction_labels[y_index:y_index+self.input_size, x_index:x_index+self.input_size, :]
-                #if (correction_labels_slice.shape[0] == naip_im.shape[1] and correction_labels_slice.shape[1] == naip_im.shape[2]):
-                batch_x.append(naip_im)
-                batch_y.append(correction_labels_slice)
-                batch_count += 1
-                number_corrected_pixels += len(correction_labels_slice.nonzero()[0])
 
         self.batch_x.append(batch_x)
         self.batch_y.append(batch_y)
         self.num_corrected_pixels += number_corrected_pixels
         self.batch_count += batch_count
 
-        batch_arr_x = np.zeros((batch_count, 4, self.input_size, self.input_size))
-        batch_arr_y = np.zeros((batch_count, self.input_size, self.input_size))
+        batch_arr_x = np.zeros((1, 4, self.input_size, self.input_size))
+        batch_arr_y = np.zeros((1, self.input_size, self.input_size))
         i, j = 0, 0
         for im in batch_x:
             batch_arr_x[i, :, :, :] = im
@@ -200,8 +195,6 @@ class UnetgnFineTune(BackendModel):
             batch_arr_y[j, :, :] = np.argmax(y, axis=2)
             j += 1
         batch_y = torch.from_numpy(batch_arr_y).float().to(device)
-
-        #learning_rate *= (self.input_size * self.input_size * len(batch_x) * len(self.batch_x)) / self.num_corrected_pixels
 
         optimizer = torch.optim.Adam(self.augment_model.parameters(), lr=learning_rate, eps=1e-5)
         optimizer.zero_grad()
