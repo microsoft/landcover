@@ -74,7 +74,7 @@ class UnetgnFineTune(BackendModel):
         os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
         os.environ["CUDA_VISIBLE_DEVICES"] = str(gpuid)
         self.output_channels = 5
-        self.input_size = 512
+        self.input_size = 240
         self.model_fn = model_fn
         self.opts = json.load(open("/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn8/training/params.json", "r"))["model_opts"]
         self.inf_framework = InferenceFramework(Unet, self.opts)
@@ -177,20 +177,19 @@ class UnetgnFineTune(BackendModel):
                 correction_labels_slice = correction_labels[y_index:y_index + self.input_size,
                                           x_index:x_index + self.input_size, :]
                 # correction_labels = test_correction_labels[y_index:y_index+self.input_size, x_index:x_index+self.input_size, :]
-
-                batch_x.append(naip_im)
-                batch_y.append(correction_labels_slice)
-
-                batch_count += 1
-                number_corrected_pixels += len(correction_labels_slice.nonzero()[0])
+                if (correction_labels_slice.shape[0] == naip_im.shape[1] and correction_labels_slice.shape[1] == naip_im.shape[2]):
+                    batch_x.append(naip_im)
+                    batch_y.append(correction_labels_slice)
+                    batch_count += 1
+                    number_corrected_pixels += len(correction_labels_slice.nonzero()[0])
 
         self.batch_x.append(batch_x)
         self.batch_y.append(batch_y)
         self.num_corrected_pixels += number_corrected_pixels
         self.batch_count += batch_count
 
-        batch_arr_x = np.zeros((batch_count, 4, self.input_size, self.input_size))
-        batch_arr_y = np.zeros((batch_count, self.input_size, self.input_size))
+        batch_arr_x = np.zeros((1, 4, self.input_size, self.input_size))
+        batch_arr_y = np.zeros((1, self.input_size, self.input_size))
         i, j = 0, 0
         for im in batch_x:
             batch_arr_x[i, :, :, :] = im
@@ -201,7 +200,7 @@ class UnetgnFineTune(BackendModel):
             j += 1
         batch_y = torch.from_numpy(batch_arr_y).float().to(device)
 
-        optimizer = torch.optim.Adam(self.augment_model.parameters(), lr=0.01)
+        optimizer = torch.optim.Adam(self.augment_model.parameters(), lr=learning_rate, eps=1e-5)
         optimizer.zero_grad()
         criterion = multiclass_ce().to(device)
         # pdb.set_trace()
@@ -394,7 +393,7 @@ class FusionnetgnFineTune(BackendModel):
 #FIXME: add retrain method
     def retrain(self, train_steps=10, corrections_from_ui=True, learning_rate=0.01):
         num_labels = np.count_nonzero(self.correction_labels)
-        print("Fitting model with %d new labels" % num_labels)
+        print("Fine-tuning Group norm params with %d new labels" % num_labels)
 
         height = self.naip_data.shape[1]
         width = self.naip_data.shape[2]
@@ -445,7 +444,7 @@ class FusionnetgnFineTune(BackendModel):
             j += 1
         batch_y = torch.from_numpy(batch_arr_y).float().to(device)
 
-        optimizer = torch.optim.Adam(self.augment_model.parameters(), lr=0.01)
+        optimizer = torch.optim.Adam(self.augment_model.parameters(), lr=learning_rate)
         optimizer.zero_grad()
         criterion = multiclass_ce().to(device)
         # pdb.set_trace()
