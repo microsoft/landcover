@@ -31,6 +31,7 @@ class GroupParams(nn.Module):
         self.model = model
 
     def forward(self, x):
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         x, conv1_out, conv1_dim = self.model.down_1(x)
 
 
@@ -46,8 +47,8 @@ class GroupParams(nn.Module):
         # betas[0, 16:24, 0, 0] = self.betas.detach().numpy()[2]
         # betas[0, 24:32, 0, 0] = self.betas.detach().numpy()[3]
 
-       # gammas = torch.Tensor(gammas).to('cuda')
-       # betas = torch.Tensor(betas).to('cuda')
+        self.gammas.to(device)
+        self.betas.to(device)
 
 
         x, conv2_out, conv2_dim = self.model.down_2(x)
