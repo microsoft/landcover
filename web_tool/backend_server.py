@@ -34,7 +34,6 @@ def get_random_string(length):
     return ''.join([alphabet[np.random.randint(0, len(alphabet))] for i in range(length)])
 
 class AugmentationState():
-    #BASE_DIR = "output/"
     BASE_DIR = "/mnt/blobfuse/pred-output/user_study/"
     current_snapshot_string = "%s_" + get_random_string(8) + "_%d"
     current_snapshot_idx = 0
