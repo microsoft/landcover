@@ -34,7 +34,9 @@ def get_random_string(length):
     return ''.join([alphabet[np.random.randint(0, len(alphabet))] for i in range(length)])
 
 class AugmentationState():
-    current_snapshot_string = "%s_%d"
+    #BASE_DIR = "output/"
+    BASE_DIR = "/mnt/blobfuse/pred-output/user_study/"
+    current_snapshot_string = "%s_" + get_random_string(8) + "_%d"
     current_snapshot_idx = 0
     model = None
 
@@ -56,8 +58,11 @@ class AugmentationState():
         snapshot_id = AugmentationState.current_snapshot_string % (model_name, AugmentationState.current_snapshot_idx)
 
         print("Saving state for %s" % (snapshot_id))
-        joblib.dump(AugmentationState.model, ROOT_DIR + "/output/%s_model.p" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)
-        joblib.dump(AugmentationState.request_list, ROOT_DIR + "/output/%s_request_list.p" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)
+        model_fn = os.path.join(AugmentationState.BASE_DIR, "%s_model.p" % (snapshot_id))
+        request_list_fn = os.path.join(AugmentationState.BASE_DIR, "%s_request_list.p" % (snapshot_id))
+
+        joblib.dump(AugmentationState.model, model_fn, protocol=pickle.HIGHEST_PROTOCOL)
+        joblib.dump(AugmentationState.request_list, request_list_fn, protocol=pickle.HIGHEST_PROTOCOL)
         
         AugmentationState.current_snapshot_idx += 1
 

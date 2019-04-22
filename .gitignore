@@ -12,3 +12,6 @@ sync_up.sh
 .idea/
 mount_remotes_deployment.sh
 mount_remotes_development.sh
+
+data/
+tiles/
