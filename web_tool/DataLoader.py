@@ -135,14 +135,14 @@ def get_data_by_extent(naip_fn, extent, geo_data_type, return_transforms=False):
     f_index = f.index
     f_crs = f.crs["init"]
     geom = GeoTools.extent_to_transformed_geom(extent, f.crs["init"])
-    b_geom = shapely.geometry.shape(geom)
-    minx, miny, maxx, maxy = b_geom.bounds
-    geomb = shapely.geometry.mapping(shapely.geometry.box(minx, miny, maxx, maxy, ccw=True))
-    img, _ = rasterio.mask.mask(f, [geomb], crop=True)
-    _, r, _ = img.shape
+   # b_geom = shapely.geometry.shape(geom)
+   # minx, miny, maxx, maxy = b_geom.bounds
+   # geomb = shapely.geometry.mapping(shapely.geometry.box(minx, miny, maxx, maxy, ccw=True))
+   # img, _ = rasterio.mask.mask(f, [geomb], crop=True)
+   # _, r, _ = img.shape
 
-    #pad_rad = 54 #TODO: this might need to be changed for much larger inputs
-    pad_rad = int((890 - r) / 2)  #
+    pad_rad = 369 #TODO: this might need to be changed for much larger inputs
+   # pad_rad = int((890 - r) / 2)  #
     buffed_geom = shapely.geometry.shape(geom).buffer(pad_rad)
     minx, miny, maxx, maxy = buffed_geom.bounds
     geom = shapely.geometry.mapping(shapely.geometry.box(minx, miny, maxx, maxy, ccw=True))
