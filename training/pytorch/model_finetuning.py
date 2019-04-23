@@ -40,7 +40,6 @@ class GroupParams(nn.Module):
 
     def forward(self, x):
         x, conv1_out, conv1_dim = self.model.down_1(x)
-        x = x * self.gammas + self.betas
 
         x, conv2_out, conv2_dim = self.model.down_2(x)
 
@@ -55,7 +54,7 @@ class GroupParams(nn.Module):
         x = self.model.up_2(x, conv3_out, conv3_dim)
         x = self.model.up_3(x, conv2_out, conv2_dim)
         x = self.model.up_4(x, conv1_out, conv1_dim)
-
+        x = x * self.gammas + self.betas
 
         return self.model.conv_final(x)
 
@@ -84,7 +83,7 @@ def finetune_group_params(path_2_saved_model, loss, gen_loaders,params, n_epochs
 
     # Observe that only parameters of final layer are being optimized as
     # opposed to before.
-    optimizer = torch.optim.SGD(model_2_finetune.parameters(), lr=0.01, momentum=0.9)
+    optimizer = torch.optim.Adam(model_2_finetune.parameters(), lr=0.01, eps=1e-5)
 
     # Decay LR by a factor of 0.1 every 7 epochs
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
