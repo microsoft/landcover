@@ -149,7 +149,7 @@ class UnetgnFineTune(BackendModel):
         return output
 
 #FIXME: add retrain method
-    def retrain(self, train_steps=100, corrections_from_ui=True, learning_rate=0.004):
+    def retrain(self, train_steps=25, corrections_from_ui=True, learning_rate=0.004):
         num_labels = np.count_nonzero(self.correction_labels)
         print("Fine tuning group norm params with %d new labels. 4 Groups, 8 Params" % num_labels)
 
@@ -184,6 +184,7 @@ class UnetgnFineTune(BackendModel):
         batch_y = torch.from_numpy(batch_y).float().to(device)
         self.init_model()
         optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate, eps=1e-5)
+
         optimizer.zero_grad()
         criterion = multiclass_ce().to(device)
 
