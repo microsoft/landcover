@@ -1,3 +1,4 @@
+import argparse
 import numpy as np
 from pprint import pprint
 from functools import partial
@@ -18,6 +19,16 @@ from training.pytorch.data_loader import DataGenerator
 from torch.utils import data
 import os
 
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument('--config_file', type=str, default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/params.json", help="json file containing the configuration")
+
+parser.add_argument('--model_file', type=str,
+                    help="Checkpoint saved model",
+                    default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/checkpoint_best.pth.tar")
+
+args = parser.parse_args()
 
 class GroupParams(nn.Module):
 
@@ -199,7 +210,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, num_epochs=
     return model, FineTuneResult(best_accuracy=best_acc, train_duration=duration)
 
 def main(finetune_methods):
-    params = json.load(open("/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_runningstats4/training/params.json", "r"))
+    params = json.load(open(args.config_file, "r"))
     training_patches_fn = "training/data/ny_1m_2013_finetuning_train.txt"
     validation_patches_fn = "training/data/ny_1m_2013_finetuning_val.txt"
     f = open(training_patches_fn, "r")
@@ -244,7 +255,7 @@ def main(finetune_methods):
         print("Option {} not supported. Available options: dice, ce, jaccard, tversky".format(train_opts["loss"]))
         raise NotImplementedError
 
-    path = "/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_runningstats4/training/checkpoint_best.pth.tar"
+    path = args.model_file
 
     dataloaders = {'train': data.DataLoader(training_set, **params_train), 'val': data.DataLoader(validation_set, **params_train)}
 
