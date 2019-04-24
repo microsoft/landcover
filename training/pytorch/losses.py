@@ -14,6 +14,16 @@ class multiclass_ce(nn.modules.Module):
         loss = self.crossentropy(y_pred, y_true)
         return loss
 
+class multiclass_ce_points(nn.modules.Module):
+    def __init__(self):
+        super(multiclass_ce_points, self).__init__()
+        self.crossentropy = nn.CrossEntropyLoss(ignore_index=0, reduction='mean')
+
+    def __call__(self,y_true, y_pred):
+        loss = self.crossentropy(y_pred, y_true)
+        return loss
+
+    
 class weighted_ce_loss(nn.modules.Module):
     def __init__(self):
         super(weighted_ce_loss, self).__init__()
