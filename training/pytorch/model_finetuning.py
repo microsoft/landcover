@@ -44,7 +44,6 @@ parser.add_argument('--log_fn', type=str, help="Where to store training results"
 parser.add_argument('--model_output_directory', help='Where to store fine-tuned model', default='/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/val/val2/')
 
 
-
 args = parser.parse_args()
 
 class GroupParams(nn.Module):
@@ -145,13 +144,12 @@ def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, hyper_
                                    exp_lr_scheduler, gen_loaders, hyper_parameters, log_writer, num_epochs=n_epochs)
     return model_2_finetune
 
-
 def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=5, superres=False, masking=True):
     global results_writer
     
     # mask_id indices (points per patch): [1, 2, 3, 4, 5, 10, 15, 20, 40, 60, 80, 100]
     mask_id = hyper_parameters['mask_id']
-    
+
     since = datetime.now()
 
     best_model_wts = copy.deepcopy(model.state_dict())
@@ -206,6 +204,8 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
                 
                 inputs = inputs.to(device)
                 labels = labels.to(device)
+                masks = masks.to(device)
+                labels = labels * masks[:, mask_id, 94:240 - 94, 94:240 - 94]
 
                 if masking and phase == 'train':
                     masks = masks.float()
@@ -300,7 +300,7 @@ def main(finetune_methods, validation_patches_fn=None):
     results_file = open(args.log_fn, 'w+')
     results_writer = csv.DictWriter(results_file, ['run_id', 'hyper_parameters', 'epoch', 'train_IoU', 'train_loss', 'val_IoU', 'val_loss', 'total_time'])
     results_writer.writeheader()
-    
+
     params = json.load(open(args.config_file, "r"))
     
     f = open(args.training_patches_fn, "r")
