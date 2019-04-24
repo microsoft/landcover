@@ -201,11 +201,20 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
 
                 inputs = inputs[:, :, 2:240 - 2, 2:240 - 2]
                 labels = labels[:, :, 94:240 - 94, 94:240 - 94]
-                
                 inputs = inputs.to(device)
                 labels = labels.to(device)
                 masks = masks.to(device)
-                labels = labels * masks[:, mask_id, 94:240 - 94, 94:240 - 94]
+
+                masks = rearrange(masks, 'batch unknown masks height width -> batch (unknown masks) height width')
+                # masks = masks.squeeze(1)
+
+
+                #print(masks.shape)
+                mask = masks[:, mask_id : mask_id + 1, 94:240 - 94, 94:240 - 94].to(device)
+
+                
+                
+                labels = labels * mask
 
                 if masking and phase == 'train':
                     masks = masks.float()
