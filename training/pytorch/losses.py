@@ -15,7 +15,7 @@ class multiclass_ce(nn.modules.Module):
         return loss
 
 class weighted_ce_loss(nn.modules.Module):
-    def __index__(self):
+    def __init__(self):
         super(weighted_ce_loss, self).__init__()
 
     def ce_loss(self, y_true, logits, weights, ignore=255):
@@ -43,7 +43,7 @@ class weighted_ce_loss(nn.modules.Module):
         return ce
 
 class multiclass_dice_loss(nn.modules.Module):
-    def __index__(self):
+    def __init__(self):
         super(multiclass_dice_loss, self).__init__()
 
     def dice_loss(self, y_true, logits, eps=1e-7):
@@ -85,7 +85,7 @@ class multiclass_dice_loss(nn.modules.Module):
         return dice
 
 class multiclass_jaccard_loss(nn.modules.Module):
-    def __index__(self):
+    def __init__(self):
         super(multiclass_jaccard_loss, self).__init__()
 
     def jaccard_loss(self, y_true, logits, eps=1e-7):
@@ -128,7 +128,7 @@ class multiclass_jaccard_loss(nn.modules.Module):
         return jaccard
 
 class multiclass_tversky_loss(nn.modules.Module):
-    def __index__(self):
+    def __init__(self):
         super(multiclass_tversky_loss, self).__init__()
 
     def tversky_loss(self, y_true, logits, alpha=0.5, beta=0.5, eps=1e-7):
@@ -178,3 +178,9 @@ class multiclass_tversky_loss(nn.modules.Module):
         return tversky
 
 #TODO: Add superres pytorch loss
+class super_resolution_loss(nn.modules.Module):
+    def __init__(self):
+        super(super_resolution_loss, self).__init__()
+
+    def super_res_loss(self, y_true, y_pred):
+        pass
