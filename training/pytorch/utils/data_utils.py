@@ -23,7 +23,7 @@ def main():
         
         patch = np.load(patch_file_name)
         batch_size, channel, height, width = patch.shape
-        mask = np.zeros((1, len(args.points_per_patch), height, width))
+        mask = np.zeros((1, len(args.points_per_patch), height, width), dtype=np.int8)
         
         largest_num_points = max(args.points_per_patch)
         print(largest_num_points)
