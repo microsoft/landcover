@@ -4,6 +4,7 @@ from pprint import pprint
 from functools import partial
 from attr import attrs, attrib
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import torch
 import torch.nn as nn
@@ -27,6 +28,9 @@ parser.add_argument('--config_file', type=str, default="/mnt/blobfuse/train-outp
 parser.add_argument('--model_file', type=str,
                     help="Checkpoint saved model",
                     default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/checkpoint_best.pth.tar")
+
+parser.add_argument('--data_path', type=str, help="Path to data", default="/mnt/blobfuse/cnn-minibatches/summer_2019/active_learning_splits/")
+parser.add_argument('--data_sub_dirs', type=str, nargs='+', help="Sub-directories of `data_path` to get data from", default=['val1',]) # 'test1', 'test2', 'test3', 'test4'])
 
 args = parser.parse_args()
 
@@ -210,8 +214,8 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, num_epochs=
 
 def main(finetune_methods):
     params = json.load(open(args.config_file, "r"))
-    training_patches_fn = "training/data/ny_1m_2013_finetuning_train.txt"
-    validation_patches_fn = "training/data/ny_1m_2013_finetuning_val.txt"
+    training_patches_fn = "training/data/finetuning/val1_train_patches.txt"
+    validation_patches_fn = "training/data/finetuning/val_1_val_patches.txt" # TODO: Get a list of validation patches from Caleb
     f = open(training_patches_fn, "r")
     training_patches = f.read().strip().split("\n")
     f.close()
@@ -226,7 +230,7 @@ def main(finetune_methods):
     params_train = {'batch_size': params["loader_opts"]["batch_size"],
                     'shuffle': params["loader_opts"]["shuffle"],
                     'num_workers': params["loader_opts"]["num_workers"]}
-
+        
     training_set = DataGenerator(
         training_patches, batch_size, patch_size, num_channels, superres=params["train_opts"]["superres"]
     )
@@ -234,7 +238,6 @@ def main(finetune_methods):
     validation_set = DataGenerator(
         validation_patches, batch_size, patch_size, num_channels, superres=params["train_opts"]["superres"]
     )
-
 
     train_opts = params["train_opts"]
     model_opts = params["model_opts"]
