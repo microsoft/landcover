@@ -195,7 +195,7 @@ class UnetgnFineTune(BackendModel):
             j += 1
         batch_y = torch.from_numpy(batch_arr_y).float().to(device)
 
-        learning_rate *= (self.input_size * self.input_size * len(batch_x) * len(self.batch_x)) / self.num_corrected_pixels
+        #learning_rate *= (self.input_size * self.input_size * len(batch_x) * len(self.batch_x)) / self.num_corrected_pixels
 
         optimizer = torch.optim.Adam(self.augment_model.parameters(), lr=learning_rate, eps=1e-5)
         optimizer.zero_grad()
