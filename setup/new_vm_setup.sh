@@ -11,7 +11,6 @@ pip install --user bottle
 pip install --user einops
 source deactivate
 
-
 # Deal with data
 source after_restart.sh
 cd web_tool
