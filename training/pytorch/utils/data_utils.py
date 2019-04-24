@@ -14,19 +14,16 @@ args = parser.parse_args()
 def main():
     f = open(args.patch_files_filename, 'r')
     patch_file_names = [line.strip() for line in f.readlines()]
-    patch_file_names = patch_file_names[0:1]
     num_patches = len(patch_file_names)
 
     for (i, patch_file_name) in enumerate(patch_file_names):
-        #import pdb
-        #pdb.set_trace()
-        
+        print('Generating random points for patch %d' % i)
         patch = np.load(patch_file_name)
         batch_size, channel, height, width = patch.shape
         mask = np.zeros((1, len(args.points_per_patch), height, width), dtype=np.int8)
+
         
         largest_num_points = max(args.points_per_patch)
-        print(largest_num_points)
         random_points = []
         while len(random_points) < 100:
             k = 92
@@ -40,10 +37,7 @@ def main():
             for j, subset_size in enumerate(sorted(args.points_per_patch)):
                 if l < subset_size:
                     mask[0, j:, row, col] = 1
-
-        import pdb
-        pdb.set_trace()
-        
+   
         save_mask(mask, patch_file_name)
 
 
