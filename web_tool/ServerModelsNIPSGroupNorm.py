@@ -212,6 +212,7 @@ class UnetgnFineTune(BackendModel):
             with torch.set_grad_enabled(True):
                 outputs = self.augment_model.forward(batch_x[:, :, 2:240 - 2, 2:240 - 2])
                 loss = criterion(torch.squeeze(batch_y[:, 94:240 - 94, 94:240 - 94],1).long(), outputs)
+                print(loss.item())
                 loss.backward()
                 optimizer.step()
 
