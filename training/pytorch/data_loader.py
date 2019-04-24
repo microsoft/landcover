@@ -12,11 +12,11 @@ class DataGenerator(data.Dataset):
     def __init__(self, patches, batch_size, patch_size, num_channels, transform = None, superres=False,
                  superres_states=[]):
         'Initialization'
-        if not transform:
-            if superres:
-                transform = lambda x, y_hr_batch, y_sr_batch: (x, y_hr_batch, y_sr_batch)
-            else:
-                transform = lambda x, y_hr_batch: (x, y_hr_batch)
+        #if not transform:
+        #    if superres:
+        #        transform = lambda x, y_hr_batch, y_sr_batch, mask: (x, y_hr_batch, y_sr_batch, mask)
+        #    else:
+        #        transform = lambda x, y_hr_batch, mask: (x, y_hr_batch, mask)
         self.patches = patches
         self.batch_size = batch_size
         self.transform = transform
@@ -44,6 +44,8 @@ class DataGenerator(data.Dataset):
         data = np.load(self.patches[index]).squeeze()
         data = np.rollaxis(data, 0, 3)
 
+        masks = np.load(self.patches[index].replace('.npy', '-mask.npy'))
+        
             # setup x
             #x_batch[i] = data[:, :, :4]
         x = np.transpose(data[:, :, :4], (2, 0, 1))
@@ -69,9 +71,9 @@ class DataGenerator(data.Dataset):
            # y_train_nlcd = to_categorical(y_train_nlcd, 22)
 
         if self.superres:
-            return self.transform(torch.from_numpy(x.copy()), torch.from_numpy(np.expand_dims(y_train_hr,0)), torch.from_numpy(np.expand_dims(y_train_nlcd,0)))
+            return (torch.from_numpy(x.copy()), torch.from_numpy(np.expand_dims(y_train_hr,0)), torch.from_numpy(np.expand_dims(y_train_nlcd,0)), masks)
         else:
-            return self.transform(torch.from_numpy(x.copy()), torch.from_numpy(np.expand_dims(y_train_hr,0)))
+            return (torch.from_numpy(x.copy()), torch.from_numpy(np.expand_dims(y_train_hr,0)), masks)
 
     def on_epoch_end(self):
         self.indices = np.arange(len(self.patches))
