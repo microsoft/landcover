@@ -10,6 +10,7 @@ conda install rasterio fiona shapely rtree
 source deactivate
 
 pip install --user bottle
+pip install --user einops
 
 # sometimes the GPU doesn't work
 sudo shutdown -r now

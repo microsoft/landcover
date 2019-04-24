@@ -216,6 +216,8 @@ def main(finetune_methods):
     params = json.load(open(args.config_file, "r"))
     training_patches_fn = "training/data/finetuning/val1_train_patches.txt"
     validation_patches_fn = "training/data/finetuning/val_1_val_patches.txt" # TODO: Get a list of validation patches from Caleb
+    # training_points_sample_fn = "training/data/finetuning/val1_train_points.txt"  # each line: (patch_path, row, column)
+    
     f = open(training_patches_fn, "r")
     training_patches = f.read().strip().split("\n")
     f.close()
@@ -224,6 +226,9 @@ def main(finetune_methods):
     validation_patches = f.read().strip().split("\n")
     f.close()
 
+    # f = open(training_points_sample_fn, "r")
+    # training_points = [ for line in f.read().stip().split("\n")]
+    
     batch_size = params["loader_opts"]["batch_size"]
     patch_size = params["patch_size"]
     num_channels = params["loader_opts"]["num_channels"]
