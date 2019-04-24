@@ -5,6 +5,7 @@ from functools import partial
 from attr import attrs, attrib
 from datetime import datetime, timedelta
 from pathlib import Path
+from einops import rearrange
 
 import torch
 import torch.nn as nn
@@ -171,15 +172,24 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, num_epochs=
                 else:
                     inputs, labels, masks = entry
 
-                import pdb
-                pdb.set_trace()
-                
                 inputs = inputs[:, :, 2:240 - 2, 2:240 - 2]
                 labels = labels[:, :, 94:240 - 94, 94:240 - 94]
+                masks = masks.float()
+
                 inputs = inputs.to(device)
                 labels = labels.to(device)
                 masks = masks.to(device)
-                labels = labels * masks[:, mask_id, 94:240 - 94, 94:240 - 94]
+
+                masks = rearrange(masks, 'batch unknown masks height width -> batch (unknown masks) height width')
+                # masks = masks.squeeze(1)
+
+
+                #print(masks.shape)
+                mask = masks[:, mask_id : mask_id + 1, 94:240 - 94, 94:240 - 94].to(device)
+
+                
+                
+                labels = labels * mask
 
                 # zero the parameter gradients
                 optimizer.zero_grad()
@@ -201,7 +211,11 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, num_epochs=
                 #if phase == 'val':
                 y_hr = np.squeeze(labels.cpu().numpy(), axis=1)
                 batch_size, _, _ = y_hr.shape
-                y_hat = outputs.cpu().numpy()
+                # TODO: do we need this check below?
+                #if phase == 'train':
+                y_hat = outputs.cpu().detach().numpy()
+                #else:
+                #    y_hat = outputs.cpu().numpy()
                 y_hat = np.argmax(y_hat, axis=1)
                 batch_meanIoU = 0
                 for j in range(batch_size):
