@@ -80,12 +80,12 @@ class FineTuneResult(object):
     best_mean_IoU = attrib(type=float)
     train_duration = attrib(type=timedelta)
     
-    
+
 def finetune_group_params(path_2_saved_model, loss, gen_loaders, params, hyper_parameters, log_writer, n_epochs=25):
     learning_rate = hyper_parameters['learning_rate']
     optimizer_method = hyper_parameters['optimizer_method']
     lr_schedule_step_size = hyper_parameters['lr_schedule_step_size']
-    
+
     opts = params["model_opts"]
     unet = Unet(opts)
     checkpoint = torch.load(path_2_saved_model)
