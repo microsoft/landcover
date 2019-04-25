@@ -1,12 +1,11 @@
 import argparse
 import numpy as np
 from pprint import pprint
-from functools import partial
 from attr import attrs, attrib
-from datetime import datetime, timedelta
-from pathlib import Path
 from einops import rearrange
 import pdb
+from datetime import datetime, timedelta
+from pathlib import Path
 from itertools import product
 
 import torch
@@ -209,10 +208,10 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, num_epochs=
                 y_hr = np.squeeze(labels.cpu().numpy(), axis=1)
                 batch_size, _, _ = y_hr.shape
                 # TODO: do we need this check below?
-                #if phase == 'train':
-                y_hat = outputs.cpu().detach().numpy() * mask.cpu().detach().numpy()
-                #else:
-                #    y_hat = outputs.cpu().numpy()
+                if phase == 'train':
+                    y_hat = outputs.cpu().detach().numpy() * mask.cpu().detach().numpy()
+                else:
+                    y_hat = outputs.cpu().numpy()
                 y_hat = np.argmax(y_hat, axis=1)
                 batch_meanIoU = 0
                 for j in range(batch_size):
@@ -324,24 +323,24 @@ def main(finetune_methods, validation_patches_fn=None):
 def product_dict(**kwargs):
     keys = kwargs.keys()
     vals = kwargs.values()
-    for instance in itertools.product(*vals):
+    for instance in product(*vals):
         yield dict(zip(keys, instance))
 
         
 if __name__ == "__main__":
     params_sweep_last_k = {
-        'optimizers': [torch.optim.Adam, torch.optim.SGD],
+        'optimizer_method': [torch.optim.Adam, torch.optim.SGD],
         'last_k_layers': [1, 2, 4],
-        'learning_rates': [0.0001, 0.001, 0.005,],
+        'learning_rate': [0.0001, 0.001, 0.005,],
     }
 
     params_sweep_group_norm = {
-        'optimizers': [torch.optim.Adam, torch.optim.SGD],
-        'learning_rates': [0.0001, 0.001, 0.005,],
+        'optimizer_method': [torch.optim.Adam, torch.optim.SGD],
+        'learning_rate': [0.0001, 0.001, 0.005,],
     }
 
-    params_list_last_k = list(product_dict(params_sweep_last_k))
-    params_list_group_norm = list(product_dict(params_sweep_group_norm))
-
+    params_list_last_k = list(product_dict(**params_sweep_last_k))
+    params_list_group_norm = list(product_dict(**params_sweep_group_norm)
+)
     main([('Group params', finetune_group_params, hypers) for hypers in params_list_group_norm] + \
          [('Last k layers', finetune_last_k_layers, hypers) for hypers in params_list_last_k])
