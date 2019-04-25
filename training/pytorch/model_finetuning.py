@@ -6,6 +6,7 @@ from attr import attrs, attrib
 from datetime import datetime, timedelta
 from pathlib import Path
 from einops import rearrange
+import pdb
 
 import torch
 import torch.nn as nn
@@ -69,7 +70,7 @@ class GroupParams(nn.Module):
 
 @attrs
 class FineTuneResult(object):
-    best_accuracy = attrib(type=float)
+    best_mean_IoU = attrib(type=float)
     train_duration = attrib(type=timedelta)
     
     
@@ -97,7 +98,7 @@ def finetune_group_params(path_2_saved_model, loss, gen_loaders,params, n_epochs
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
     model_2_finetune = train_model(model_2_finetune, loss, optimizer,
-                             exp_lr_scheduler, gen_loaders, num_epochs=n_epochs)
+                                   exp_lr_scheduler, gen_loaders, num_epochs=n_epochs, mask_id=11)
     return model_2_finetune
 
 def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, n_epochs=25, last_k_layers=3, learning_rate=0.005, optimizer_method=torch.optim.SGD):
@@ -131,7 +132,7 @@ def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, n_epoc
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
     model_2_finetune = train_model(model_2_finetune, loss, optimizer,
-                             exp_lr_scheduler, gen_loaders, num_epochs=n_epochs)
+                                   exp_lr_scheduler, gen_loaders, num_epochs=n_epochs, mask_id=11)
     return model_2_finetune
 
 
@@ -213,16 +214,18 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, num_epochs=
                 batch_size, _, _ = y_hr.shape
                 # TODO: do we need this check below?
                 #if phase == 'train':
-                y_hat = outputs.cpu().detach().numpy()
+                y_hat = outputs.cpu().detach().numpy() * mask.cpu().detach().numpy()
                 #else:
                 #    y_hat = outputs.cpu().numpy()
                 y_hat = np.argmax(y_hat, axis=1)
                 batch_meanIoU = 0
                 for j in range(batch_size):
-                    batch_meanIoU += mean_IoU(y_hat[j], y_hr[j])
+                    #pdb.set_trace()
+                    batch_meanIoU += mean_IoU(y_hat[j], y_hr[j], ignored_classes={0})
                 batch_meanIoU /= batch_size
                 val_meanIoU += batch_meanIoU
-
+                print('batch_meanIoU: %f' % batch_meanIoU)
+                
             epoch_loss = running_loss / n_iter
             epoch_mean_IoU = val_meanIoU / n_iter
 
@@ -241,11 +244,11 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, num_epochs=
     seconds_elapsed = duration.total_seconds()
     print('Training complete in {:.0f}m {:.0f}s'.format(
         seconds_elapsed // 60, seconds_elapsed % 60))
-    print('Best val Acc: {:4f}'.format(best_acc))
+    print('Best val IoU: {:4f}'.format(best_mean_IoU))
 
     # load best model weights
     model.load_state_dict(best_model_wts)
-    return model, FineTuneResult(best_accuracy=best_acc, train_duration=duration)
+    return model, FineTuneResult(best_mean_IoU=best_mean_IoU, train_duration=duration)
 
 def main(finetune_methods, validation_patches_fn=None):
     params = json.load(open(args.config_file, "r"))
@@ -316,7 +319,7 @@ def main(finetune_methods, validation_patches_fn=None):
 
         if model_opts["model"] == "unet":
             finetunned_fn = savedir + "finetuned_unet_gn.pth.tar"
-            torch.save(model.state_dict(), finetunned_fn)
+            #torch.save(model.state_dict(), finetunned_fn)
 
     pprint(results)
             

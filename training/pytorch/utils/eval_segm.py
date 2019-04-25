@@ -54,20 +54,26 @@ def mean_accuracy(pred_segm, gt_segm):
     return mean_accuracy
 
 
-def mean_IoU(pred_segm, gt_segm):
+def mean_IoU(pred_segm, gt_segm, ignored_classes={}):
     '''
     (1/n_cl) * sum_i(n_ii / (t_i + sum_j(n_ji) - n_ii))
     '''
 
     check_size(pred_segm, gt_segm)
 
-    cl, n_cl = union_classes(pred_segm, gt_segm)
-    _, n_cl_gt = extract_classes(gt_segm)
-    pred_mask, gt_mask = extract_both_masks(pred_segm, gt_segm, cl, n_cl)
+    all_classes, num_union_classes = union_classes(pred_segm, gt_segm)
+    all_classes = {c for c in all_classes if c not in ignored_classes}
+    num_union_classes = len(all_classes)
+    
+    ground_truth_classes, num_ground_truth_classes = extract_classes(gt_segm)
+    ground_truth_classes = {c for c in ground_truth_classes if c not in ignored_classes}
+    num_ground_truth_classes = len(ground_truth_classes)
+    pred_mask, gt_mask = extract_both_masks(pred_segm, gt_segm, all_classes, num_union_classes)
 
-    IoU = list([0]) * n_cl
+    IoU = list([0]) * num_union_classes
 
-    for i, c in enumerate(cl):
+    # for i, c in enumerate(ground_truth_classes):
+    for i, c in enumerate(all_classes):
         curr_pred_mask = pred_mask[i, :, :]
         curr_gt_mask = gt_mask[i, :, :]
 
@@ -80,10 +86,12 @@ def mean_IoU(pred_segm, gt_segm):
 
         IoU[i] = n_ii / (t_i + n_ij - n_ii)
 
-    _mean_IoU = np.sum(IoU) / n_cl_gt
+    _mean_IoU = np.sum(IoU) / num_ground_truth_classes
     return _mean_IoU
 
 def IoU(pred_segm, gt_segm):
+    # Calculates pixel-wise binary IoU only
+    # (invalid for > 2 classes)
     intersection = np.logical_and(gt_segm, pred_segm)
     union = np.logical_or(gt_segm, pred_segm)
     iou_score = np.sum(intersection) / (np.sum(union) + 0.001)
