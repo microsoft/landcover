@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from einops import rearrange
 import pdb
+from itertools import product
 
 import torch
 import torch.nn as nn
@@ -74,7 +75,7 @@ class FineTuneResult(object):
     train_duration = attrib(type=timedelta)
     
     
-def finetune_group_params(path_2_saved_model, loss, gen_loaders, params, n_epochs=25, learning_rate=0.01, optimizer_method=torch.optim.SGD): 
+def finetune_group_params(path_2_saved_model, loss, gen_loaders, params, n_epochs=25, learning_rate=0.01, optimizer_method=torch.optim.SGD, lr_schedule_step_size=7): 
     opts = params["model_opts"]
     unet = Unet(opts)
     checkpoint = torch.load(path_2_saved_model)
@@ -94,13 +95,13 @@ def finetune_group_params(path_2_saved_model, loss, gen_loaders, params, n_epoch
         optimizer = torch.optim.Adam(model_2_finetune.parameters(), lr=learning_rate, eps=1e-5)
     
     # Decay LR by a factor of 0.1 every 7 epochs
-    exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
+    exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=lr_schedule_step_size, gamma=0.1)
 
     model_2_finetune = train_model(model_2_finetune, loss, optimizer,
                                    exp_lr_scheduler, gen_loaders, num_epochs=n_epochs)
     return model_2_finetune
 
-def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, n_epochs=25, last_k_layers=3, learning_rate=0.005, optimizer_method=torch.optim.SGD):
+def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, n_epochs=25, last_k_layers=3, learning_rate=0.005, optimizer_method=torch.optim.SGD, lr_schedule_step_size=7):
     opts = params["model_opts"]
     unet = Unet(opts)
     checkpoint = torch.load(path_2_saved_model)
@@ -122,7 +123,7 @@ def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, n_epoc
         optimizer = torch.optim.Adam(model_2_finetune.parameters(), lr=learning_rate, eps=1e-5)
         
     # Decay LR by a factor of 0.1 every 7 epochs
-    exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
+    exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=lr_schedule_step_size, gamma=0.1)
 
     model_2_finetune = train_model(model_2_finetune, loss, optimizer,
                                    exp_lr_scheduler, gen_loaders, num_epochs=n_epochs)
@@ -318,14 +319,29 @@ def main(finetune_methods, validation_patches_fn=None):
             torch.save(model.state_dict(), finetunned_fn)
 
     pprint(results)
-            
+
+    
+def product_dict(**kwargs):
+    keys = kwargs.keys()
+    vals = kwargs.values()
+    for instance in itertools.product(*vals):
+        yield dict(zip(keys, instance))
+
+        
 if __name__ == "__main__":
-    main([
-        ('Group params', finetune_group_params),
-        #('SGD on last 1 layers', partial(finetune_last_k_layers, optimizer_method=torch.optim.SGD, last_k_layers=1)),
-        ('Adam on last 1 layers', finetune_last_k_layers, {'optimizer_method': torch.optim.Adam, 'last_k_layers': 1, l}),
-        #('SGD on last 2 layers', finetune_last_k_layers, optimizer_method=torch.optim.SGD, last_k_layers=2)),
-        ('Adam on last 2 layers', finetune_last_k_layers, {'optimizer_method': torch.optim.Adam, 'last_k_layers': 2}),
-        #('SGD on last 4 layers', finetune_last_k_layers, optimizer_method=torch.optim.SGD, last_k_layers=4)),
-        ('Adam on last 4 layers', finetune_last_k_layers, {'optimizer_method': torch.optim.Adam, 'last_k_layers': 4}),
-    ])
+    params_sweep_last_k = {
+        'optimizers': [torch.optim.Adam, torch.optim.SGD],
+        'last_k_layers': [1, 2, 4],
+        'learning_rates': [0.0001, 0.001, 0.005,],
+    }
+
+    params_sweep_group_norm = {
+        'optimizers': [torch.optim.Adam, torch.optim.SGD],
+        'learning_rates': [0.0001, 0.001, 0.005,],
+    }
+
+    params_list_last_k = list(product_dict(params_sweep_last_k))
+    params_list_group_norm = list(product_dict(params_sweep_group_norm))
+
+    main([('Group params', finetune_group_params, hypers) for hypers in params_list_group_norm] + \
+         [('Last k layers', finetune_last_k_layers, hypers) for hypers in params_list_last_k])
