@@ -284,7 +284,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
         hyper_parameters_str = sorted(hyper_parameters.items())
         finetuned_fn = str(Path(args.model_output_directory) / ("finetuned_unet_gn.pth_%s.tar" % hyper_parameters_str))
         torch.save(model.state_dict(), finetuned_fn)
-        
+
             # deep copy the model
             #if phase == 'val' and epoch_mean_IoU > best_mean_IoU:
             #    best_mean_IoU = epoch_mean_IoU
@@ -295,7 +295,6 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
 
     duration = datetime.now() - since
     seconds_elapsed = duration.total_seconds()
-    
     #print('Training complete in {:.0f}m {:.0f}s'.format(
     #    seconds_elapsed // 60, seconds_elapsed % 60))
     #print('Best val IoU: {:4f}'.format(best_mean_IoU))
