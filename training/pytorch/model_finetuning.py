@@ -74,7 +74,7 @@ class FineTuneResult(object):
     train_duration = attrib(type=timedelta)
     
     
-def finetune_group_params(path_2_saved_model, loss, gen_loaders, params, n_epochs=25):
+def finetune_group_params(path_2_saved_model, loss, gen_loaders, params, n_epochs=25, learning_rate=0.01, optimizer_method=torch.optim.SGD): 
     opts = params["model_opts"]
     unet = Unet(opts)
     checkpoint = torch.load(path_2_saved_model)
@@ -89,11 +89,10 @@ def finetune_group_params(path_2_saved_model, loss, gen_loaders, params, n_epoch
     model_2_finetune = model_2_finetune.to(device)
     loss = loss().to(device)
 
-
-    # Observe that only parameters of final layer are being optimized as
-    # opposed to before.
-    optimizer = torch.optim.Adam(model_2_finetune.parameters(), lr=0.01, eps=1e-5)
-
+    optimizer = torch.optim.SGD(model_2_finetune.parameters(), lr=learning_rate, momentum=0.9)
+    if optimizer_method == torch.optim.Adam:
+        optimizer = torch.optim.Adam(model_2_finetune.parameters(), lr=learning_rate, eps=1e-5)
+    
     # Decay LR by a factor of 0.1 every 7 epochs
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
@@ -118,15 +117,9 @@ def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, n_epoc
     model_2_finetune = model_2_finetune.to(device)
     loss = loss().to(device)
 
-
-    # Observe that only parameters of final layer are being optimized as
-    # opposed to before.
-    if optimizer_method == torch.optim.SGD:
-        optimizer = torch.optim.SGD(model_2_finetune.parameters(), lr=learning_rate, momentum=0.9)
-    elif optimizer_method == torch.optim.Adam:
+    optimizer = torch.optim.SGD(model_2_finetune.parameters(), lr=learning_rate, momentum=0.9)
+    if optimizer_method == torch.optim.Adam:
         optimizer = torch.optim.Adam(model_2_finetune.parameters(), lr=learning_rate, eps=1e-5)
-    else:
-        optimizer = torch.optim.SGD(model_2_finetune.parameters(), lr=learning_rate, momentum=0.9)
         
     # Decay LR by a factor of 0.1 every 7 epochs
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
@@ -136,7 +129,7 @@ def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, n_epoc
     return model_2_finetune
 
 
-def train_model(model, criterion, optimizer, scheduler, dataloaders, num_epochs=25, superres=False):
+def train_model(model, criterion, optimizer, scheduler, dataloaders, num_epochs=25, superres=False, masking=True):
     # mask_id indices (points per patch): [1, 2, 3, 4, 5, 10, 15, 20, 40, 60, 80, 100]
     mask_id = 11
     
@@ -170,29 +163,29 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, num_epochs=
             # Iterate over data.
             for entry in dataloaders[phase]:
                 if superres:
-                    inputs, labels, nlcd, masks = entry
+                    if masking:
+                        inputs, labels, nlcd, masks = entry
+                    else:
+                        inputs, labels, nlcd = entry
                     # TODO: use nlcd for superres training, below
                 else:
-                    inputs, labels, masks = entry
+                    if masking:
+                        inputs, labels, masks = entry
+                    else:
+                        inputs, labels = entry
 
                 inputs = inputs[:, :, 2:240 - 2, 2:240 - 2]
                 labels = labels[:, :, 94:240 - 94, 94:240 - 94]
-                masks = masks.float()
-
+                
                 inputs = inputs.to(device)
                 labels = labels.to(device)
-                masks = masks.to(device)
 
-                masks = rearrange(masks, 'batch unknown masks height width -> batch (unknown masks) height width')
-                # masks = masks.squeeze(1)
-
-
-                #print(masks.shape)
-                mask = masks[:, mask_id : mask_id + 1, 94:240 - 94, 94:240 - 94].to(device)
-
-                
-                
-                labels = labels * mask
+                if masking:
+                    masks = masks.float()
+                    masks = masks.to(device)
+                    masks = rearrange(masks, 'batch unknown masks height width -> batch (unknown masks) height width')
+                    mask = masks[:, mask_id : mask_id + 1, 94:240 - 94, 94:240 - 94].to(device)
+                    labels = labels * mask
 
                 # zero the parameter gradients
                 optimizer.zero_grad()
@@ -276,13 +269,13 @@ def main(finetune_methods, validation_patches_fn=None):
                     'num_workers': params["loader_opts"]["num_workers"]}
         
     training_set = DataGenerator(
-        training_patches, batch_size, patch_size, num_channels, superres=params["train_opts"]["superres"]
+        training_patches, batch_size, patch_size, num_channels, superres=params["train_opts"]["superres"], masking=True
     )
 
     validation_set = None
     if validation_patches:
         validation_set = DataGenerator(
-            validation_patches, batch_size, patch_size, num_channels, superres=params["train_opts"]["superres"]
+            validation_patches, batch_size, patch_size, num_channels, superres=params["train_opts"]["superres"], masking=True
         )
 
     #train_opts = params["train_opts"]
@@ -310,18 +303,19 @@ def main(finetune_methods, validation_patches_fn=None):
         dataloaders['val'] = data.DataLoader(validation_set, **params_train)
 
     results = {}
-    for (finetune_method_name, finetune_function) in finetune_methods:
+    for (finetune_method_name, finetune_function, fine_tune_params) in finetune_methods:
+        print('Fine-tune params: %s' % str(fine_tune_params))
         improve_reproducibility()
-        model, result = finetune_function(path, loss, dataloaders, params, n_epochs=10)
+        model, result = finetune_function(path, loss, dataloaders, params, n_epochs=10, **fine_tune_params)
         results[finetune_method_name] = result
         
         savedir = "/mnt/blobfuse/train-output/conditioning/models/finetuning/"
         if not os.path.exists(savedir):
             os.makedirs(savedir)
-
+        
         if model_opts["model"] == "unet":
-            finetunned_fn = savedir + "finetuned_unet_gn.pth.tar"
-            #torch.save(model.state_dict(), finetunned_fn)
+            finetunned_fn = savedir + "finetuned_unet_gn.pth_%s.tar" % str(fine_tune_params)
+            torch.save(model.state_dict(), finetunned_fn)
 
     pprint(results)
             
@@ -329,9 +323,9 @@ if __name__ == "__main__":
     main([
         ('Group params', finetune_group_params),
         #('SGD on last 1 layers', partial(finetune_last_k_layers, optimizer_method=torch.optim.SGD, last_k_layers=1)),
-        ('Adam on last 1 layers', partial(finetune_last_k_layers, optimizer_method=torch.optim.Adam, last_k_layers=1)),
-        #('SGD on last 2 layers', partial(finetune_last_k_layers, optimizer_method=torch.optim.SGD, last_k_layers=2)),
-        ('Adam on last 2 layers', partial(finetune_last_k_layers, optimizer_method=torch.optim.Adam, last_k_layers=2)),
-        #('SGD on last 4 layers', partial(finetune_last_k_layers, optimizer_method=torch.optim.SGD, last_k_layers=4)),
-        ('Adam on last 4 layers', partial(finetune_last_k_layers, optimizer_method=torch.optim.Adam, last_k_layers=4)),
+        ('Adam on last 1 layers', finetune_last_k_layers, {'optimizer_method': torch.optim.Adam, 'last_k_layers': 1, l}),
+        #('SGD on last 2 layers', finetune_last_k_layers, optimizer_method=torch.optim.SGD, last_k_layers=2)),
+        ('Adam on last 2 layers', finetune_last_k_layers, {'optimizer_method': torch.optim.Adam, 'last_k_layers': 2}),
+        #('SGD on last 4 layers', finetune_last_k_layers, optimizer_method=torch.optim.SGD, last_k_layers=4)),
+        ('Adam on last 4 layers', finetune_last_k_layers, {'optimizer_method': torch.optim.Adam, 'last_k_layers': 4}),
     ])
