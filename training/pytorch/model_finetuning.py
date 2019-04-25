@@ -79,7 +79,6 @@ class GroupParams(nn.Module):
 class FineTuneResult(object):
     best_mean_IoU = attrib(type=float)
     train_duration = attrib(type=timedelta)
-    
 
 def finetune_group_params(path_2_saved_model, loss, gen_loaders, params, hyper_parameters, log_writer, n_epochs=25):
     learning_rate = hyper_parameters['learning_rate']
@@ -203,18 +202,13 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
                 labels = labels[:, :, 94:240 - 94, 94:240 - 94]
                 inputs = inputs.to(device)
                 labels = labels.to(device)
-                masks = masks.to(device)
 
-                masks = rearrange(masks, 'batch unknown masks height width -> batch (unknown masks) height width')
-                # masks = masks.squeeze(1)
-
-
-                #print(masks.shape)
-                mask = masks[:, mask_id : mask_id + 1, 94:240 - 94, 94:240 - 94].to(device)
-
-                
-                
-                labels = labels * mask
+                if masking:
+                    masks = masks.float()
+                    masks = masks.to(device)
+                    masks = rearrange(masks, 'batch unknown masks height width -> batch (unknown masks) height width')
+                    mask = masks[:, mask_id : mask_id + 1, 94:240 - 94, 94:240 - 94].to(device)
+                    labels = labels * mask
 
                 if masking and phase == 'train':
                     masks = masks.float()
@@ -399,4 +393,3 @@ if __name__ == "__main__":
     
     main([('Group params', finetune_group_params, hypers) for hypers in params_list_group_norm] + \
          [('Last k layers', finetune_last_k_layers, hypers) for hypers in params_list_last_k])
-
