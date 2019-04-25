@@ -33,7 +33,7 @@ parser.add_argument('--model_file', type=str,
 
 parser.add_argument('--data_path', type=str, help="Path to data", default="/mnt/blobfuse/cnn-minibatches/summer_2019/active_learning_splits/")
 parser.add_argument('--data_sub_dirs', type=str, nargs='+', help="Sub-directories of `data_path` to get data from", default=['val1',]) # 'test1', 'test2', 'test3', 'test4'])
-parser.add_argument('--validation_patches_fn', type=str, help="Filename with list of validation patch files", default='')
+parser.add_argument('--validation_patches_fn', type=str, help="Filename with list of validation patch files", default='training/data/finetuning/val1_test_patches.txt')
 parser.add_argument('--training_patches_fn', type=str, help="Filename with list of training patch files", default="training/data/finetuning/val1_train_patches.txt")
 
 
@@ -74,7 +74,7 @@ class FineTuneResult(object):
     train_duration = attrib(type=timedelta)
     
     
-def finetune_group_params(path_2_saved_model, loss, gen_loaders,params, n_epochs=25):
+def finetune_group_params(path_2_saved_model, loss, gen_loaders, params, n_epochs=25):
     opts = params["model_opts"]
     unet = Unet(opts)
     checkpoint = torch.load(path_2_saved_model)
@@ -98,7 +98,7 @@ def finetune_group_params(path_2_saved_model, loss, gen_loaders,params, n_epochs
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
     model_2_finetune = train_model(model_2_finetune, loss, optimizer,
-                                   exp_lr_scheduler, gen_loaders, num_epochs=n_epochs, mask_id=0)
+                                   exp_lr_scheduler, gen_loaders, num_epochs=n_epochs)
     return model_2_finetune
 
 def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, n_epochs=25, last_k_layers=3, learning_rate=0.005, optimizer_method=torch.optim.SGD):
@@ -132,12 +132,14 @@ def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, n_epoc
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
     model_2_finetune = train_model(model_2_finetune, loss, optimizer,
-                                   exp_lr_scheduler, gen_loaders, num_epochs=n_epochs, mask_id=0)
+                                   exp_lr_scheduler, gen_loaders, num_epochs=n_epochs)
     return model_2_finetune
 
 
-def train_model(model, criterion, optimizer, scheduler, dataloaders, num_epochs=25, superres=False, mask_id=0):
-    # mask_id defaults (points per patch): [1, 2, 3, 4, 5, 10, 15, 20, 40, 60, 80, 100]
+def train_model(model, criterion, optimizer, scheduler, dataloaders, num_epochs=25, superres=False):
+    # mask_id indices (points per patch): [1, 2, 3, 4, 5, 10, 15, 20, 40, 60, 80, 100]
+    mask_id = 11
+    
     since = datetime.now()
 
     best_model_wts = copy.deepcopy(model.state_dict())
@@ -155,7 +157,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, num_epochs=
             if phase == 'train':
                 scheduler.step()
                 model.train()  # Set model to training mode
-            else:
+            else:  # phase == 'val'
                 if 'val' in dataloaders:
                     model.eval()   # Set model to evaluate mode
                 else:
@@ -224,7 +226,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, num_epochs=
                     batch_meanIoU += mean_IoU(y_hat[j], y_hr[j], ignored_classes={0})
                 batch_meanIoU /= batch_size
                 val_meanIoU += batch_meanIoU
-                print('batch_meanIoU: %f' % batch_meanIoU)
+                # print('batch_meanIoU: %f' % batch_meanIoU)
                 
             epoch_loss = running_loss / n_iter
             epoch_mean_IoU = val_meanIoU / n_iter
