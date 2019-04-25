@@ -203,7 +203,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
                 inputs = inputs.to(device)
                 labels = labels.to(device)
 
-                if masking:
+                if masking and phase == 'train':
                     masks = masks.float()
                     masks = masks.to(device)
                     masks = rearrange(masks, 'batch unknown masks height width -> batch (unknown masks) height width')
