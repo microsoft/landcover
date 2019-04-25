@@ -98,7 +98,7 @@ def finetune_group_params(path_2_saved_model, loss, gen_loaders,params, n_epochs
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
     model_2_finetune = train_model(model_2_finetune, loss, optimizer,
-                                   exp_lr_scheduler, gen_loaders, num_epochs=n_epochs, mask_id=11)
+                                   exp_lr_scheduler, gen_loaders, num_epochs=n_epochs, mask_id=0)
     return model_2_finetune
 
 def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, n_epochs=25, last_k_layers=3, learning_rate=0.005, optimizer_method=torch.optim.SGD):
@@ -132,7 +132,7 @@ def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, n_epoc
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
     model_2_finetune = train_model(model_2_finetune, loss, optimizer,
-                                   exp_lr_scheduler, gen_loaders, num_epochs=n_epochs, mask_id=11)
+                                   exp_lr_scheduler, gen_loaders, num_epochs=n_epochs, mask_id=0)
     return model_2_finetune
 
 

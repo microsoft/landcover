@@ -29,7 +29,7 @@ def main():
             k = 92
             row = random.randint(k, height - k)
             col = random.randint(k, width - k)
-            if (row, col) not in random_points:
+            if (row, col) not in random_points and patch[0, 4, row, col] != 0:
                 random_points.append((row, col))
 
         for l, point in enumerate(random_points):
