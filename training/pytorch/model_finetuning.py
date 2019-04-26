@@ -7,6 +7,7 @@ import pdb
 from datetime import datetime, timedelta
 from pathlib import Path
 from itertools import product
+import csv
 
 import torch
 import torch.nn as nn
@@ -33,8 +34,9 @@ parser.add_argument('--model_file', type=str,
 
 parser.add_argument('--data_path', type=str, help="Path to data", default="/mnt/blobfuse/cnn-minibatches/summer_2019/active_learning_splits/")
 parser.add_argument('--data_sub_dirs', type=str, nargs='+', help="Sub-directories of `data_path` to get data from", default=['val1',]) # 'test1', 'test2', 'test3', 'test4'])
-parser.add_argument('--validation_patches_fn', type=str, help="Filename with list of validation patch files", default='training/data/finetuning/val1_test_patches.txt')
+parser.add_argument('--validation_patches_fn', type=str, help="Filename with list of validation patch files", default='training/data/finetuning/val1_test_patches_500.txt')
 parser.add_argument('--training_patches_fn', type=str, help="Filename with list of training patch files", default="training/data/finetuning/val1_train_patches.txt")
+parser.add_argument('--log_fn', type=str, help="Where to store training results", default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/finetune_results.csv")
 
 
 args = parser.parse_args()
@@ -74,7 +76,11 @@ class FineTuneResult(object):
     train_duration = attrib(type=timedelta)
     
     
-def finetune_group_params(path_2_saved_model, loss, gen_loaders, params, n_epochs=25, learning_rate=0.01, optimizer_method=torch.optim.SGD, lr_schedule_step_size=7): 
+def finetune_group_params(path_2_saved_model, loss, gen_loaders, params, hyper_parameters, log_writer, n_epochs=25):
+    learning_rate = hyper_parameters['learning_rate']
+    optimizer_method = hyper_parameters['optimizer_method']
+    lr_schedule_step_size = hyper_parameters['lr_schedule_step_size']
+    
     opts = params["model_opts"]
     unet = Unet(opts)
     checkpoint = torch.load(path_2_saved_model)
@@ -97,10 +103,15 @@ def finetune_group_params(path_2_saved_model, loss, gen_loaders, params, n_epoch
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=lr_schedule_step_size, gamma=0.1)
 
     model_2_finetune = train_model(model_2_finetune, loss, optimizer,
-                                   exp_lr_scheduler, gen_loaders, num_epochs=n_epochs)
+                                   exp_lr_scheduler, gen_loaders, hyper_parameters, log_writer, num_epochs=n_epochs)
     return model_2_finetune
 
-def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, n_epochs=25, last_k_layers=3, learning_rate=0.005, optimizer_method=torch.optim.SGD, lr_schedule_step_size=7):
+def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, hyper_parameters, log_writer, n_epochs=25):
+    learning_rate = hyper_parameters['learning_rate']
+    optimizer_method = hyper_parameters['optimizer_method']
+    lr_schedule_step_size = hyper_parameters['lr_schedule_step_size']
+    last_k_layers = hyper_parameters['last_k_layers']
+    
     opts = params["model_opts"]
     unet = Unet(opts)
     checkpoint = torch.load(path_2_saved_model)
@@ -125,11 +136,13 @@ def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, n_epoc
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=lr_schedule_step_size, gamma=0.1)
 
     model_2_finetune = train_model(model_2_finetune, loss, optimizer,
-                                   exp_lr_scheduler, gen_loaders, num_epochs=n_epochs)
+                                   exp_lr_scheduler, gen_loaders, hypers, log_writer, num_epochs=n_epochs)
     return model_2_finetune
 
 
-def train_model(model, criterion, optimizer, scheduler, dataloaders, num_epochs=25, superres=False, masking=True):
+def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=5, superres=False, masking=True):
+    global results_writer
+    
     # mask_id indices (points per patch): [1, 2, 3, 4, 5, 10, 15, 20, 40, 60, 80, 100]
     mask_id = 11
     
@@ -157,7 +170,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, num_epochs=
                     continue
 
             running_loss = 0.0
-            val_meanIoU = 0.0
+            meanIoU = 0.0
             n_iter = 0
 
             # Iterate over data.
@@ -218,25 +231,42 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, num_epochs=
                     #pdb.set_trace()
                     batch_meanIoU += mean_IoU(y_hat[j], y_hr[j], ignored_classes={0})
                 batch_meanIoU /= batch_size
-                val_meanIoU += batch_meanIoU
+                meanIoU += batch_meanIoU
                 # print('batch_meanIoU: %f' % batch_meanIoU)
-                
-            epoch_loss = running_loss / n_iter
-            epoch_mean_IoU = val_meanIoU / n_iter
+
+                if phase == 'val':
+                    val_loss = running_loss / n_iter
+                    val_mean_IoU = meanIoU / n_iter
+                elif phase == 'train':
+                    train_loss = running_loss / n_iter
+                    tran_mean_IoU = meanIoU / n_iter
 
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(
-                phase, epoch_loss, epoch_mean_IoU))
+                  phase, epoch_loss, epoch_mean_IoU))
+            result_row = {
+                'run_id': hyper_parameters['run_id'],
+                'hyper_parameters': hyper_parameters,
+                'epoch': epoch,
+                'train_IoU': train_mean_IoU,
+                'train_loss': train_loss,
+                'val_IoU': val_mean_IoU,
+                'val_loss': val_loss,
+                'total_time': datetime.now() - since
+            }
+            print(result_row)
+            result_writer.write(result_row)
 
             # deep copy the model
-            if phase == 'val' and epoch_mean_IoU > best_mean_IoU:
-                best_mean_IoU = epoch_mean_IoU
-                best_model_wts = copy.deepcopy(model.state_dict())
-                best_epoch = epoch
-                duration_til_best_epoch = datetime.now() - since
+            #if phase == 'val' and epoch_mean_IoU > best_mean_IoU:
+            #    best_mean_IoU = epoch_mean_IoU
+            #    best_model_wts = copy.deepcopy(model.state_dict())
+            #    best_epoch = epoch
+            #    duration_til_best_epoch = datetime.now() - since
         print()
 
     duration = datetime.now() - since
     seconds_elapsed = duration.total_seconds()
+    
     print('Training complete in {:.0f}m {:.0f}s'.format(
         seconds_elapsed // 60, seconds_elapsed % 60))
     print('Best val IoU: {:4f}'.format(best_mean_IoU))
@@ -246,6 +276,10 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, num_epochs=
     return model, FineTuneResult(best_mean_IoU=best_mean_IoU, train_duration=duration)
 
 def main(finetune_methods, validation_patches_fn=None):
+    global results_writer
+    results_file = open(args.log_fn, 'w+')
+    results_writer = csv.DictWriter(results_file, ['run_id', 'hyper_parameters', 'epoch', 'train_IoU', 'train_loss', 'val_IoU', 'val_loss', 'total_time'])
+    
     params = json.load(open(args.config_file, "r"))
     
     f = open(args.training_patches_fn, "r")
@@ -278,24 +312,8 @@ def main(finetune_methods, validation_patches_fn=None):
             validation_patches, batch_size, patch_size, num_channels, superres=params["train_opts"]["superres"], masking=True
         )
 
-    #train_opts = params["train_opts"]
     model_opts = params["model_opts"]
-
-    # Default model is Duke_Unet
-
-
-    #if train_opts["loss"] == "dice":
-    #    loss = multiclass_dice_loss
-    #elif train_opts["loss"] == "ce":
     loss = multiclass_ce_points
-    #elif train_opts["loss"] == "jaccard":
-    #    loss = multiclass_jaccard_loss
-    #elif train_opts["loss"] == "tversky":
-    #    loss = multiclass_tversky_loss
-    #else:
-    #    print("Option {} not supported. Available options: dice, ce, jaccard, tversky".format(train_opts["loss"]))
-    #    raise NotImplementedError
-
     path = args.model_file
 
     dataloaders = {'train': data.DataLoader(training_set, **params_train)}
@@ -303,10 +321,11 @@ def main(finetune_methods, validation_patches_fn=None):
         dataloaders['val'] = data.DataLoader(validation_set, **params_train)
 
     results = {}
-    for (finetune_method_name, finetune_function, fine_tune_params) in finetune_methods:
-        print('Fine-tune params: %s' % str(fine_tune_params))
+    for run_id, (finetune_method_name, finetune_function, hyper_params) in enumerate(finetune_methods):
+        hyper_params['run_id'] = run_id
+        print('Fine-tune hyper-params: %s' % str(hyper_params))
         improve_reproducibility()
-        model, result = finetune_function(path, loss, dataloaders, params, n_epochs=10, **fine_tune_params)
+        model, result = finetune_function(path, loss, dataloaders, params, hyper_params, results_writer, n_epochs=5)
         results[finetune_method_name] = result
         
         savedir = "/mnt/blobfuse/train-output/conditioning/models/finetuning/"
@@ -329,18 +348,20 @@ def product_dict(**kwargs):
         
 if __name__ == "__main__":
     params_sweep_last_k = {
-        'optimizer_method': [torch.optim.Adam, torch.optim.SGD],
-        'last_k_layers': [1, 2, 4],
-        'learning_rate': [0.0001, 0.001, 0.005,],
+        'optimizer_method': [torch.optim.Adam], #, torch.optim.SGD],
+        'last_k_layers': [1,], #2, 4, 8],
+        'learning_rate': [0.1, 0.05, 0.01, 0.005, 0.001],
+        'lr_schedule_step_size': [7],
     }
 
     params_sweep_group_norm = {
-        'optimizer_method': [torch.optim.Adam, torch.optim.SGD],
-        'learning_rate': [0.0001, 0.001, 0.005,],
+        'optimizer_method': [torch.optim.Adam], #, torch.optim.SGD],
+        'learning_rate': [0.1, 0.05, 0.01, 0.005, 0.001],
+        'lr_schedule_step_size': [7],
     }
 
     params_list_last_k = list(product_dict(**params_sweep_last_k))
-    params_list_group_norm = list(product_dict(**params_sweep_group_norm)
-)
+    params_list_group_norm = list(product_dict(**params_sweep_group_norm))
+    
     main([('Group params', finetune_group_params, hypers) for hypers in params_list_group_norm] + \
          [('Last k layers', finetune_last_k_layers, hypers) for hypers in params_list_last_k])
