@@ -36,7 +36,7 @@ parser.add_argument('--data_path', type=str, help="Path to data", default="/mnt/
 parser.add_argument('--data_sub_dirs', type=str, nargs='+', help="Sub-directories of `data_path` to get data from", default=['val1',]) # 'test1', 'test2', 'test3', 'test4'])
 parser.add_argument('--validation_patches_fn', type=str, help="Filename with list of validation patch files", default='training/data/finetuning/val1_test_patches_500.txt')
 parser.add_argument('--training_patches_fn', type=str, help="Filename with list of training patch files", default="training/data/finetuning/val1_train_patches.txt")
-parser.add_argument('--log_fn', type=str, help="Where to store training results", default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/finetune_results.csv")
+parser.add_argument('--log_fn', type=str, help="Where to store training results", default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/finetune_results_last_k_layers.csv")
 
 
 args = parser.parse_args()
@@ -136,7 +136,7 @@ def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, hyper_
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=lr_schedule_step_size, gamma=0.1)
 
     model_2_finetune = train_model(model_2_finetune, loss, optimizer,
-                                   exp_lr_scheduler, gen_loaders, hypers, log_writer, num_epochs=n_epochs)
+                                   exp_lr_scheduler, gen_loaders, hyper_parameters, log_writer, num_epochs=n_epochs)
     return model_2_finetune
 
 
@@ -357,6 +357,7 @@ def product_dict(**kwargs):
         
 if __name__ == "__main__":
     params_sweep_last_k = {
+        'method_name': 'last_k_layers',
         'optimizer_method': [torch.optim.Adam], #, torch.optim.SGD],
         'last_k_layers': [1,], #2, 4, 8],
         'learning_rate': [0.03, 0.01, 0.005, 0.001],
@@ -364,6 +365,7 @@ if __name__ == "__main__":
     }
 
     params_sweep_group_norm = {
+        'method_name': 'group_params',
         'optimizer_method': [torch.optim.Adam], #, torch.optim.SGD],
         'learning_rate': [0.03, 0.01, 0.005, 0.001],
         'lr_schedule_step_size': [7],
@@ -372,5 +374,5 @@ if __name__ == "__main__":
     params_list_last_k = list(product_dict(**params_sweep_last_k))
     params_list_group_norm = list(product_dict(**params_sweep_group_norm))
     
-    main([('Group params', finetune_group_params, hypers) for hypers in params_list_group_norm] + \
+    main(#[('Group params', finetune_group_params, hypers) for hypers in params_list_group_norm] + \
          [('Last k layers', finetune_last_k_layers, hypers) for hypers in params_list_last_k])

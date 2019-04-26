@@ -2,6 +2,7 @@ import argparse
 import numpy as np
 import json
 from collections import defaultdict
+from pathlib import Path
 
 import pdb
 
@@ -19,7 +20,13 @@ import shapely.geometry
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--test_tile_fn', type=str, help="Filename with tile file names in npy format", default="training/data/finetuning/test1.txt")
+parser.add_argument('--tiles_file_name', type=str, help="Filename with tile file names in npy format", default="training/data/finetuning/val2.txt")
+parser.add_argument('--sample', action="store_true", help="Whether to take random samples from this tile or not")
+parser.add_argument('--patch_dimension', type=int, help="Size of patches to create", default=240)
+parser.add_argument('--num_patches', type=int, help="How many patches to sample", default=2000)
+parser.add_argument('--patches_output_directory', default='/mnt/blobfuse/cnn-minibatches/summer_2019/active_learning_splits/val2/')
+parser.add_argument('--patches_output_file_name', default='/training/data/finetuning/val2_train_patches.txt')
+
 
 args = parser.parse_args()
 
@@ -40,8 +47,8 @@ def bounds_intersection(bound0, bound1):
     return (left, bottom, right, top)
 
 
-def main():
-    f = open(args.test_tile_fn, "r")
+def main(tile_fn, save_npy=False):
+    f = open(tile_fn, "r")
     test_tiles_files = f.read().strip().split("\n")
     f.close()
 
@@ -86,13 +93,34 @@ def main():
             nlcd_data,
         ])
 
-        lc_string = '_'.join(map(str,get_lc_stats(merged[4,:,:])))
-        nlcd_string = '_'.join(map(str,get_nlcd_stats(merged[5:,:])))
-        
-        output_fn = tile_file_name.replace('.mrf', '.npy')
-        
-        np.save(output_fn, merged[np.newaxis].data)
+        output_fn = naip_fn.replace('.mrf', '.npy')
+        result = merged[np.newaxis].data
+        if save_npy:
+            np.save(output_fn, result)
+        return result
 
 
+def sample(tile, patch_fns_fn, patches_output_directory, patch_dimension, num_patches):
+    import pdb
+    pdb.set_trace()
+    
+    patch_fns = []
+    for i in range(num_patches):
+        _, channels, height, width = tile.shape
+        y = np.random.randint(0, height-patch_dimension)
+        x = np.random.randint(0, width-patch_dimension)
+        
+        patch = tile[:, :, y:y+patch_dimension, x:x+patch_dimension].astype(np.float32)
+        output_fn = Path(patches_output_directory) / str(i)
+        np.save(output_fn, patch)
+        patch_fns.append(output_fn)
+    with open(patch_fns_fn, 'w+') as f:
+        for fn in patch_fns:
+            f.write(fn)
+            
+        
 if __name__ == '__main__':
-    main()
+    if args.sample:
+        sample(main(args.tiles_file_name), args.patches_output_file_name, args.patches_output_directory, args.patch_dimension, args.num_patches)
+    else:
+        main(args.tiles_file_name, save_npy=True)

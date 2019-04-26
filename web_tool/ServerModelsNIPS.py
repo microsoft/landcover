@@ -369,7 +369,6 @@ class KerasBackPropFineTune(BackendModel):
                 if not np.all(correction_labels_slice == 0):
                     batch_x.append(naip_im)
                     batch_y.append(correction_labels_slice)
-
                     self.correction_labels[y_index:y_index+self.input_size, x_index:x_index+self.input_size, :] = 0
                 else:
                     num_skips += 1
