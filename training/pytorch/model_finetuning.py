@@ -241,8 +241,8 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
                     train_loss = running_loss / n_iter
                     tran_mean_IoU = meanIoU / n_iter
 
-            print('{} Loss: {:.4f} Acc: {:.4f}'.format(
-                  phase, epoch_loss, epoch_mean_IoU))
+            #print('{} Loss: {:.4f} Acc: {:.4f}'.format(
+            #      phase, epoch_loss, epoch_mean_IoU))
             result_row = {
                 'run_id': hyper_parameters['run_id'],
                 'hyper_parameters': hyper_parameters,
@@ -254,7 +254,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
                 'total_time': datetime.now() - since
             }
             print(result_row)
-            result_writer.write(result_row)
+            result_writer.writerow(result_row)
 
             # deep copy the model
             #if phase == 'val' and epoch_mean_IoU > best_mean_IoU:
@@ -279,6 +279,7 @@ def main(finetune_methods, validation_patches_fn=None):
     global results_writer
     results_file = open(args.log_fn, 'w+')
     results_writer = csv.DictWriter(results_file, ['run_id', 'hyper_parameters', 'epoch', 'train_IoU', 'train_loss', 'val_IoU', 'val_loss', 'total_time'])
+    results_writer.writeheader()
     
     params = json.load(open(args.config_file, "r"))
     
@@ -337,6 +338,7 @@ def main(finetune_methods, validation_patches_fn=None):
             torch.save(model.state_dict(), finetunned_fn)
 
     pprint(results)
+    close(results_file)
 
     
 def product_dict(**kwargs):
