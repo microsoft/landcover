@@ -232,19 +232,20 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
                     y_hat = outputs.cpu().numpy()
                 y_hat = np.argmax(y_hat, axis=1)
                 batch_meanIoU = 0
-                for j in range(batch_size):
-                    #pdb.set_trace()
-                    batch_meanIoU += mean_IoU(y_hat[j], y_hr[j], ignored_classes={0})
-                batch_meanIoU /= batch_size
-                meanIoU += batch_meanIoU
-                # print('batch_meanIoU: %f' % batch_meanIoU)
+                if phase == 'val':
+                    for j in range(batch_size):
+                        #pdb.set_trace()
+                        batch_meanIoU += mean_IoU(y_hat[j], y_hr[j], ignored_classes={0})
+                    batch_meanIoU /= batch_size
+                    meanIoU += batch_meanIoU
+                    # print('batch_meanIoU: %f' % batch_meanIoU)
 
                 if phase == 'val':
                     val_loss = running_loss / n_iter
                     val_mean_IoU = meanIoU / n_iter
                 elif phase == 'train':
                     train_loss = running_loss / n_iter
-                    train_mean_IoU = meanIoU / n_iter
+                    #train_mean_IoU = meanIoU / n_iter
 
             #print('{} Loss: {:.4f} Acc: {:.4f}'.format(
             #      phase, epoch_loss, epoch_mean_IoU))
@@ -252,7 +253,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
             'run_id': hyper_parameters['run_id'],
             'hyper_parameters': hyper_parameters,
             'epoch': epoch,
-            'train_IoU': train_mean_IoU,
+      #      'train_IoU': train_mean_IoU,
             'train_loss': train_loss,
             'val_IoU': val_mean_IoU,
             'val_loss': val_loss,
@@ -272,12 +273,12 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
     duration = datetime.now() - since
     seconds_elapsed = duration.total_seconds()
     
-    print('Training complete in {:.0f}m {:.0f}s'.format(
-        seconds_elapsed // 60, seconds_elapsed % 60))
-    print('Best val IoU: {:4f}'.format(best_mean_IoU))
+    #print('Training complete in {:.0f}m {:.0f}s'.format(
+    #    seconds_elapsed // 60, seconds_elapsed % 60))
+    #print('Best val IoU: {:4f}'.format(best_mean_IoU))
 
     # load best model weights
-    model.load_state_dict(best_model_wts)
+    # model.load_state_dict(best_model_wts)
     return model, FineTuneResult(best_mean_IoU=best_mean_IoU, train_duration=duration)
 
 def main(finetune_methods, validation_patches_fn=None):
@@ -339,7 +340,7 @@ def main(finetune_methods, validation_patches_fn=None):
             os.makedirs(savedir)
         
         if model_opts["model"] == "unet":
-            finetunned_fn = savedir + "finetuned_unet_gn.pth_%s.tar" % str(fine_tune_params)
+            finetunned_fn = savedir + "finetuned_unet_gn.pth_%s.tar" % str(hyper_params)
             torch.save(model.state_dict(), finetunned_fn)
 
     pprint(results)
@@ -357,13 +358,13 @@ if __name__ == "__main__":
     params_sweep_last_k = {
         'optimizer_method': [torch.optim.Adam], #, torch.optim.SGD],
         'last_k_layers': [1,], #2, 4, 8],
-        'learning_rate': [0.05, 0.01, 0.005, 0.001],
+        'learning_rate': [0.03, 0.01, 0.005, 0.001],
         'lr_schedule_step_size': [7],
     }
 
     params_sweep_group_norm = {
         'optimizer_method': [torch.optim.Adam], #, torch.optim.SGD],
-        'learning_rate': [0.05, 0.01, 0.005, 0.001],
+        'learning_rate': [0.03, 0.01, 0.005, 0.001],
         'lr_schedule_step_size': [7],
     }
 
