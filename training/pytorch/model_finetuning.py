@@ -271,6 +271,10 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
         print(result_row)
         results_writer.writerow(result_row)
 
+        hyper_parameters['epoch'] = epoch
+        finetuned_fn = str(Path(args.model_output_directory) / "finetuned_unet_gn.pth_%s.tar" % str(hyper_parameters))
+        torch.save(model.state_dict(), finetuned_fn)
+        
             # deep copy the model
             #if phase == 'val' and epoch_mean_IoU > best_mean_IoU:
             #    best_mean_IoU = epoch_mean_IoU
@@ -341,7 +345,7 @@ def main(finetune_methods, validation_patches_fn=None):
         hyper_params['run_id'] = run_id
         print('Fine-tune hyper-params: %s' % str(hyper_params))
         improve_reproducibility()
-        model, result = finetune_function(path, loss, dataloaders, params, hyper_params, results_writer, n_epochs=5)
+        model, result = finetune_function(path, loss, dataloaders, params, hyper_params, results_writer, n_epochs=10)
         results[finetune_method_name] = result
         
         savedir = args.model_output_directory
@@ -349,8 +353,8 @@ def main(finetune_methods, validation_patches_fn=None):
             os.makedirs(savedir)
         
         if model_opts["model"] == "unet":
-            finetunned_fn = str(Path(savedir) / "finetuned_unet_gn.pth_%s.tar" % str(hyper_params))
-            torch.save(model.state_dict(), finetunned_fn)
+            finetuned_fn = str(Path(savedir) / "finetuned_unet_gn.pth_%s.tar" % str(hyper_params))
+            torch.save(model.state_dict(), finetuned_fn)
 
     pprint(results)
     close(results_file)
@@ -373,7 +377,7 @@ if __name__ == "__main__":
     }
 
     params_sweep_group_norm = {
-        'method_name': 'group_params',
+        'method_name': ['group_params'],
         'optimizer_method': [torch.optim.Adam], #, torch.optim.SGD],
         'learning_rate': [0.01], # [0.03, 0.01, 0.005, 0.001],
         'lr_schedule_step_size': [5],
