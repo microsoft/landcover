@@ -54,6 +54,7 @@ class DataGenerator(data.Dataset):
         x = np.transpose(data[:, :, :4], (2, 0, 1))
 
             # setup y_highres
+        # Collapse larger class space down to 4+1 primary classes {unknown, water, forest, field, built}
         y_train_hr = data[:, :, 4]
         y_train_hr[y_train_hr == 15] = 0
         y_train_hr[y_train_hr == 5] = 4
