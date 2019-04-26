@@ -164,9 +164,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
         val_loss = -1
 
         # Each epoch has a training and validation phase
-        phases = ['train']
-        if args.run_validation:
-            phases += ['val']
+        phases = ['train', 'val']
         for phase in phases:
             if phase == 'train':
                 scheduler.step()
