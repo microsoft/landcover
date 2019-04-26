@@ -86,6 +86,7 @@ def mean_IoU(pred_segm, gt_segm, ignored_classes={}):
 
         IoU[i] = n_ii / (t_i + n_ij - n_ii + 0.0001)
 
+    
     _mean_IoU = np.sum(IoU) / num_ground_truth_classes
     return _mean_IoU
 
