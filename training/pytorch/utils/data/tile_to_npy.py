@@ -25,7 +25,7 @@ parser.add_argument('--sample', action="store_true", help="Whether to take rando
 parser.add_argument('--patch_dimension', type=int, help="Size of patches to create", default=240)
 parser.add_argument('--num_patches', type=int, help="How many patches to sample", default=2000)
 parser.add_argument('--patches_output_directory', default='/mnt/blobfuse/cnn-minibatches/summer_2019/active_learning_splits/val2/')
-parser.add_argument('--patches_output_file_name', default='/training/data/finetuning/val2_train_patches.txt')
+parser.add_argument('--patches_output_file_name', default='training/data/finetuning/val2_train_patches.txt')
 
 
 args = parser.parse_args()
@@ -101,9 +101,6 @@ def main(tile_fn, save_npy=False):
 
 
 def sample(tile, patch_fns_fn, patches_output_directory, patch_dimension, num_patches):
-    import pdb
-    pdb.set_trace()
-    
     patch_fns = []
     for i in range(num_patches):
         _, channels, height, width = tile.shape
@@ -111,12 +108,14 @@ def sample(tile, patch_fns_fn, patches_output_directory, patch_dimension, num_pa
         x = np.random.randint(0, width-patch_dimension)
         
         patch = tile[:, :, y:y+patch_dimension, x:x+patch_dimension].astype(np.float32)
-        output_fn = Path(patches_output_directory) / str(i)
+        output_fn = Path(patches_output_directory) / (str(i) + '.npy')
         np.save(output_fn, patch)
         patch_fns.append(output_fn)
+    import pdb
+    pdb.set_trace()
     with open(patch_fns_fn, 'w+') as f:
         for fn in patch_fns:
-            f.write(fn)
+            f.write(str(fn) + '\n')
             
         
 if __name__ == '__main__':
