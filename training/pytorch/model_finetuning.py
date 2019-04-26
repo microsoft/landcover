@@ -158,6 +158,11 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
         print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         print('-' * 10)
 
+        train_mean_IoU = -1
+        train_loss = -1
+        val_mean_IoU = -1
+        val_loss = -1
+
         # Each epoch has a training and validation phase
         for phase in ['train', 'val']:
             if phase == 'train':
