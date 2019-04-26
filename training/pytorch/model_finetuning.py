@@ -244,22 +244,22 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
                     val_mean_IoU = meanIoU / n_iter
                 elif phase == 'train':
                     train_loss = running_loss / n_iter
-                    tran_mean_IoU = meanIoU / n_iter
+                    train_mean_IoU = meanIoU / n_iter
 
             #print('{} Loss: {:.4f} Acc: {:.4f}'.format(
             #      phase, epoch_loss, epoch_mean_IoU))
-            result_row = {
-                'run_id': hyper_parameters['run_id'],
-                'hyper_parameters': hyper_parameters,
-                'epoch': epoch,
-                'train_IoU': train_mean_IoU,
-                'train_loss': train_loss,
-                'val_IoU': val_mean_IoU,
-                'val_loss': val_loss,
-                'total_time': datetime.now() - since
-            }
-            print(result_row)
-            result_writer.writerow(result_row)
+        result_row = {
+            'run_id': hyper_parameters['run_id'],
+            'hyper_parameters': hyper_parameters,
+            'epoch': epoch,
+            'train_IoU': train_mean_IoU,
+            'train_loss': train_loss,
+            'val_IoU': val_mean_IoU,
+            'val_loss': val_loss,
+            'total_time': datetime.now() - since
+        }
+        print(result_row)
+        results_writer.writerow(result_row)
 
             # deep copy the model
             #if phase == 'val' and epoch_mean_IoU > best_mean_IoU:
@@ -357,13 +357,13 @@ if __name__ == "__main__":
     params_sweep_last_k = {
         'optimizer_method': [torch.optim.Adam], #, torch.optim.SGD],
         'last_k_layers': [1,], #2, 4, 8],
-        'learning_rate': [0.1, 0.05, 0.01, 0.005, 0.001],
+        'learning_rate': [0.05, 0.01, 0.005, 0.001],
         'lr_schedule_step_size': [7],
     }
 
     params_sweep_group_norm = {
         'optimizer_method': [torch.optim.Adam], #, torch.optim.SGD],
-        'learning_rate': [0.1, 0.05, 0.01, 0.005, 0.001],
+        'learning_rate': [0.05, 0.01, 0.005, 0.001],
         'lr_schedule_step_size': [7],
     }
 
