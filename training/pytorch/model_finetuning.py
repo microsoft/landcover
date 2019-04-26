@@ -154,7 +154,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
     duration_til_best_epoch = since - since
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-    for epoch in range(num_epochs):
+    for epoch in range(-1, num_epochs):
         print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         print('-' * 10)
 
@@ -164,7 +164,8 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
         val_loss = -1
 
         # Each epoch has a training and validation phase
-        for phase in ['train', 'val']:
+        phases = ['train', 'val']
+        for phase in phases:
             if phase == 'train':
                 scheduler.step()
                 model.train()  # Set model to training mode
@@ -210,12 +211,12 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
 
                 # forward
                 # track history if only in train
-                with torch.set_grad_enabled(phase == 'train'):
+                with torch.set_grad_enabled(phase == 'train' and epoch > -1):
                     outputs = model.forward(inputs)
                     loss = criterion(torch.squeeze(labels,1).long(), outputs)
 
                     # backward + optimize only if in training phase
-                    if phase == 'train':
+                    if phase == 'train' and epoch > -1:
                         loss.backward()
                         optimizer.step()
 
