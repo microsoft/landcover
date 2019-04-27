@@ -159,7 +159,7 @@ def main(model_file, config_file):
     running_mean_IoU /= len(test_tiles_files)
     running_pixel_accuracy /= len(test_tiles_files)
     
-    print('%s\t%f\t%f' % (model_file, running_mean_IoU, running_pixel_accuracy))
+    print('%s, %f, %f' % (model_file, running_mean_IoU, running_pixel_accuracy))
 
 
 if __name__ == '__main__':
