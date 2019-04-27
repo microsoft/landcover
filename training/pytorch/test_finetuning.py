@@ -165,7 +165,7 @@ def main(model_file, config_file):
 
 
 if __name__ == '__main__':
-    try:
-        main(args.model_file, args.config_file)
-    except:
-        pdb.set_trace()
+    #try:
+    main(args.model_file, args.config_file)
+    #except:
+    #    pdb.set_trace()
