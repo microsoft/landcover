@@ -272,7 +272,8 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
         results_writer.writerow(result_row)
 
         hyper_parameters['epoch'] = epoch
-        finetuned_fn = str(Path(args.model_output_directory) / ("finetuned_unet_gn.pth_%s.tar" % str(hyper_parameters)))
+        hyper_parameters_str = sorted(hyper_parameters.items())
+        finetuned_fn = str(Path(args.model_output_directory) / ("finetuned_unet_gn.pth_%s.tar" % hyper_parameters_str))
         torch.save(model.state_dict(), finetuned_fn)
         
             # deep copy the model
