@@ -146,7 +146,8 @@ def main(model_file, config_file):
         y_train_hr[y_train_hr == 6] = 4
 
         margin = model.border_margin_px
-        running_mean_IoU += mean_IoU(y_train_hr[margin:height-margin, margin:width-margin], result, ignored_classes={0})
+        running_mean_IoU += mean_IoU(result, y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
+        running_pixel_accuracy += pixel_accuracy(result, y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
 
         margin = model.border_margin_px
         #try:
@@ -159,8 +160,8 @@ def main(model_file, config_file):
         #print(running_pixel_accuracy)
     running_mean_IoU /= len(test_tiles_files)
     running_pixel_accuracy /= len(test_tiles_files)
-
-    print('%s, %f, %f' % (model_file, running_mean_IoU, running_pixel_accuracy))
+    
+    print('%s\t%f\t%f' % (model_file, running_mean_IoU, running_pixel_accuracy))
 
 
 if __name__ == '__main__':
