@@ -71,6 +71,12 @@ class Unet(nn.Module):
         self.conv_final = nn.Conv2d(in_channels=32, out_channels=self.n_classes,
                                     kernel_size=1, padding=0, stride=1)
 
+        # How many pixels are lost on each edge (top, bottom, left, right) when an input is run through the model
+        # Output is not valid on full height and width. Must take following slice:
+        #   output[ self.border_margin_px : output.shape[0] - self.border_margin_px,
+        #           self.border_margin_px : output.shape[1] - self.border_margin_px  ]
+        self.border_margin_px = 92
+        
 
     def conv_block(self, dim_in, dim_out, kernel_size=3, stride=1, padding=0, bias=True):
         """
