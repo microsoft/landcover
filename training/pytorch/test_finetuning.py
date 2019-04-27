@@ -8,7 +8,7 @@ import pdb
 import torch
 import torch.nn as nn
 from training.pytorch.models.unet import Unet
-from training.pytorch.utils.eval_segm import mean_IoU
+from training.pytorch.utils.eval_segm import mean_IoU, pixel_accuracy
 from training.pytorch.data_loader import DataGenerator
 from torch.utils import data
 from torch.autograd import Variable
@@ -57,8 +57,8 @@ def predict_entire_image_unet_fine(model, x):
             patch_tensor = torch.from_numpy(patch).float().to(device)
             y_pred1 = model.forward(patch_tensor.unsqueeze(0))
             y_hat1 = (Variable(y_pred1).data).cpu().numpy()
-            
-            out[:, y + margin:y + patch_dimension - margin, x + margin : x + patch_dimension - margin] = y_hat1
+            y_hat1 = y_hat1.squeeze(0)
+            out[:, y + margin:y + patch_dimension - margin, x + margin : x + patch_dimension - margin] = y_hat1 # [:, y + margin:y + patch_dimension - margin, x + margin : x + patch_dimension - margin]
     #pred = np.rollaxis(out, 0, 3)   # (w, h, c)
     #pred = np.moveaxis(pred, 0, 1)  # (h, w, c)
     pred = rearrange(out, 'channel height width -> height width channel')
