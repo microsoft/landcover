@@ -1,0 +1,8 @@
+/mnt/blobfuse/esri-naip/data/v1/2014/states/va/va_1m_2014/38077/m_3807713_sw_18_1_20140826.mrf
+/mnt/blobfuse/esri-naip/data/v1/2014/states/va/va_1m_2014/38077/m_3807713_se_18_1_20140815.mrf
+/mnt/blobfuse/esri-naip/data/v1/2014/states/va/va_1m_2014/38077/m_3807721_ne_18_1_20140826.mrf
+/mnt/blobfuse/esri-naip/data/v1/2014/states/va/va_1m_2014/38077/m_3807721_se_18_1_20140815.mrf
+/mnt/blobfuse/esri-naip/data/v1/2014/states/va/va_1m_2014/38077/m_3807721_sw_18_1_20140826.mrf
+/mnt/blobfuse/esri-naip/data/v1/2014/states/va/va_1m_2014/38077/m_3807720_se_18_1_20140826.mrf
+/mnt/blobfuse/esri-naip/data/v1/2014/states/va/va_1m_2014/38077/m_3807720_ne_18_1_20140826.mrf
+/mnt/blobfuse/esri-naip/data/v1/2014/states/va/va_1m_2014/38077/m_3807712_se_18_1_20140826.mrf

@@ -1,0 +1,2 @@
+/mnt/blobfuse/esri-naip/data/v1/2013/states/pa/pa_1m_2013/39076/m_3907601_ne_18_1_20130604.mrf
+
