@@ -120,6 +120,7 @@ def main(model_file, config_file):
         # (height, width)
         
         y_train_hr = tile[0, :, :, 4]
+        height, width = y_train_hr.shape
         # (height, width)
         
         # Collapse larger class space down to 4+1 primary classes {unknown, water, forest, field, built}
@@ -127,7 +128,7 @@ def main(model_file, config_file):
         y_train_hr[y_train_hr == 5] = 4
         y_train_hr[y_train_hr == 6] = 4
         
-        running_mean_IoU += mean_IoU(y_train_hr, result, ignored_classes={0})
+        running_mean_IoU += mean_IoU(y_train_hr[margin:height-margin, margin:width-margin], result, ignored_classes={0})
 
     running_mean_IoU /= len(test_tiles_files)
     
