@@ -67,7 +67,7 @@ def run_model_on_tile(model, naip_tile, batch_size=32):
     # (height, width, channel)
     y_hat = predict_entire_image_unet_fine(model, naip_tile)
     # (h, w, c)
-    return np.argmax(y_hat, dim=-1)
+    return np.argmax(y_hat, axis=-1)
     # (h, w)
 
 
