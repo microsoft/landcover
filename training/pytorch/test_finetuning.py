@@ -102,7 +102,6 @@ def run(model, naip_data):
     # (height, width)
     return output
 
-
 def load_model(path_2_saved_model, model_opts, outer_class=None):
     checkpoint = torch.load(path_2_saved_model)
     model = Unet(model_opts)
@@ -117,7 +116,6 @@ def main(model_file, config_file):
     params = json.load(open(config_file, "r"))
     is_group_params = ('group_params' in model_file)
     model = load_model(model_file, params['model_opts'], outer_class=(GroupParams if is_group_params else None))
-    
     f = open(args.test_tile_fn, "r")
     test_tiles_files = f.read().strip().split("\n")
     f.close()
