@@ -157,7 +157,7 @@ def main(model_file, config_file):
         #print(running_pixel_accuracy)
     running_mean_IoU /= len(test_tiles_files)
     running_pixel_accuracy /= len(test_tiles_files)
-    
+
     print('%s, %f, %f' % (model_file, running_mean_IoU, running_pixel_accuracy))
 
 
