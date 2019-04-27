@@ -135,9 +135,8 @@ def main(model_file, config_file):
         print(tile.shape)
         result = run(model, tile)
         # (height, width)
-        print('successfully run')
-
-        y_train_hr = tile[0, :, :, 4]
+        
+        y_train_hr = tile[0, 4, :, :]
         height, width = y_train_hr.shape
         # (height, width)
         
@@ -146,6 +145,7 @@ def main(model_file, config_file):
         y_train_hr[y_train_hr == 5] = 4
         y_train_hr[y_train_hr == 6] = 4
 
+        margin = model.border_margin_px
         running_mean_IoU += mean_IoU(y_train_hr[margin:height-margin, margin:width-margin], result, ignored_classes={0})
 
         margin = model.border_margin_px
