@@ -13,7 +13,6 @@ from training.pytorch.data_loader import DataGenerator
 from torch.utils import data
 from torch.autograd import Variable
 from einops import rearrange
-
 from web_tool.ServerModelsNIPSGroupNorm import GroupParams
 
 parser = argparse.ArgumentParser()
@@ -40,14 +39,13 @@ def predict_entire_image_unet_fine(model, x):
         margin = model.border_margin_px
     except:
         margin = 0
-    
+
     out = np.zeros((5, h, w))
     # (channel, height, width)
 
     patch_dimension = 892
 
     stride = patch_dimension - 2 * margin
-
     max_x = 0
     max_y = 0
     
@@ -69,7 +67,6 @@ def predict_entire_image_unet_fine(model, x):
             out[:, y + margin:y + patch_dimension - margin, x + margin : x + patch_dimension - margin] = y_hat1 # [:, y + margin:y + patch_dimension - margin, x + margin : x + patch_dimension - margin]
             max_x = x + patch_dimension - margin
             max_y = y + patch_dimension - margin
-            
     #pred = np.rollaxis(out, 0, 3)   # (w, h, c)
     #pred = np.moveaxis(pred, 0, 1)  # (h, w, c)
     pred = rearrange(out, 'channel height width -> height width channel')
@@ -88,6 +85,7 @@ def run_model_on_tile(model, naip_tile, batch_size=32):
 def run(model, naip_data):
     # pdb.set_trace()
     
+
     # apply padding to the output_features
     # naip_data: (batch, channel, height, width)
     x = np.squeeze(naip_data, 0)
@@ -157,7 +155,6 @@ def main(model_file, config_file):
         # pdb.set_trace()
         #print(running_mean_IoU)
         #print(running_pixel_accuracy)
-            
     running_mean_IoU /= len(test_tiles_files)
     running_pixel_accuracy /= len(test_tiles_files)
     
