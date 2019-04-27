@@ -90,9 +90,9 @@ def run(model, naip_data):
     return output
 
 
-def load_model(path_2_saved_model, model_opts):
+def load_model(path_2_saved_model, model_opts, ModelClass=Unet):
     checkpoint = torch.load(path_2_saved_model)
-    model = Unet(model_opts)
+    model = ModelClass(model_opts)
     model.load_state_dict(checkpoint)
     model.eval()
     return model
@@ -100,7 +100,7 @@ def load_model(path_2_saved_model, model_opts):
 
 def main(model_file, config_file):
     params = json.load(open(config_file, "r"))    
-    model = load_model(model_file, params['model_opts'])
+    model = load_model(model_file, params['model_opts'], ModelClass=(GroupParams if is_group_params else Unet))
     
     f = open(args.test_tile_fn, "r")
     test_tiles_files = f.read().strip().split("\n")
