@@ -41,7 +41,6 @@ def predict_entire_image_unet_fine(model, x):
         margin = model.border_margin_px
     except:
         margin = 0
-
     out = np.zeros((5, h, w))
     # (channel, height, width)
 
@@ -86,7 +85,6 @@ def run_model_on_tile(model, naip_tile, batch_size=32):
 
 def run(model, naip_data):
     # pdb.set_trace()
-    
 
     # apply padding to the output_features
     # naip_data: (batch, channel, height, width)
@@ -134,6 +132,7 @@ def main(model_file, config_file):
         print(tile.shape)
         result = run(model, tile)
         # (height, width)
+        print('successfully run')
         
         y_train_hr = tile[0, 4, :, :]
         height, width = y_train_hr.shape
