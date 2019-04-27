@@ -1,4 +1,4 @@
-from ServerModelsAbstract import BackendModel
+from web_tool.ServerModelsAbstract import BackendModel
 import torch
 import numpy as np
 import torch.nn as nn
