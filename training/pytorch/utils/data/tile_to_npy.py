@@ -52,6 +52,8 @@ def main(tile_fn, save_npy=False):
     test_tiles_files = f.read().strip().split("\n")
     f.close()
 
+    pdb.set_trace()
+
     for count, naip_fn in enumerate(test_tiles_files):
         print(count, len(test_tiles_files))
 

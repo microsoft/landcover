@@ -32,16 +32,16 @@ parser.add_argument('--model_file', type=str,
                     help="Checkpoint saved model",
                     default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/checkpoint_best.pth.tar")
 
-parser.add_argument('--data_path', type=str, help="Path to data", default="/mnt/blobfuse/cnn-minibatches/summer_2019/active_learning_splits/")
+#parser.add_argument('--data_path', type=str, help="Path to data", default="/mnt/blobfuse/cnn-minibatches/summer_2019/active_learning_splits/")
 # parser.add_argument('--data_sub_dirs', type=str, nargs='+', help="Sub-directories of `data_path` to get data from", default=['val1',]) # 'test1', 'test2', 'test3', 'test4'])
 
 parser.add_argument('--run_validation', action="store_true", help="Whether to run validation")
 parser.add_argument('--validation_patches_fn', type=str, help="Filename with list of validation patch files", default='training/data/finetuning/val1_test_patches_500.txt')
 parser.add_argument('--training_patches_fn', type=str, help="Filename with list of training patch files", default="training/data/finetuning/val1_train_patches.txt")
 
-parser.add_argument('--log_fn', type=str, help="Where to store training results", default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/finetune_results_last_k_layers.csv")
+parser.add_argument('--log_fn', type=str, help="Where to store training results", default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetune/finetune_results_last_k_layers.csv")
 
-parser.add_argument('--model_output_directory', help='Where to store fine-tuned model', default='/mnt/blobfuse/train-output/conditioning/models/finetuning/test1')
+parser.add_argument('--model_output_directory', help='Where to store fine-tuned model', default='/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/test1')
 
 
 
@@ -150,7 +150,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
     global results_writer
     
     # mask_id indices (points per patch): [1, 2, 3, 4, 5, 10, 15, 20, 40, 60, 80, 100]
-    mask_id = 11
+    mask_id = hyper_parameters['mask_id']
     
     since = datetime.now()
 
@@ -272,7 +272,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
         results_writer.writerow(result_row)
 
         hyper_parameters['epoch'] = epoch
-        finetuned_fn = str(Path(args.model_output_directory) / "finetuned_unet_gn.pth_%s.tar" % str(hyper_parameters))
+        finetuned_fn = str(Path(args.model_output_directory) / ("finetuned_unet_gn.pth_%s.tar" % str(hyper_parameters)))
         torch.save(model.state_dict(), finetuned_fn)
         
             # deep copy the model
@@ -353,11 +353,11 @@ def main(finetune_methods, validation_patches_fn=None):
             os.makedirs(savedir)
         
         if model_opts["model"] == "unet":
-            finetuned_fn = str(Path(savedir) / "finetuned_unet_gn.pth_%s.tar" % str(hyper_params))
+            finetuned_fn = str(Path(savedir) / ("finetuned_unet_gn.pth_%s.tar" % str(hyper_params)))
             torch.save(model.state_dict(), finetuned_fn)
 
     pprint(results)
-    close(results_file)
+    results_file.close()
 
     
 def product_dict(**kwargs):
@@ -371,16 +371,18 @@ if __name__ == "__main__":
     params_sweep_last_k = {
         'method_name': ['last_k_layers'],
         'optimizer_method': [torch.optim.Adam], #, torch.optim.SGD],
-        'last_k_layers': [1,], #2, 4, 8],
-        'learning_rate': [0.01], # [0.03, 0.01, 0.005, 0.001],
+        'last_k_layers': [1, 2, 4], #, 8],
+        'learning_rate': [0.01], #, 0.005, 0.001],
         'lr_schedule_step_size': [5],
+        'mask_id': range(12),
     }
 
     params_sweep_group_norm = {
         'method_name': ['group_params'],
         'optimizer_method': [torch.optim.Adam], #, torch.optim.SGD],
-        'learning_rate': [0.01], # [0.03, 0.01, 0.005, 0.001],
+        'learning_rate': [0.03], # 0.03, 0.01], # 0.005, 0.001],
         'lr_schedule_step_size': [5],
+        'mask_id': range(12),
     }
 
     params_list_last_k = list(product_dict(**params_sweep_last_k))
@@ -388,3 +390,4 @@ if __name__ == "__main__":
     
     main([('Group params', finetune_group_params, hypers) for hypers in params_list_group_norm] + \
          [('Last k layers', finetune_last_k_layers, hypers) for hypers in params_list_last_k])
+
