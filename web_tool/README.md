@@ -8,11 +8,17 @@ This repository holds both the "frontend" web-application and "backend" web API 
 
 - Create a new Deep Learning Virtual Machine (DLVM) Ubuntu image on Azure
 - `git clone git@github.com:Microsoft/landcover.git`
-- `cd landcover/web-tool`
+- `cd landcover/web_tool`
 - Run `new_vm_setup.sh`, this will restart the machine at the end as I have faced GPU problems on newly provisioned DLVM image machines
 - Download `mount_remotes_development.sh` and `mount_remotes_deployment.sh` from https://ms.portal.azure.com/#blade/Microsoft_Azure_Storage/FileShareMenuBlade/overview/storageAccountId/%2Fsubscriptions%2Fc9726640-cf74-4111-92f5-0d1c87564b93%2FresourceGroups%2FLandcover2%2Fproviders%2FMicrosoft.Storage%2FstorageAccounts%2Fmslandcoverstorageeast/path/vm-fileshare (please request permission if you do not have access). 
 - Run `mount_remotes_development.sh` (must be re-run any time machine is re-started, as `/mnt/` directory is cleared on Azure DLVMs)
 - `cp -r /mnt/afs/chesapeake/demo_data/ data/`
+- `mkdir tiles/`
+- `cp data/tiles.zip tiles/`
+- `cp data/demo_set_1.zip tiles/`
+- `cd data`
+- `unzip tiles.zip`
+- `unzip demo_set_1.zip`
 - `cd ..`
 - Open up ports 4040 and 4444 to the machine through the Azure Portal
 - `export PYTHONPATH=.`
