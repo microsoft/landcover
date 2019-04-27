@@ -41,24 +41,35 @@ def predict_entire_image_unet_fine(model, x):
     except:
         margin = 0
     
-    out = np.zeros((5, h - 2 * margin, w - 2 * margin))
+    out = np.zeros((5, h, w))
     # (channel, height, width)
 
     patch_dimension = 892
 
     stride = patch_dimension - 2 * margin
+
+    max_x = 0
+    max_y = 0
     
     for x in range(0, w, stride):
         for y in range(0, h, stride):
             patch = norm_image[:4, y:y+patch_dimension, x:x+patch_dimension]
             c, h1, w1 = patch.shape
             if not (h1 == patch_dimension and w1 == patch_dimension):
+            #    pdb.set_trace()
                 continue
             patch_tensor = torch.from_numpy(patch).float().to(device)
             y_pred1 = model.forward(patch_tensor.unsqueeze(0))
+            _, c_y, h_y, w_y = y_pred1.shape
+            if not (h_y == stride and w_y == stride):
+            #    pdb.set_trace()
+                continue
             y_hat1 = (Variable(y_pred1).data).cpu().numpy()
             y_hat1 = y_hat1.squeeze(0)
             out[:, y + margin:y + patch_dimension - margin, x + margin : x + patch_dimension - margin] = y_hat1 # [:, y + margin:y + patch_dimension - margin, x + margin : x + patch_dimension - margin]
+            max_x = x + patch_dimension - margin
+            max_y = y + patch_dimension - margin
+            
     #pred = np.rollaxis(out, 0, 3)   # (w, h, c)
     #pred = np.moveaxis(pred, 0, 1)  # (h, w, c)
     pred = rearrange(out, 'channel height width -> height width channel')
@@ -75,6 +86,8 @@ def run_model_on_tile(model, naip_tile, batch_size=32):
 
 
 def run(model, naip_data):
+    # pdb.set_trace()
+    
     # apply padding to the output_features
     # naip_data: (batch, channel, height, width)
     x = np.squeeze(naip_data, 0)
@@ -124,6 +137,7 @@ def main(model_file, config_file):
         print(tile.shape)
         result = run(model, tile)
         # (height, width)
+        print('successfully run')
         
         y_train_hr = tile[0, 4, :, :]
         height, width = y_train_hr.shape
@@ -135,9 +149,15 @@ def main(model_file, config_file):
         y_train_hr[y_train_hr == 6] = 4
 
         margin = model.border_margin_px
-        running_mean_IoU += mean_IoU(result, y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
-        running_pixel_accuracy += pixel_accuracy(result, y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
-
+        #try:
+        running_mean_IoU += mean_IoU(result[margin:height-margin, margin:width-margin], y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
+        running_pixel_accuracy += pixel_accuracy(result[margin:height-margin, margin:width-margin], y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
+        #except e:
+            
+        # pdb.set_trace()
+        print(running_mean_IoU)
+        print(running_pixel_accuracy)
+            
     running_mean_IoU /= len(test_tiles_files)
     running_pixel_accuracy /= len(test_tiles_files)
     
@@ -145,4 +165,7 @@ def main(model_file, config_file):
 
 
 if __name__ == '__main__':
-    main(args.model_file, args.config_file)
+    try:
+        main(args.model_file, args.config_file)
+    except:
+        pdb.set_trace()
