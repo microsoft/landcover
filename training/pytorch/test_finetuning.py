@@ -15,6 +15,8 @@ from torch.autograd import Variable
 from einops import rearrange
 from web_tool.ServerModelsNIPSGroupNorm import GroupParams
 
+from web_tool.ServerModelsNIPSGroupNorm import GroupParams
+
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--config_file', type=str, default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/params.json", help="json file containing the configuration")
@@ -101,7 +103,6 @@ def run(model, naip_data):
     output = run_model_on_tile(model, naip_data)
     # (height, width)
     return output
-
 def load_model(path_2_saved_model, model_opts, outer_class=None):
     checkpoint = torch.load(path_2_saved_model)
     model = Unet(model_opts)
