@@ -101,7 +101,7 @@ def load_model(path_2_saved_model, model_opts):
 def main(model_file, config_file):
     params = json.load(open(config_file, "r"))    
     model = load_model(model_file, params['model_opts'])
-
+    
     f = open(args.test_tile_fn, "r")
     test_tiles_files = f.read().strip().split("\n")
     f.close()
