@@ -1,6 +1,6 @@
 import numpy as np
 
-def pixel_accuracy(pred_segm, gt_segm):
+def pixel_accuracy(pred_segm, gt_segm, ignored_classes={}):
     '''
     sum_i(n_ii) / sum_i(t_i)
     '''
@@ -14,6 +14,8 @@ def pixel_accuracy(pred_segm, gt_segm):
     sum_t_i = 0
 
     for i, c in enumerate(cl):
+        if c in ignored_classes:
+            continue
         curr_pred_mask = pred_mask[i, :, :]
         curr_gt_mask = gt_mask[i, :, :]
 
