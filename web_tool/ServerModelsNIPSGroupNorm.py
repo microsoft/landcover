@@ -149,7 +149,7 @@ class UnetgnFineTune(BackendModel):
         return output
 
 #FIXME: add retrain method
-    def retrain(self, train_steps=20, corrections_from_ui=True, learning_rate=0.003):
+    def retrain(self, train_steps=7, corrections_from_ui=True, learning_rate=0.03):
         num_labels = np.count_nonzero(self.correction_labels)
         print("Fine tuning group norm params with %d new labels. 4 Groups, 8 Params" % num_labels)
 
@@ -389,7 +389,7 @@ class FusionnetgnFineTune(BackendModel):
         return output
 
 #FIXME: add retrain method
-    def retrain(self, train_steps=10, corrections_from_ui=True, learning_rate=0.01):
+    def retrain(self, train_steps=5, corrections_from_ui=True, learning_rate=0.03):
         num_labels = np.count_nonzero(self.correction_labels)
         print("Fine-tuning Group norm params with %d new labels" % num_labels)
 
