@@ -8,9 +8,13 @@ import os
 import bottle
 import argparse
 
+
+ROOT_DIR = "web_tool"
+
+
 @bottle.get("/")
 def root_app():
-    return bottle.static_file("index.html", root="./web-tool/")
+    return bottle.static_file("index.html", root="./" + ROOT_DIR + "/")
 
 @bottle.get("/favicon.ico")
 def favicon():
@@ -18,7 +22,7 @@ def favicon():
 
 @bottle.get("/<filepath:re:.*>")
 def everything_else(filepath):
-    return bottle.static_file(filepath, root="./web-tool/")
+    return bottle.static_file(filepath, root="./" + ROOT_DIR + "/")
 
 def main():
     parser = argparse.ArgumentParser(description="Frontend Server")

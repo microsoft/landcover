@@ -22,6 +22,8 @@ import utils
 import pickle
 import joblib
 
+from web_tool.frontend_server import ROOT_DIR
+
 import ServerModelsICLRFormat, ServerModelsCachedFormat, ServerModelsICLRDynamicFormat, ServerModelsNIPS, ServerModelsNIPSGroupNorm
 
 
@@ -52,8 +54,8 @@ class AugmentationState():
         snapshot_id = AugmentationState.current_snapshot_string % (model_name, AugmentationState.current_snapshot_idx)
 
         print("Saving state for %s" % (snapshot_id))
-        joblib.dump(AugmentationState.model, "web-tool/output/%s_model.p" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)
-        joblib.dump(AugmentationState.request_list, "web-tool/output/%s_request_list.p" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)
+        joblib.dump(AugmentationState.model, ROOT_DIR + "/output/%s_model.p" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)
+        joblib.dump(AugmentationState.request_list, ROOT_DIR + "/output/%s_request_list.p" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)
         
         AugmentationState.current_snapshot_idx += 1
 

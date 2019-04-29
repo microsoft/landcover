@@ -21,6 +21,9 @@ import glob
 
 import GeoTools
 
+from web_tool.frontend_server import ROOT_DIR
+
+
 class GeoDataTypes(Enum):
     NAIP = 1
     NLCD = 2
@@ -47,11 +50,11 @@ def get_naip_same_loc(naip):
     return [naip,]
 
 assert all([os.path.exists(fn) for fn in [
-    "web-tool/data/list_all_naip.txt",
+    ROOT_DIR + "/data/list_all_naip.txt",
 ]])
 
 naip_d = {}
-fdid = open('web-tool/data/list_all_naip.txt', 'r')
+fdid = open(ROOT_DIR + '/data/list_all_naip.txt', 'r')
 while True:
     line = fdid.readline().strip()
     if not line:
@@ -75,15 +78,15 @@ fdid.close()
 
 
 assert all([os.path.exists(fn) for fn in [
-    "web-tool/data/tile_index.dat",
-    "web-tool/data/tile_index.idx",
-    "web-tool/data/tiles.p"
+    ROOT_DIR + "/data/tile_index.dat",
+    ROOT_DIR + "/data/tile_index.idx",
+    ROOT_DIR + "/data/tiles.p"
 ]])
-TILES = pickle.load(open("web-tool/data/tiles.p", "rb"))
+TILES = pickle.load(open(ROOT_DIR + "/data/tiles.p", "rb"))
 
 
 def lookup_tile_by_geom(geom):
-    tile_index = rtree.index.Index("web-tool/data/tile_index")
+    tile_index = rtree.index.Index(ROOT_DIR + "/data/tile_index")
 
     # Add some margin
     #minx, miny, maxx, maxy = shape(geom).buffer(50).bounds
@@ -268,7 +271,7 @@ def center_to_tile_geom(centerp):
     geom = fiona.transform.transform_geom("EPSG:3857", "EPSG:4269", geom)
     geom = shapely.geometry.shape(geom)
 
-    tile_index = rtree.index.Index("web-tool/data/tile_index")
+    tile_index = rtree.index.Index(ROOT_DIR + "/data/tile_index")
     intersected_indices = list(tile_index.intersection(geom.bounds))
     for idx in intersected_indices:
         intersected_fn = TILES[idx][0]
