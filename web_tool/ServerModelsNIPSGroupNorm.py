@@ -172,10 +172,9 @@ class UnetgnFineTune(BackendModel):
                 for j in range(correction_labels.shape[1]):
                     label_index = self.last_output[i][j].argmax()
                     correction_labels[i, j, label_index + 1] = 1.0
-
-        batch_x = self.naip_data
-        batch_y = np.argmax(correction_labels,axis=2)
         if(num_labels>0):
+            batch_x = self.naip_data
+            batch_y = np.argmax(correction_labels,axis=2)
             self.batch_x.append(batch_x)
             self.batch_y.append(batch_y)
             self.num_corrected_pixels += number_corrected_pixels
