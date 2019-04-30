@@ -339,6 +339,9 @@
             }
             return null;
         };
+        var findClassByIdx = function(idx){
+            return classList[idx]["name"];
+        }
 
         var labelCounts = {
             "water": 0,
@@ -526,10 +529,11 @@
                     console.debug("Successfully recorded correction");
                     console.debug(data);
 
+                    labelName = findClassByIdx(data["value"])
                     //labelCounts[data["value"]] += data["count"];
-                    labelCounts[data["value"]] += 1;
+                    labelCounts[labelName] += 1;
 
-                    $("#label-"+data["value"]).html(labelCounts[data["value"]]);
+                    $("#label-"+labelName).html(labelCounts[labelName]);
                     animateSuccessfulCorrection(10, 80);
                     //notifySuccess(data, textStatus, jqXHR);
                     
