@@ -138,10 +138,6 @@ class UnetgnFineTune(BackendModel):
         if padding > 0:
             self.tile_padding = padding
         self.naip_data = naip_data  # keep non-trimmed size, i.e. with padding
-        # if not self.run_done:
-        #     self.run_done = True
-        #     self.rows = naip_data.shape[1]+2
-        #     self.cols = naip_data.shape[2]+2
         self.correction_labels = np.zeros((naip_data.shape[1], naip_data.shape[2], self.output_channels),
                                           dtype=np.float32)
 
@@ -149,7 +145,7 @@ class UnetgnFineTune(BackendModel):
         return output
 
 #FIXME: add retrain method
-    def retrain(self, train_steps=15, corrections_from_ui=True, learning_rate=0.01):
+    def retrain(self, train_steps=15, corrections_from_ui=True, learning_rate=0.003):
         num_labels = np.count_nonzero(self.correction_labels)
         print("Fine tuning group norm params with %d new labels. 4 Groups, 8 Params" % num_labels)
 
