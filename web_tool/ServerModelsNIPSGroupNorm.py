@@ -149,7 +149,7 @@ class UnetgnFineTune(BackendModel):
         return output
 
 #FIXME: add retrain method
-    def retrain(self, train_steps=6, corrections_from_ui=True, learning_rate=0.005):
+    def retrain(self, train_steps=15, corrections_from_ui=True, learning_rate=0.01):
         num_labels = np.count_nonzero(self.correction_labels)
         print("Fine tuning group norm params with %d new labels. 4 Groups, 8 Params" % num_labels)
 
@@ -218,7 +218,6 @@ class UnetgnFineTune(BackendModel):
             if i % print_every_k_steps == 0:
                 print("Step pixel acc: ", acc)
 
-
         success = True
         message = "Fine-tuned Group norm params with %d samples. 4 Groups. 8 params, 1 layer." % self.num_corrected_pixels
         print(message)
@@ -244,7 +243,6 @@ class UnetgnFineTune(BackendModel):
         self.batch_y = []
         self.run_done = False
         self.num_corrected_pixels = 0
-
     def run_model_on_tile(self, naip_tile, batch_size=32):
         y_hat = self.predict_entire_image_unet_fine(naip_tile)
         output = y_hat[:, :, 1:5]
