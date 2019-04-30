@@ -64,7 +64,7 @@ class GroupParams(nn.Module):
         x = self.model.up_2(x, conv3_out, conv3_dim)
         x = self.model.up_3(x, conv2_out, conv2_dim)
         x = self.model.up_4(x, conv1_out, conv1_dim)
-        x = x * self.gammas + self.betas
+        x = x * self.gammas.to(device) + self.betas.to(device)
 
         return self.model.conv_final(x)
 
@@ -118,7 +118,7 @@ class UnetgnFineTune(BackendModel):
         self.correction_labels = None
         self.tile_padding = 0
 
-        self.down_weight_padding = 10
+        self.down_weight_padding = 40
 
         self.stride_x = self.input_size - self.down_weight_padding * 2
         self.stride_y = self.input_size - self.down_weight_padding * 2
@@ -149,7 +149,7 @@ class UnetgnFineTune(BackendModel):
         return output
 
 #FIXME: add retrain method
-    def retrain(self, train_steps=7, corrections_from_ui=True, learning_rate=0.03):
+    def retrain(self, train_steps=6, corrections_from_ui=True, learning_rate=0.005):
         num_labels = np.count_nonzero(self.correction_labels)
         print("Fine tuning group norm params with %d new labels. 4 Groups, 8 Params" % num_labels)
 
@@ -185,30 +185,30 @@ class UnetgnFineTune(BackendModel):
 
         batch_arr_x = np.zeros((batch_count, 4, self.input_size, self.input_size))
         batch_arr_y = np.zeros((batch_count, self.input_size, self.input_size))
-        i, j = 0, 0
-        for im in batch_x:
-            batch_arr_x[i, :, :, :] = im
-            i += 1
-        batch_x = torch.from_numpy(batch_arr_x).float().to(device)
-        for y in batch_y:
-            batch_arr_y[j, :, :] = np.argmax(y, axis=2)
-            j += 1
-        batch_y = torch.from_numpy(batch_arr_y).float().to(device)
-
-        #learning_rate *= (self.input_size * self.input_size * len(batch_x) * len(self.batch_x)) / self.num_corrected_pixels
-
+        batch_x = np.array(self.batch_x)
+        n_tiles, tile_patches, channels, rows , cols = batch_x.shape
+        #batch_x = torch.from_numpy(batch_x.reshape((n_tiles*tile_patches, channels, rows, cols))).float().to(device)
+        batch_x = torch.from_numpy(batch_x).float().to(device)
+        batch_y = np.argmax(np.array(self.batch_y), axis=4)
+        print("y_shape", batch_y.shape)
+        #batch_y = torch.from_numpy(batch_y.reshape((n_tiles*tile_patches, rows, cols))).float().to(device)
+        batch_y = torch.from_numpy(batch_y).float().to(device) 
+        print("batch shape", batch_x.shape)
+        print("y batch shape", batch_y.shape)
+        self.reset()
         optimizer = torch.optim.Adam(self.augment_model.parameters(), lr=learning_rate, eps=1e-5)
         optimizer.zero_grad()
         criterion = multiclass_ce().to(device)
         # pdb.set_trace()
 
         for i in range(train_steps):
-            with torch.set_grad_enabled(True):
-                outputs = self.augment_model.forward(batch_x[:, :, 2:240 - 2, 2:240 - 2])
-                loss = criterion(torch.squeeze(batch_y[:, 94:240 - 94, 94:240 - 94],1).long(), outputs)
-                print(loss.item())
-                loss.backward()
-                optimizer.step()
+            for j in range(n_tiles):
+                with torch.set_grad_enabled(True):
+                    outputs = self.augment_model.forward(batch_x[j, :, :, 2:240 - 2, 2:240 - 2])
+                    loss = criterion(torch.squeeze(batch_y[j, :, 94:240 - 94, 94:240 - 94],1).long(), outputs)
+                    print(loss.item())
+                    loss.backward()
+                    optimizer.step()
 
         # pdb.set_trace()
 

@@ -383,7 +383,7 @@ def main():
             "iclr_cntk",
             "nips_sr",
             "nips_hr",
-            "nips_gn",
+            "group_norm",
         ],
         help="Model to use", required=True
     )
@@ -391,7 +391,7 @@ def main():
         choices=[
             "last_layer",
             "last_k_layers",
-            "group_norm"
+            "group_params"
         ],
         help="Model to use", required=True
     )
@@ -421,8 +421,13 @@ def main():
             model = ServerModelsNIPS.KerasDenseFineTune(args.model_fn, args.gpuid, superres=False)
         elif args.fine_tune == "last_k_layers":
             model = ServerModelsNIPS.KerasBackPropFineTune(args.model_fn, args.gpuid, superres=False)
-    elif args.model == "nips_gn":
-        model = ServerModelsNIPSGroupNorm.UnetgnFineTune(args.model_fn, args.gpuid)
+    elif args.model == "group_norm":
+        if args.fine_tune == "last_layer":
+            model = ServerModelsNIPS.KerasDenseFineTune(args.model_fn, args.gpuid, superres=False)
+        elif args.fine_tune == "last_k_layers":
+            model = ServerModelsNIPS.KerasBackPropFineTune(args.model_fn, args.gpuid, superres=False)
+        elif args.fine_tune == "group_params":
+            model = ServerModelsNIPSGroupNorm.UnetgnFineTune(args.model_fn, args.gpuid)
     else:
         print("Model isn't implemented, aborting")
         return
