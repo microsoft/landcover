@@ -73,6 +73,35 @@ class GroupParams(nn.Module):
 
         return self.model.conv_final(x)
 
+
+class LastKLayersFineTune(UnetgnFineTune):
+
+    def __init__(self, model_fn, gpuid):
+        super().__init__(model_fn, gpuid)
+        self.old_inference_framework = copy.deepcopy(self.inf_framework)
+
+        pdb.set_trace()
+
+    def run(self, naip_data, naip_fn, extent, padding):
+        pass
+
+    def add_sample(self, tdst_row, bdst_row, tdst_col, bdst_col, class_idx):
+        pass
+    
+    def retrain(self, train_steps=6, corrections_from_ui=True, learning_rate=0.007):
+        pass
+
+    def add_sample(self, tdst_row, bdst_row, tdst_col, bdst_col, class_idx):
+        pass
+    
+    def reset(self):
+        super().reset()
+        self.inf_framework = self.old_inference_framework
+        
+    def run_model_on_tile(self, naip_tile, batch_size=32):
+        super().run_model_on_tile(naip_tile, batch_size=batch_size)
+    
+    
 class UnetgnFineTune(BackendModel):
 
     def __init__(self, model_fn, gpuid):
