@@ -127,6 +127,9 @@ class UnetgnFineTune(BackendModel):
         self.batch_y = []
         self.num_corrected_pixels = 0
         self.batch_count = 0
+        self.run_done = False
+        self.rows =0
+        self.cols =0
 
     def run(self, naip_data, naip_fn, extent, padding):
 
@@ -143,6 +146,10 @@ class UnetgnFineTune(BackendModel):
           #  naip_data_trimmed = naip_data[:, padding:-padding, padding:-padding]
           #  output_trimmed = output[:, padding:-padding, padding:-padding]
         self.naip_data = naip_data  # keep non-trimmed size, i.e. with padding
+        if not self.run_done:
+            self.run_done = True
+            self.rows = naip_data.shape[1]+2
+            self.cols = naip_data.shape[2]+2
         self.correction_labels = np.zeros((naip_data.shape[1], naip_data.shape[2], self.output_channels),
                                           dtype=np.float32)
 
@@ -150,15 +157,12 @@ class UnetgnFineTune(BackendModel):
         return output
 
 #FIXME: add retrain method
-    def retrain(self, train_steps=15, corrections_from_ui=True, learning_rate=0.003):
+    def retrain(self, train_steps=6, corrections_from_ui=True, learning_rate=0.007):
         num_labels = np.count_nonzero(self.correction_labels)
-        print("Fine tuning group norm params with %d new labels. 4 Groups, 8 Params" % num_labels)
+      #  print("Fine tuning group norm params with %d new labels. 4 Groups, 8 Params" % num_labels)
 
         height = self.naip_data.shape[1]
         width = self.naip_data.shape[2]
-
-        batch_x = []
-        batch_y = []
         batch_count = 0
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -172,16 +176,23 @@ class UnetgnFineTune(BackendModel):
                 for j in range(correction_labels.shape[1]):
                     label_index = self.last_output[i][j].argmax()
                     correction_labels[i, j, label_index + 1] = 1.0
+        batch_xi = np.zeros((4, self.rows, self.cols))
+        batch_xi[:,:height, :width] = self.naip_data
+        batch_yi =  np.zeros((self.rows, self.cols))
+        batch_yi[:height, :width] = np.argmax(correction_labels, axis=2)
         if(num_labels>0):
-            batch_x = self.naip_data
-            batch_y = np.argmax(correction_labels,axis=2)
-            self.batch_x.append(batch_x)
-            self.batch_y.append(batch_y)
+        #    batch_x = []
+         #   batch_y = []
+          #  batch_x = self.naip_data
+           # batch_y = np.argmax(correction_labels,axis=2)
+            self.batch_x.append(batch_xi)
+            self.batch_y.append(batch_yi)
             self.num_corrected_pixels += number_corrected_pixels
             self.batch_count += batch_count
-
+        print("Fine tuning group norm params with %d new labels. 4 Groups, 8 Params" % self.num_corrected_pixels)
        # batch_arr_x = np.zeros((batch_count, 4, self.input_size, self.input_size))
         #batch_arr_y = np.zeros((batch_count, self.input_size, self.input_size))
+#        pdb.set_trace()
         batch_x = np.array(self.batch_x)
         print(batch_x.shape)
         number_windows, channels, rows , cols = batch_x.shape
@@ -196,7 +207,7 @@ class UnetgnFineTune(BackendModel):
         optimizer = torch.optim.Adam(self.augment_model.parameters(), lr=learning_rate, eps=1e-5)
         optimizer.zero_grad()
         criterion = multiclass_ce().to(device)
-        # pdb.set_trace()
+#        pdb.set_trace()
         
 
         for i in range(train_steps):
@@ -224,7 +235,7 @@ class UnetgnFineTune(BackendModel):
         #pdb.set_trace()
 
         success = True
-        message = "Fine-tuned Group norm params with %d samples. 4 Groups. 8 params, 1 layer." % num_labels
+        message = "Fine-tuned Group norm params with %d samples. 4 Groups. 8 params, 1 layer." % self.num_corrected_pixels
         print(message)
 
         return success, message
@@ -245,6 +256,8 @@ class UnetgnFineTune(BackendModel):
         self.augment_model_trained = False
         self.batch_x = []
         self.batch_y = []
+        self.run_done = False
+        self.num_corrected_pixels = 0
 
         #for row in self.augment_base_x_train:
         #    self.augment_x_train.append(row)
