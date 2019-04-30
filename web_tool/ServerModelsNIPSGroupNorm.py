@@ -143,14 +143,14 @@ class UnetgnFineTune(BackendModel):
           #  naip_data_trimmed = naip_data[:, padding:-padding, padding:-padding]
           #  output_trimmed = output[:, padding:-padding, padding:-padding]
         self.naip_data = naip_data  # keep non-trimmed size, i.e. with padding
-        self.correction_labels = np.zeros((naip_data.shape[2], naip_data.shape[1], self.output_channels),
+        self.correction_labels = np.zeros((naip_data.shape[1], naip_data.shape[2], self.output_channels),
                                           dtype=np.float32)
 
         self.last_output = output
         return output
 
 #FIXME: add retrain method
-    def retrain(self, train_steps=15, corrections_from_ui=True, learning_rate=0.01):
+    def retrain(self, train_steps=15, corrections_from_ui=True, learning_rate=0.003):
         num_labels = np.count_nonzero(self.correction_labels)
         print("Fine tuning group norm params with %d new labels. 4 Groups, 8 Params" % num_labels)
 
@@ -175,10 +175,11 @@ class UnetgnFineTune(BackendModel):
 
         batch_x = self.naip_data
         batch_y = np.argmax(correction_labels,axis=2)
-        self.batch_x.append(batch_x)
-        self.batch_y.append(batch_y)
-        self.num_corrected_pixels += number_corrected_pixels
-        self.batch_count += batch_count
+        if(num_labels>0):
+            self.batch_x.append(batch_x)
+            self.batch_y.append(batch_y)
+            self.num_corrected_pixels += number_corrected_pixels
+            self.batch_count += batch_count
 
        # batch_arr_x = np.zeros((batch_count, 4, self.input_size, self.input_size))
         #batch_arr_y = np.zeros((batch_count, self.input_size, self.input_size))
@@ -205,17 +206,17 @@ class UnetgnFineTune(BackendModel):
                     norm_image = (batch_x[j])
                     _, w, h = norm_image.shape
                     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-                    out = np.zeros((5, h, w))
+                    out = torch.zeros((5, w, h))
 
                     norm_image1 = norm_image[:, 130:w - (w % 892) + 130, 130:h - (h % 892) + 130]
                     x_c_tensor1 = torch.from_numpy(norm_image1).float().to(device)
                     y_pred1 = self.augment_model.forward(x_c_tensor1.unsqueeze(0))
-                    y_hat1 = (Variable(y_pred1).data).cpu().numpy()
-                    out[:, 92 + 130:w - (w % 892) + 130 - 92, 92 + 130:h - (h % 892) - 92 + 130] = y_hat1
+                 #   y_hat1 = (Variable(y_pred1).data).cpu().numpy()
+                    out[:, 92 + 130:w - (w % 892) + 130 - 92, 92 + 130:h - (h % 892) - 92 + 130] = y_pred1
         
-                    outputs = torch.from_numpy(out).float().to(device)
-                    print(outputs.shape)
-                    print(batch_y[j].shape)
+                    outputs = out.float().to(device)
+                   # print(outputs.shape)
+                    #print(batch_y[j].shape)
                     loss = criterion(torch.unsqueeze(batch_y[j],0).long(), torch.unsqueeze(outputs,0))
                     print(loss.item())
                     loss.backward()
