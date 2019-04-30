@@ -284,7 +284,7 @@
 
     <script type="text/javascript">
 
-        var processingServiceURL = ENDPOINTS[0]["url"];
+        var processingServiceURL = "";
         var EXP_NAME = "TEST";
 
         var START_CENTER = [38, -94]; // lat, lon
@@ -480,17 +480,18 @@
             var idx = currentPatches.length-1;
             
             // Request input image from the first server we know about
-            requestInputPatch(idx, polygon, ENDPOINTS[0]["url"]);
+            requestInputPatch(idx, polygon);
             for(var i=0; i<ENDPOINTS.length; i++){
                 //console.debug("Running requestPatch on " + ENDPOINTS[i]["url"]);
                 currentPatches[idx]["patches"].push({
                     "srcs": null
                 });
-                requestPatch(idx, polygon, i, ENDPOINTS[i]["url"]);
+                requestPatch(idx, polygon, i);
+                break; // in the user study app we only get 1 url.
             }
         };
 
-        var requestInputPatch = function(idx, polygon, serviceURL){
+        var requestInputPatch = function(idx, polygon){
             var topleft = L.latLng(polygon[0][0], polygon[0][1]);
             var topleftProjected = L.CRS.EPSG3857.project(topleft);
             var bottomright = L.latLng(polygon[2][0], polygon[2][1]);
@@ -510,7 +511,7 @@
 
             $.ajax({
                 type: "POST",
-                url: serviceURL + "getInput",
+                url: processingServiceURL + "getInput",
                 data: JSON.stringify(request),
                 success: function(data, textStatus, jqXHR){
                     var resp = data;
@@ -530,7 +531,7 @@
         };
         
         
-        var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
+        var requestPatch = function(idx, polygon, currentImgIdx){
             var topleft = L.latLng(polygon[0][0], polygon[0][1]);
             var topleftProjected = L.CRS.EPSG3857.project(topleft);
             var bottomright = L.latLng(polygon[2][0], polygon[2][1]);
@@ -550,7 +551,7 @@
             
             $.ajax({
                 type: "POST",
-                url: serviceURL + "predPatch",
+                url: processingServiceURL + "predPatch",
                 data: JSON.stringify(request),
                 success: function(data, textStatus, jqXHR){
                     var resp = data;
@@ -712,6 +713,7 @@
             var userID = url.searchParams.get("userID");
             var modelID = url.searchParams.get("modelID");
             var maxTime = url.searchParams.get("maxTime");
+            var backendID = url.searchParams.get("backendID");
             if(trainingSetID === null){
                 trainingSetID = 0;
             } else{
@@ -724,8 +726,14 @@
             } else{
                 maxTime = parseInt(maxTime);
             }
+            if(backendID === null){
+                backendID = 0;
+            } else{
+                backendID = parseInt(backendID);
+            }
             runTimer(maxTime);
             EXP_NAME = userID + "_" + modelID + "_" + trainingSetID;
+            processingServiceURL = BACKEND_ENDPOINTS[backendID]["url"];
 
 
             //----------------------------------------------------------------------
