@@ -75,7 +75,6 @@ class GroupParams(nn.Module):
         x = x * self.gammas.to(device) + self.betas.to(device)
 
         return self.model.conv_final(x)
-        
     
 class UnetgnFineTune(BackendModel):
 
