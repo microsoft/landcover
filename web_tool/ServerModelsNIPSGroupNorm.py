@@ -5,6 +5,7 @@ import torch.nn as nn
 from training.pytorch.models.fusionnet import Fusionnet
 from training.pytorch.models.unet import Unet
 import os, json
+import pdb
 from torch.autograd import Variable
 
 def softmax(output):
@@ -142,14 +143,14 @@ class UnetgnFineTune(BackendModel):
           #  naip_data_trimmed = naip_data[:, padding:-padding, padding:-padding]
           #  output_trimmed = output[:, padding:-padding, padding:-padding]
         self.naip_data = naip_data  # keep non-trimmed size, i.e. with padding
-        self.correction_labels = np.zeros((naip_data.shape[1], naip_data.shape[2], self.output_channels),
+        self.correction_labels = np.zeros((naip_data.shape[2], naip_data.shape[1], self.output_channels),
                                           dtype=np.float32)
 
         self.last_output = output
         return output
 
 #FIXME: add retrain method
-    def retrain(self, train_steps=6, corrections_from_ui=True, learning_rate=0.005):
+    def retrain(self, train_steps=15, corrections_from_ui=True, learning_rate=0.01):
         num_labels = np.count_nonzero(self.correction_labels)
         print("Fine tuning group norm params with %d new labels. 4 Groups, 8 Params" % num_labels)
 
@@ -172,54 +173,65 @@ class UnetgnFineTune(BackendModel):
                     label_index = self.last_output[i][j].argmax()
                     correction_labels[i, j, label_index + 1] = 1.0
 
-        for y_index in (list(range(0, height - self.input_size, self.stride_y)) + [height - self.input_size, ]):
-            for x_index in (list(range(0, width - self.input_size, self.stride_x)) + [width - self.input_size, ]):
-                naip_im = self.naip_data[:, y_index:y_index + self.input_size, x_index:x_index + self.input_size]
-                correction_labels_slice = correction_labels[y_index:y_index + self.input_size,
-                                          x_index:x_index + self.input_size, :]
-                # correction_labels = test_correction_labels[y_index:y_index+self.input_size, x_index:x_index+self.input_size, :]
+        batch_x = self.naip_data
+        batch_y = np.argmax(correction_labels,axis=2)
         self.batch_x.append(batch_x)
         self.batch_y.append(batch_y)
         self.num_corrected_pixels += number_corrected_pixels
         self.batch_count += batch_count
 
-        batch_arr_x = np.zeros((batch_count, 4, self.input_size, self.input_size))
-        batch_arr_y = np.zeros((batch_count, self.input_size, self.input_size))
+       # batch_arr_x = np.zeros((batch_count, 4, self.input_size, self.input_size))
+        #batch_arr_y = np.zeros((batch_count, self.input_size, self.input_size))
         batch_x = np.array(self.batch_x)
-        n_tiles, tile_patches, channels, rows , cols = batch_x.shape
-        #batch_x = torch.from_numpy(batch_x.reshape((n_tiles*tile_patches, channels, rows, cols))).float().to(device)
-        batch_x = torch.from_numpy(batch_x).float().to(device)
-        batch_y = np.argmax(np.array(self.batch_y), axis=4)
+        print(batch_x.shape)
+        number_windows, channels, rows , cols = batch_x.shape
+        #batch_x = torch.from_numpy(batch_x).float().to(device)
+        batch_y = np.array(self.batch_y)
         print("y_shape", batch_y.shape)
-        #batch_y = torch.from_numpy(batch_y.reshape((n_tiles*tile_patches, rows, cols))).float().to(device)
-        batch_y = torch.from_numpy(batch_y).float().to(device) 
+        batch_y = torch.from_numpy(batch_y).float().to(device)
+        #batch_y = torch.from_numpy(batch_y).float().to(device) 
         print("batch shape", batch_x.shape)
         print("y batch shape", batch_y.shape)
-        self.reset()
+        self.augment_model = GroupParams(self.inf_framework.model)
         optimizer = torch.optim.Adam(self.augment_model.parameters(), lr=learning_rate, eps=1e-5)
         optimizer.zero_grad()
         criterion = multiclass_ce().to(device)
         # pdb.set_trace()
+        
 
         for i in range(train_steps):
-            for j in range(n_tiles):
+            for j in range(number_windows):
                 with torch.set_grad_enabled(True):
-                    outputs = self.augment_model.forward(batch_x[j, :, :, 2:240 - 2, 2:240 - 2])
-                    loss = criterion(torch.squeeze(batch_y[j, :, 94:240 - 94, 94:240 - 94],1).long(), outputs)
+                    norm_image = (batch_x[j])
+                    _, w, h = norm_image.shape
+                    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+                    out = np.zeros((5, h, w))
+
+                    norm_image1 = norm_image[:, 130:w - (w % 892) + 130, 130:h - (h % 892) + 130]
+                    x_c_tensor1 = torch.from_numpy(norm_image1).float().to(device)
+                    y_pred1 = self.augment_model.forward(x_c_tensor1.unsqueeze(0))
+                    y_hat1 = (Variable(y_pred1).data).cpu().numpy()
+                    out[:, 92 + 130:w - (w % 892) + 130 - 92, 92 + 130:h - (h % 892) - 92 + 130] = y_hat1
+        
+                    outputs = torch.from_numpy(out).float().to(device)
+                    print(outputs.shape)
+                    print(batch_y[j].shape)
+                    loss = criterion(torch.unsqueeze(batch_y[j],0).long(), torch.unsqueeze(outputs,0))
                     print(loss.item())
                     loss.backward()
                     optimizer.step()
 
-        # pdb.set_trace()
+        #pdb.set_trace()
 
         success = True
         message = "Fine-tuned Group norm params with %d samples. 4 Groups. 8 params, 1 layer." % num_labels
+        print(message)
 
         return success, message
 
     def add_sample(self, tdst_row, bdst_row, tdst_col, bdst_col, class_idx):
         padding = self.tile_padding
-
+        print("adding sample ", tdst_row)
         self.correction_labels[tdst_row + padding: bdst_row + 1 + padding,
         tdst_col + padding: bdst_col + 1 + padding, :] = 0.0
         self.correction_labels[tdst_row + padding: bdst_row + 1 + padding,
@@ -231,6 +243,8 @@ class UnetgnFineTune(BackendModel):
         #self.augment_y_train = []
         self.augment_model = GroupParams(self.inf_framework.model)
         self.augment_model_trained = False
+        self.batch_x = []
+        self.batch_y = []
 
         #for row in self.augment_base_x_train:
         #    self.augment_x_train.append(row)
