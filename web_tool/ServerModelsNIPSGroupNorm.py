@@ -2,11 +2,14 @@ from web_tool.ServerModelsAbstract import BackendModel
 import torch
 import numpy as np
 import torch.nn as nn
-from training.pytorch.models.fusionnet import Fusionnet
-from training.pytorch.models.unet import Unet
+import copy
 import os, json
 import pdb
+
+from training.pytorch.models.fusionnet import Fusionnet
+from training.pytorch.models.unet import Unet
 from torch.autograd import Variable
+
 
 def softmax(output):
     output_max = np.max(output, axis=2, keepdims=True)
@@ -72,35 +75,7 @@ class GroupParams(nn.Module):
         x = x * self.gammas.to(device) + self.betas.to(device)
 
         return self.model.conv_final(x)
-
-
-class LastKLayersFineTune(UnetgnFineTune):
-
-    def __init__(self, model_fn, gpuid):
-        super().__init__(model_fn, gpuid)
-        self.old_inference_framework = copy.deepcopy(self.inf_framework)
-
-        pdb.set_trace()
-
-    def run(self, naip_data, naip_fn, extent, padding):
-        pass
-
-    def add_sample(self, tdst_row, bdst_row, tdst_col, bdst_col, class_idx):
-        pass
-    
-    def retrain(self, train_steps=6, corrections_from_ui=True, learning_rate=0.007):
-        pass
-
-    def add_sample(self, tdst_row, bdst_row, tdst_col, bdst_col, class_idx):
-        pass
-    
-    def reset(self):
-        super().reset()
-        self.inf_framework = self.old_inference_framework
         
-    def run_model_on_tile(self, naip_tile, batch_size=32):
-        super().run_model_on_tile(naip_tile, batch_size=batch_size)
-    
     
 class UnetgnFineTune(BackendModel):
 
@@ -112,6 +87,7 @@ class UnetgnFineTune(BackendModel):
         self.input_size = 240
         self.model_fn = model_fn
         self.opts = json.load(open("/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn8/training/params.json", "r"))["model_opts"]
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.inf_framework = InferenceFramework(Unet, self.opts)
         self.inf_framework.load_model(self.model_fn)
         for param in self.inf_framework.model.parameters():
@@ -128,7 +104,7 @@ class UnetgnFineTune(BackendModel):
 
         self.augment_x_train = []
         self.augment_y_train = []
-        self.model = GroupParams(self.inf_framework.model)
+        self.init_model()
         self.model_trained = False
 
         seed_x_fn = ""
@@ -161,8 +137,6 @@ class UnetgnFineTune(BackendModel):
         output = self.run_model_on_tile(naip_data)
         if padding > 0:
             self.tile_padding = padding
-          #  naip_data_trimmed = naip_data[:, padding:-padding, padding:-padding]
-          #  output_trimmed = output[:, padding:-padding, padding:-padding]
         self.naip_data = naip_data  # keep non-trimmed size, i.e. with padding
         if not self.run_done:
             self.run_done = True
@@ -176,9 +150,10 @@ class UnetgnFineTune(BackendModel):
 
 #FIXME: add retrain method
     def retrain(self, train_steps=6, corrections_from_ui=True, learning_rate=0.007):
+        pdb.set_trace()
+        print('In retrain')
         num_labels = np.count_nonzero(self.correction_labels)
-      #  print("Fine tuning group norm params with %d new labels. 4 Groups, 8 Params" % num_labels)
-
+        
         height = self.naip_data.shape[1]
         width = self.naip_data.shape[2]
         batch_count = 0
@@ -208,7 +183,7 @@ class UnetgnFineTune(BackendModel):
         number_windows, channels, rows , cols = batch_x.shape
         batch_y = np.array(self.batch_y)
         batch_y = torch.from_numpy(batch_y).float().to(device)
-        self.model = GroupParams(self.inf_framework.model)
+        self.init_model()
         optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate, eps=1e-5)
         optimizer.zero_grad()
         criterion = multiclass_ce().to(device)
@@ -218,7 +193,7 @@ class UnetgnFineTune(BackendModel):
                 with torch.set_grad_enabled(True):
                     norm_image = (batch_x[j])
                     _, w, h = norm_image.shape
-                    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+                    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
                     out = torch.zeros((5, w, h))
 
                     norm_image1 = norm_image[:, 130:w - (w % 892) + 130, 130:h - (h % 892) + 130]
@@ -247,8 +222,12 @@ class UnetgnFineTune(BackendModel):
         tdst_col + padding: bdst_col + 1 + padding,
         class_idx + 1] = 1.0
 
-    def reset(self):
+    def init_model(self):
         self.model = GroupParams(self.inf_framework.model)
+        self.model.to(self.device)
+        
+    def reset(self):
+        self.init_model()
         self.model_trained = False
         self.batch_x = []
         self.batch_y = []
@@ -276,6 +255,62 @@ class UnetgnFineTune(BackendModel):
         pred = np.rollaxis(out, 0, 3)
         pred = np.moveaxis(pred, 0, 1)
         return pred
+
+
+class LastKLayersFineTune(UnetgnFineTune):
+
+    def __init__(self, model_fn, gpuid, last_k_layers=1):
+        super().__init__(model_fn, gpuid)
+        self.old_inference_framework = copy.deepcopy(self.inf_framework)
+        self.last_k_layers = last_k_layers
+        print('in LastKLayersFineTune init')
+        # pdb.set_trace()
+        self.init_model()
+
+#    def run(self, naip_data, naip_fn, extent, padding):
+#        pass
+
+    def init_model(self):
+        try:
+            self.inf_framework = copy.deepcopy(self.old_inference_framework)
+            self.model = self.inf_framework.model
+            self.model.to(self.device)
+
+            k = self.last_k_layers
+
+            # Freeze all but last k layers
+            for layer in list(self.model.children())[:-k]:
+                for param in layer.parameters():
+                    param.requires_grad = False
+
+            # Un-freeze last k layers
+            for layer in list(self.model.children())[-k:]:
+                for param in layer.parameters():
+                    param.requires_grad = True
+        except:
+            print("Trying to copy inf_framework before it exists")
+                    
+        
+    #def retrain(self, train_steps=6, corrections_from_ui=True, learning_rate=0.007):
+    #    pass
+
+    #def add_sample(self, tdst_row, bdst_row, tdst_col, bdst_col, class_idx):
+    #    pass
+        
+#    def reset(self):
+#        super().reset()
+#        self.inf_framework = self.old_inference_framework
+        
+    #def run_model_on_tile(self, naip_tile, batch_size=32):
+    #    super().run_model_on_tile(naip_tile, batch_size=batch_size)
+
+    #def run_model_on_tile(self, naip_tile, batch_size=32):
+    #    y_hat = self.predict_entire_image_unet_fine(naip_tile)
+    #    output = y_hat[:, :, 1:5]
+    #    return softmax(output)
+
+    #def predict_entire_image_unet_fine(self, x):
+    #    super().predict_entire_image_unet_fine(x)
 
 
 
