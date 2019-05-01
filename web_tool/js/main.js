@@ -214,7 +214,7 @@ var requestPatches = function(polygon){
         currentPatches[idx]["patches"].push({
             "srcs": null
         });
-        requestPatch(idx, polygon, i, ENDPOINTS[i]["url"]);
+        requestPatch(idx, polygon, i, BACKEND_URL); //TODO: this should be changed if we want to have a web tool that queries different backends
     }
 };
 
