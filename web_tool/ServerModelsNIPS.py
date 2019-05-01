@@ -95,7 +95,7 @@ class KerasDenseFineTune(BackendModel):
             original_shape = output.shape
             output = output_features.reshape(-1, output_features.shape[2])
             output = self.augment_model.predict_proba(output)
-            output = output.reshape(original_shape)
+            output = output.reshape(original_shape[0], original_shape[1],  -1)
 
         # apply padding to the output_features
         if padding > 0:
@@ -110,8 +110,8 @@ class KerasDenseFineTune(BackendModel):
         
         vals, counts = np.unique(y_train, return_counts=True)
 
-        if len(vals) == 4:
-            print("Fitting model with %d samples" % (x_train.shape[0]))
+        if len(vals) >= 4:
+            print("Fitting model with %d samples of %d different classes" % (x_train.shape[0], len(vals)))
             self.augment_model.fit(x_train, y_train)
             self.augment_model_trained = True
 
