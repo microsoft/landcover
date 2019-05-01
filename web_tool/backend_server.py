@@ -145,7 +145,7 @@ def record_correction():
 
     tlat, tlon = data["extent"]["ymax"], data["extent"]["xmin"]
     blat, blon = data["extent"]["ymin"], data["extent"]["xmax"]
-    value = data["value"] # what we want to switch the class to
+    class_idx = data["value"] # what we want to switch the class to
 
     src_crs, dst_crs, dst_transform, rev_dst_transform, padding = AugmentationState.current_transform
     #src_crs = "epsg:%s" % (src_crs) # Currently src_crs will be a string like 'epsg:####', this might change with different versions of rasterio --Caleb
@@ -165,8 +165,6 @@ def record_correction():
     bdst_col, bdst_row = rev_dst_transform * (bdst_x, bdst_y)
     bdst_row = int(np.floor(bdst_row))
     bdst_col = int(np.floor(bdst_col))
-
-    class_idx = value
 
     tdst_row, bdst_row = min(tdst_row, bdst_row)-padding, max(tdst_row, bdst_row)-padding
     tdst_col, bdst_col = min(tdst_col, bdst_col)-padding, max(tdst_col, bdst_col)-padding

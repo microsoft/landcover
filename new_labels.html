@@ -19,181 +19,8 @@
     <link href="css/noty.css" rel="stylesheet">
 
     <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet">
+    <link href="css/main.css" rel="stylesheet">
     
-    <style type="text/css">
-        html, body {
-            height: 100%;
-            height: 100%;
-        }
-
-        body {
-            padding: 0;
-            margin: 0;
-        }
-
-        #map {
-            width: 100%;
-            height: 100%;
-            min-height: 100%;
-        }
-
-        .leaflet-control-slider{
-            border-radius: 2px; 
-        }
-        
-        .sidebar{
-            border: 0 !important;
-            right: 20px !important;
-        }
-        .sidebar-content{
-            right: 0 !important;
-        }
-        .sidebar-header{
-            background-color: #19715E;
-            font-family: "Segoe UI Web (West European)",Segoe UI,-apple-system,BlinkMacSystemFont,Roboto,Helvetica Neue,sans-serif;
-            font-size: 1.2em;
-            letter-spacing: .1rem;
-            font-weight: 400;
-            color: white;
-        }
-        .sidebar-tabs{
-            background-color: rgba(255, 255, 255, 0.95);
-        }
-
-        #inputNAIP{
-            width: 125px;
-            height: 125px;
-            margin: 10px;
-        }
-
-        .exampleImage{
-            width: 125px;
-            height: 125px;
-            margin: 10px;
-        }
-
-        .exampleImage.active{
-            border: 2px solid red;
-        }
-
-        .leaflet-image-layer.gray{
-            filter: grayscale(66%);
-        }
-
-        .slider{
-            height: 25px;
-            width: 100%;
-        }
-
-       button {
-            color: #ccc;
-            background-color: #595959;
-            border: solid 3px #6e6e6e;
-            width: 85%;
-            height: 40px;
-        }
-
-        button:hover{
-            cursor: pointer;
-            cursor: hand;
-            text-decoration: none;
-            color: #fff;
-        }
-
-        a.leaflet-control-slider-toggle {
-            width: 171px;
-        }
-
-        .logo-area{
-            background-color: #19715E;
-            width:300px;
-            height:70px;
-            display: flex !important;
-            flex-basis: auto;
-            flex-grow: 1;
-            align-items: center;
-            font-family: "Segoe UI Web (West European)",Segoe UI,-apple-system,BlinkMacSystemFont,Roboto,Helvetica Neue,sans-serif;
-        }
-
-        .logo-text{
-            font-size: 1.7em;
-            letter-spacing: .1rem;
-            font-weight: 400;
-            line-height: 1.5;
-            color: white;
-            padding: 2px;
-            padding-right: 2rem;
-            padding-left: 2rem;
-        }
-
-        .logo-link{
-            font-size: 100%;
-            font-weight: 400;
-            color: white;
-            padding-right: 1.5rem;
-            padding-left: 1.5rem;
-        }
-        
-        .m-0{
-            margin: 0 !important;
-        }
-        
-        .leaflet-container .logo-area a {
-            color: #19715E;
-        }
-        
-        .leaflet-container .logo-area a:hover {
-            color: #25A782;
-        }
-
-        .radio{
-            padding:10px;
-            width:350px;
-        }
-
-        .radio input{
-            display: none;
-        }
-
-        .radio label{
-            padding: 6px;
-        }
-
-        .radio .selected{
-            border: 1px solid black;
-        }
-
-        .radio .circle{
-            position:relative;
-            top:0px;
-            display:inline-block;
-            width:18px;
-            height:18px;
-            border-radius: 10px;
-            border-color: transparent;
-        }
-
-        .noty_theme__metroui.noty_type__success{
-            background-color: #19715E !important;
-        }
-
-        .label-area{
-            background-color: #FFFFFF;
-            width:200px;
-            padding:20px;
-        }
-
-        .label-text{
-            font-size: 1em;
-            letter-spacing: .1rem;
-            font-weight: 400;
-            line-height: 1.5;
-            color: black;
-            padding: 2px;
-            padding-left: 1rem;
-        }
-
-    </style>
 
 </head>
 
@@ -294,7 +121,7 @@
 
     <script type="text/javascript">
 
-        var processingServiceURL = ENDPOINTS[0]["url"];
+        var BACKEND_URL = ENDPOINTS[0]["url"];
         var EXP_NAME = "TEST";
 
         var START_CENTER = [38, -88]; // lat, lon
@@ -331,18 +158,6 @@
             {"name": "field"},
             {"name": "built"}
         ];
-        var findClassByName = function(name){
-            for(var i=0; i<classList.length; i++){
-                if(classList[i]["name"] == name){
-                    return i;
-                }
-            }
-            return null;
-        };
-        var findClassByIdx = function(idx){
-            return classList[idx]["name"];
-        }
-
         var labelCounts = {
             "water": 0,
             "forest": 0,
@@ -353,403 +168,11 @@
 
         var map = null;
         var animating = false;
-
-        var updateClassColor = function(obj){
-            var className = $(obj.targetElement).attr("data-class-name");
-            var classIdx = findClassByName(className);
-            colorList[classIdx] = '#' + obj;
-        };
-
-        var getRandomColor = function(){
-            var letters = '0123456789ABCDEF';
-            var color = '#';
-            for (var i = 0; i < 6; i++) {
-                color += letters[Math.floor(Math.random() * 16)];
-            }
-            return color;
-        };
-
-        var doRetrain = function(){
-            $.ajax({
-                type: "POST",
-                url: processingServiceURL + "retrainModel",
-                data: JSON.stringify({"retrain": true, "experiment": EXP_NAME}),
-                success: function(data, textStatus, jqXHR){
-                    if(data["success"]){
-                        notifySuccess(data, textStatus, jqXHR);
-                        retrainCounts += 1;
-
-                        $("#label-retrains").html(retrainCounts);
-                        for( k in labelCounts){
-                            labelCounts[k] = 0;
-                            $("#label-"+k).html("0");
-                        }
-
-                        var t = currentSelection._latlngs[0];
-                        var curSelPoly = [
-                            [t[0]["lat"], t[0]["lng"]],
-                            [t[1]["lat"], t[1]["lng"]],
-                            [t[2]["lat"], t[2]["lng"]],
-                            [t[3]["lat"], t[3]["lng"]]
-                        ];
-                        requestPatches(curSelPoly);
-                    }
-                },
-                error: notifyFail,
-                dataType: "json",
-                contentType: "application/json"
-            });
-        };
-
-        var doReset = function(notify=true){
-            var request = {
-                "reset": true,
-                "experiment": EXP_NAME
-            };
-            $.ajax({
-                type: "POST",
-                url: processingServiceURL + "resetModel",
-                data: JSON.stringify(request),
-                success: function(data, textStatus, jqXHR){
-                    if(data["success"] && notify){
-                        notifySuccess(data, textStatus, jqXHR);
-                        
-                        $("#label-retrains").html("0");
-
-                        for( k in labelCounts){
-                            labelCounts[k] = 0;
-                            $("#label-"+k).html("0");
-                        }
-                    }
-                },
-                error: notifyFail,
-                dataType: "json",
-                contentType: "application/json"
-            });
-        };
-
-        var doDownloadTile = function(){
-            var t = currentSelection._latlngs[0];
-            var polygon = [
-                [t[0]["lat"], t[0]["lng"]],
-                [t[1]["lat"], t[1]["lng"]],
-                [t[2]["lat"], t[2]["lng"]],
-                [t[3]["lat"], t[3]["lng"]]
-            ];
-
-            var topleft = L.latLng(polygon[0][0], polygon[0][1]);
-            var topleftProjected = L.CRS.EPSG3857.project(topleft);
-            var bottomright = L.latLng(polygon[2][0], polygon[2][1]);
-            var bottomrightProjected = L.CRS.EPSG3857.project(bottomright);
-
-            var request = {
-                "extent": {
-                    "xmax": bottomrightProjected.x,
-                    "xmin": topleftProjected.x,
-                    "ymax": topleftProjected.y,
-                    "ymin": bottomrightProjected.y,
-                    "spatialReference": {
-                        "latestWkid": 3857
-                    }
-                },
-                "colors": colorList
-            };
-
-            $.ajax({
-                type: "POST",
-                url: processingServiceURL + "predTile",
-                data: JSON.stringify(request),
-                timeout: 0,
-                success: function(data, textStatus, jqXHR){
-                    new Noty({
-                        type: "success",
-                        text: "Tile download ready!",
-                        layout: 'topCenter',
-                        timeout: 5000,
-                        theme: 'metroui'
-                    }).show();
-                    var pngURL = window.location.origin + "/" + data["downloadPNG"];
-                    var tiffURL = window.location.origin + "/" + data["downloadTIFF"];
-                    $("#lblPNG").html("<a href='"+pngURL+"' target='_blank'>Download PNG</a>");
-                    $("#lblTIFF").html("<a href='"+tiffURL+"' target='_blank'>Download TIFF</a>");
-                    
-                },
-                error: notifyFail,
-                dataType: "json",
-                contentType: "application/json"
-            });
-
-            new Noty({
-                type: "success",
-                text: "Sent tile download request, please wait for 2-3 minutes. When the request is complete the download links will appear underneath the 'Download' button.",
-                layout: 'topCenter',
-                timeout: 10000,
-                theme: 'metroui'
-            }).show();
-        };
-
-        var animateSuccessfulCorrection = function(countdown, time){
-            animating = true;
-            selectionBox.setStyle({weight:countdown})
-            if(countdown > 2){
-                window.setTimeout(function(){animateSuccessfulCorrection(countdown-1);}, time);
-            }else{
-                animating = false;
-            }
-        }
-
-
-        var sendCorrection = function(polygon, idx){
-            var topleft = L.latLng(polygon[0][0], polygon[0][1]);
-            var topleftProjected = L.CRS.EPSG3857.project(topleft);
-            var bottomright = L.latLng(polygon[2][0], polygon[2][1]);
-            var bottomrightProjected = L.CRS.EPSG3857.project(bottomright);
-            
-            var request = {
-                "extent": {
-                    "xmax": bottomrightProjected.x,
-                    "xmin": topleftProjected.x,
-                    "ymax": topleftProjected.y,
-                    "ymin": bottomrightProjected.y,
-                    "spatialReference": {
-                        "latestWkid": 3857
-                    }
-                },
-                "colors": colorList,
-                "value" : selectedClassIdx,
-                "experiment": EXP_NAME
-            };
-
-
-            $.ajax({
-                type: "POST",
-                url: processingServiceURL + "recordCorrection",
-                data: JSON.stringify(request),
-                success: function(data, textStatus, jqXHR){
-                    console.debug("Successfully recorded correction");
-                    console.debug(data);
-
-                    labelName = findClassByIdx(data["value"])
-                    //labelCounts[data["value"]] += data["count"];
-                    labelCounts[labelName] += 1;
-
-                    $("#label-"+labelName).html(labelCounts[labelName]);
-                    animateSuccessfulCorrection(10, 80);
-                    //notifySuccess(data, textStatus, jqXHR);
-                    
-                    /* var srcs = [
-                        "data:image/png;base64," + data.output_soft,
-                        "data:image/png;base64," + data.output_hard,
-                    ];
-
-                    var tActiveImgIdx = currentPatches[idx]["activeImgIdx"];
-                    currentPatches[idx]["patches"][tActiveImgIdx]["srcs"] = srcs;
-                    $("#exampleImage_"+tActiveImgIdx).attr("src", srcs[soft0_hard1]);
-                    
-                    if(pred0_naip1 == 0){
-                        currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
-                    } */
-                },
-                error: notifyFail,
-                dataType: "json",
-                contentType: "application/json"
-            });
-        };
-
-        var requestPatches = function(polygon){
-
-            // Setup placeholders for the predictions from the current click to be saved to
-            currentPatches.push({
-                "naipImg": null,
-                "imageLayer": L.imageOverlay("", L.polygon(polygon).getBounds(), {pane: "labels"}).addTo(map),
-                "patches": [],
-                "activeImgIdx": activeImgIdx
-            });
-            var idx = currentPatches.length-1;
-            
-            // Request input image from the first server we know about
-            requestInputPatch(idx, polygon, ENDPOINTS[0]["url"]);
-            for(var i=0; i<ENDPOINTS.length; i++){
-                //console.debug("Running requestPatch on " + ENDPOINTS[i]["url"]);
-                currentPatches[idx]["patches"].push({
-                    "srcs": null
-                });
-                requestPatch(idx, polygon, i, ENDPOINTS[i]["url"]);
-            }
-        };
-
-        var requestInputPatch = function(idx, polygon, serviceURL){
-            var topleft = L.latLng(polygon[0][0], polygon[0][1]);
-            var topleftProjected = L.CRS.EPSG3857.project(topleft);
-            var bottomright = L.latLng(polygon[2][0], polygon[2][1]);
-            var bottomrightProjected = L.CRS.EPSG3857.project(bottomright);
-
-            var request = {
-                "extent": {
-                    "xmax": bottomrightProjected.x,
-                    "xmin": topleftProjected.x,
-                    "ymax": topleftProjected.y,
-                    "ymin": bottomrightProjected.y,
-                    "spatialReference": {
-                        "latestWkid": 3857
-                    }
-                }
-            };
-
-            $.ajax({
-                type: "POST",
-                url: serviceURL + "getInput",
-                data: JSON.stringify(request),
-                success: function(data, textStatus, jqXHR){
-                    var resp = data;
-                    var naipImg = "data:image/png;base64," + resp.input_naip;
-                    currentPatches[idx]["naipImg"] = naipImg 
-                    $("#inputNAIP").attr("src", naipImg);
-
-                    if(pred0_naip1 == 1){
-                        //var imageLayer = L.imageOverlay(naipImg, L.polygon(polygon).getBounds()).addTo(map);
-                        currentPatches[idx]["imageLayer"].setUrl(naipImg);
-                    }
-                },
-                error: notifyFail,
-                dataType: "json",
-                contentType: "application/json"
-            });
-        };
-        
-        
-        var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
-            var topleft = L.latLng(polygon[0][0], polygon[0][1]);
-            var topleftProjected = L.CRS.EPSG3857.project(topleft);
-            var bottomright = L.latLng(polygon[2][0], polygon[2][1]);
-            var bottomrightProjected = L.CRS.EPSG3857.project(bottomright);
-
-            var request = {
-                "extent": {
-                    "xmax": bottomrightProjected.x,
-                    "xmin": topleftProjected.x,
-                    "ymax": topleftProjected.y,
-                    "ymin": bottomrightProjected.y,
-                    "spatialReference": {
-                        "latestWkid": 3857
-                    }
-                },
-                "colors": colorList,
-            };
-            
-            $.ajax({
-                type: "POST",
-                url: serviceURL + "predPatch",
-                data: JSON.stringify(request),
-                success: function(data, textStatus, jqXHR){
-                    var resp = data;
-
-                    var srcs = [
-                        "data:image/png;base64," + resp.output_soft,
-                        "data:image/png;base64," + resp.output_hard,
-                    ];
-                    
-                    var img = $("#exampleImage_"+currentImgIdx);
-                    img.attr("src", srcs[soft0_hard1]);
-                    img.attr("data-name", resp.model_name);                    
-
-                    if(currentImgIdx == currentPatches[idx]["activeImgIdx"]){
-                        img.addClass("active");
-
-                        if(pred0_naip1 == 0){
-                            //var imageLayer = L.imageOverlay(srcs[soft0_hard1], L.polygon(polygon).getBounds()).addTo(map);
-                            currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
-                        }
-                    }
-                    currentPatches[idx]["patches"][currentImgIdx]["srcs"] = srcs;
-                },
-                error: notifyFail,
-                dataType: "json",
-                contentType: "application/json"
-            });
-        };
-
-        var notifySuccess = function(data, textStatus, jqXHR){
-            var resp = data;
-            var respType = 'success';
-
-            if(!resp.success){
-                respType = 'error'
-            }
-            new Noty({
-                type: respType,
-                text: resp.message,
-                layout: 'topCenter',
-                timeout: 500,
-                theme: 'metroui'
-            }).show();        
-        };
-
-        var notifyFail = function(jqXHR, textStatus, errorThrown){
-            var response = $.parseJSON(jqXHR.responseText);
-            console.log("Error in processing server: " + response.error);
-            new Noty({
-                type: "error",
-                text: "Error in processing server: " + response.error,
-                layout: 'topCenter',
-                timeout: 2000,
-                theme: 'metroui'
-            }).show();
-        };
-        
-        var isPointInsidePolygon = function(latlng, poly) {
-            // Taken from https://stackoverflow.com/questions/31790344/determine-if-a-point-reside-inside-a-leaflet-polygon
-            var polyPoints = poly.getLatLngs()[0];
-            var x = latlng.lat, y = latlng.lng;
-            
-            var inside = false;
-            for (var i = 0, j = polyPoints.length - 1; i < polyPoints.length; j = i++) {
-                var xi = polyPoints[i].lat, yi = polyPoints[i].lng;
-                var xj = polyPoints[j].lat, yj = polyPoints[j].lng;
-
-                var intersect = ((yi > y) != (yj > y))
-                    && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-                if (intersect) inside = !inside;
-            }
-
-            return inside;
-        };
-
-        var getPolyAround = function(latlon, radius){
-            // We convert the input lat/lon into the EPSG3857 projection,
-            // define our square, then re-convert to lat/lon 
-            var latlonProjected = L.CRS.EPSG3857.project(latlon);
-            var x = latlonProjected.x;
-            var y = latlonProjected.y;
-            
-            var top = y + radius/2;
-            var bottom = y - radius/2;
-            var left = x - radius/2;
-            var right = x + radius/2;
-
-            top = Math.round(top);
-            bottom = Math.round(bottom);
-            left = Math.round(left);
-            right = Math.round(right);
-            
-            // left/right are "x" points while top/bottom are the "y" points
-            var topleft = L.CRS.EPSG3857.unproject(L.point(left, top));
-            var bottomright = L.CRS.EPSG3857.unproject(L.point(right, bottom));
-            
-            return [[topleft.lat, topleft.lng],
-                    [topleft.lat, bottomright.lng],
-                    [bottomright.lat, bottomright.lng],
-                    [bottomright.lat, topleft.lng]];
-        };
-
-        var pad = function(n, width, z) {
-            z = z || '0';
-            n = n + '';
-            return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
-        }
        
+        
         $(document).ready(function(){
 
+            // Remove the default behavior of the shift key
             document.onselectstart = function() {
                 return false;
             }
@@ -759,11 +182,31 @@
             // Parse URL arguments
             //----------------------------------------------------------------------
             var url = new URL(window.location.href);
+            var trainingSetID = url.searchParams.get("trainingSetID");
             var userID = url.searchParams.get("userID");
             var modelID = url.searchParams.get("modelID");
-            if(userID === null) userID = "new-labels";
-            if(modelID === null) modelID = "2";
-            EXP_NAME = userID + "_" + modelID;
+            var maxTime = url.searchParams.get("maxTime");
+            var backendID = url.searchParams.get("backendID");
+            if(trainingSetID === null){
+                trainingSetID = 0;
+            } else{
+                trainingSetID = parseInt(trainingSetID);
+            }
+            if(userID === null) userID = "test";
+            if(modelID === null) modelID = "test";
+            if(maxTime === null){
+                maxTime = 15*60;
+            } else{
+                maxTime = parseInt(maxTime);
+            }
+            if(backendID === null){
+                backendID = 0;
+            } else{
+                backendID = parseInt(backendID);
+            }
+            runTimer(maxTime);
+            EXP_NAME = userID + "_" + modelID + "_" + trainingSetID;
+            BACKEND_URL = BACKEND_ENDPOINTS[backendID]["url"];
 
 
             //----------------------------------------------------------------------
