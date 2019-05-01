@@ -1,5 +1,5 @@
-web-tool/data/
-web-tool/tiles/
+web_tool/data/
+web_tool/tiles/
 output/
 __pycache__/
 .ipynb_checkpoints/
