@@ -133,21 +133,6 @@ class UnetgnFineTune(BackendModel):
 
         seed_x_fn = ""
         seed_y_fn = ""
-        # if superres:
-        #     seed_x_fn = "data/seed_data_hr+sr_x.npy"
-        #     seed_y_fn = "data/seed_data_hr+sr_y.npy"
-        # else:
-        #     seed_x_fn = "data/seed_data_hr_x.npy"
-        #     seed_y_fn = "data/seed_data_hr_y.npy"
-        # for row in np.load(seed_x_fn):
-        #     self.augment_base_x_train.append(row)
-        # for row in np.load(seed_y_fn):
-        #     self.augment_base_y_train.append(row)
-        #
-        # for row in self.augment_base_x_train:
-        #     self.augment_x_train.append(row)
-        # for row in self.augment_base_y_train:
-        #     self.augment_y_train.append(row)
         self.naip_data = None
         self.correction_labels = None
         self.tile_padding = 0
@@ -214,34 +199,19 @@ class UnetgnFineTune(BackendModel):
         batch_yi =  np.zeros((self.rows, self.cols))
         batch_yi[:height, :width] = np.argmax(correction_labels, axis=2)
         if(num_labels>0):
-        #    batch_x = []
-         #   batch_y = []
-          #  batch_x = self.naip_data
-           # batch_y = np.argmax(correction_labels,axis=2)
             self.batch_x.append(batch_xi)
             self.batch_y.append(batch_yi)
             self.num_corrected_pixels += number_corrected_pixels
             self.batch_count += batch_count
         print("Fine tuning group norm params with %d new labels. 4 Groups, 8 Params" % self.num_corrected_pixels)
-       # batch_arr_x = np.zeros((batch_count, 4, self.input_size, self.input_size))
-        #batch_arr_y = np.zeros((batch_count, self.input_size, self.input_size))
-#        pdb.set_trace()
         batch_x = np.array(self.batch_x)
-        print(batch_x.shape)
         number_windows, channels, rows , cols = batch_x.shape
-        #batch_x = torch.from_numpy(batch_x).float().to(device)
         batch_y = np.array(self.batch_y)
-        print("y_shape", batch_y.shape)
         batch_y = torch.from_numpy(batch_y).float().to(device)
-        #batch_y = torch.from_numpy(batch_y).float().to(device) 
-        print("batch shape", batch_x.shape)
-        print("y batch shape", batch_y.shape)
         self.augment_model = GroupParams(self.inf_framework.model)
         optimizer = torch.optim.Adam(self.augment_model.parameters(), lr=learning_rate, eps=1e-5)
         optimizer.zero_grad()
         criterion = multiclass_ce().to(device)
-#        pdb.set_trace()
-        
 
         for i in range(train_steps):
             for j in range(number_windows):
@@ -254,18 +224,13 @@ class UnetgnFineTune(BackendModel):
                     norm_image1 = norm_image[:, 130:w - (w % 892) + 130, 130:h - (h % 892) + 130]
                     x_c_tensor1 = torch.from_numpy(norm_image1).float().to(device)
                     y_pred1 = self.augment_model.forward(x_c_tensor1.unsqueeze(0))
-                 #   y_hat1 = (Variable(y_pred1).data).cpu().numpy()
                     out[:, 92 + 130:w - (w % 892) + 130 - 92, 92 + 130:h - (h % 892) - 92 + 130] = y_pred1
         
                     outputs = out.float().to(device)
-                   # print(outputs.shape)
-                    #print(batch_y[j].shape)
                     loss = criterion(torch.unsqueeze(batch_y[j],0).long(), torch.unsqueeze(outputs,0))
                     print(loss.item())
                     loss.backward()
                     optimizer.step()
-
-        #pdb.set_trace()
 
         success = True
         message = "Fine-tuned Group norm params with %d samples. 4 Groups. 8 params, 1 layer." % self.num_corrected_pixels
@@ -283,19 +248,12 @@ class UnetgnFineTune(BackendModel):
         class_idx + 1] = 1.0
 
     def reset(self):
-        #self.augment_x_train = []
-        #self.augment_y_train = []
         self.augment_model = GroupParams(self.inf_framework.model)
         self.augment_model_trained = False
         self.batch_x = []
         self.batch_y = []
         self.run_done = False
         self.num_corrected_pixels = 0
-
-        #for row in self.augment_base_x_train:
-        #    self.augment_x_train.append(row)
-        #for row in self.augment_base_y_train:
-        #    self.augment_y_train.append(row)
 
     def run_model_on_tile(self, naip_tile, batch_size=32):
         y_hat = self.predict_entire_image_unet_fine(naip_tile)
