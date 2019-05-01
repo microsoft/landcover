@@ -106,7 +106,7 @@ class GroupNorm2d(_GroupNorm):
                              .format(input.dim()))
 
 class GroupNormNN(nn.Module):
-    def __init__(self, num_features, channels_per_group=8, window_size=(64,64), eps=1e-5):
+    def __init__(self, num_features, channels_per_group=8, window_size=(32,32), eps=1e-5):
         super(GroupNormNN, self).__init__()
         self.weight = nn.Parameter(torch.ones(1,num_features,1,1))
         self.bias = nn.Parameter(torch.zeros(1,num_features,1,1))

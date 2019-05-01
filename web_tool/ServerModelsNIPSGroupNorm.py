@@ -149,8 +149,7 @@ class UnetgnFineTune(BackendModel):
         return output
 
 #FIXME: add retrain method
-    def retrain(self, train_steps=6, corrections_from_ui=True, learning_rate=0.007):
-        pdb.set_trace()
+    def retrain(self, train_steps=15, corrections_from_ui=True, learning_rate=0.003):
         print('In retrain')
         num_labels = np.count_nonzero(self.correction_labels)
         
@@ -189,7 +188,9 @@ class UnetgnFineTune(BackendModel):
         criterion = multiclass_ce().to(device)
 
         for i in range(train_steps):
+            print('step %d' % i)
             for j in range(number_windows):
+                print('window %d' % j)
                 with torch.set_grad_enabled(True):
                     norm_image = (batch_x[j])
                     _, w, h = norm_image.shape
