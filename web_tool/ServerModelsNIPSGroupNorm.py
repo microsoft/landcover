@@ -128,8 +128,8 @@ class UnetgnFineTune(BackendModel):
 
         self.augment_x_train = []
         self.augment_y_train = []
-        self.augment_model = GroupParams(self.inf_framework.model)
-        self.augment_model_trained = False
+        self.model = GroupParams(self.inf_framework.model)
+        self.model_trained = False
 
         seed_x_fn = ""
         seed_y_fn = ""
@@ -208,8 +208,8 @@ class UnetgnFineTune(BackendModel):
         number_windows, channels, rows , cols = batch_x.shape
         batch_y = np.array(self.batch_y)
         batch_y = torch.from_numpy(batch_y).float().to(device)
-        self.augment_model = GroupParams(self.inf_framework.model)
-        optimizer = torch.optim.Adam(self.augment_model.parameters(), lr=learning_rate, eps=1e-5)
+        self.model = GroupParams(self.inf_framework.model)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate, eps=1e-5)
         optimizer.zero_grad()
         criterion = multiclass_ce().to(device)
 
@@ -223,7 +223,7 @@ class UnetgnFineTune(BackendModel):
 
                     norm_image1 = norm_image[:, 130:w - (w % 892) + 130, 130:h - (h % 892) + 130]
                     x_c_tensor1 = torch.from_numpy(norm_image1).float().to(device)
-                    y_pred1 = self.augment_model.forward(x_c_tensor1.unsqueeze(0))
+                    y_pred1 = self.model.forward(x_c_tensor1.unsqueeze(0))
                     out[:, 92 + 130:w - (w % 892) + 130 - 92, 92 + 130:h - (h % 892) - 92 + 130] = y_pred1
         
                     outputs = out.float().to(device)
@@ -248,8 +248,8 @@ class UnetgnFineTune(BackendModel):
         class_idx + 1] = 1.0
 
     def reset(self):
-        self.augment_model = GroupParams(self.inf_framework.model)
-        self.augment_model_trained = False
+        self.model = GroupParams(self.inf_framework.model)
+        self.model_trained = False
         self.batch_x = []
         self.batch_y = []
         self.run_done = False
@@ -262,7 +262,7 @@ class UnetgnFineTune(BackendModel):
 
     def predict_entire_image_unet_fine(self, x):
         if torch.cuda.is_available():
-            self.augment_model.cuda()
+            self.model.cuda()
         norm_image = x
         _, w, h = norm_image.shape
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -270,7 +270,7 @@ class UnetgnFineTune(BackendModel):
 
         norm_image1 = norm_image[:, 130:w - (w % 892) + 130, 130:h - (h % 892) + 130]
         x_c_tensor1 = torch.from_numpy(norm_image1).float().to(device)
-        y_pred1 = self.augment_model.forward(x_c_tensor1.unsqueeze(0))
+        y_pred1 = self.model.forward(x_c_tensor1.unsqueeze(0))
         y_hat1 = (Variable(y_pred1).data).cpu().numpy()
         out[:, 92 + 130:w - (w % 892) + 130 - 92, 92 + 130:h - (h % 892) - 92 + 130] = y_hat1
         pred = np.rollaxis(out, 0, 3)
@@ -352,8 +352,8 @@ class FusionnetgnFineTune(BackendModel):
 
         self.augment_x_train = []
         self.augment_y_train = []
-        self.augment_model = GroupParamsFusionnet(self.inf_framework.model)
-        self.augment_model_trained = False
+        self.model = GroupParamsFusionnet(self.inf_framework.model)
+        self.model_trained = False
 
         seed_x_fn = ""
         seed_y_fn = ""
@@ -460,14 +460,14 @@ class FusionnetgnFineTune(BackendModel):
             j += 1
         batch_y = torch.from_numpy(batch_arr_y).float().to(device)
 
-        optimizer = torch.optim.Adam(self.augment_model.parameters(), lr=learning_rate)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
         optimizer.zero_grad()
         criterion = multiclass_ce().to(device)
         # pdb.set_trace()
 
         for i in range(train_steps):
             with torch.set_grad_enabled(True):
-                outputs = self.augment_model.forward(batch_x)
+                outputs = self.model.forward(batch_x)
                 loss = criterion(torch.squeeze(batch_y,1).long(), outputs)
                 loss.backward()
                 optimizer.step()
@@ -491,8 +491,8 @@ class FusionnetgnFineTune(BackendModel):
     def reset(self):
         #self.augment_x_train = []
         #self.augment_y_train = []
-        self.augment_model = GroupParamsFusionnet(self.inf_framework.model)
-        self.augment_model_trained = False
+        self.model = GroupParamsFusionnet(self.inf_framework.model)
+        self.model_trained = False
 
         #for row in self.augment_base_x_train:
         #    self.augment_x_train.append(row)
@@ -505,9 +505,9 @@ class FusionnetgnFineTune(BackendModel):
         return softmax(output)
 
     def predict_entire_image_fusionnet_fine(self, x):
-        self.augment_model.eval()
+        self.model.eval()
         if torch.cuda.is_available():
-            self.augment_model.cuda()
+            self.model.cuda()
         naip_tile = x
 
         down_weight_padding = 40
@@ -542,7 +542,7 @@ class FusionnetgnFineTune(BackendModel):
             batch_arr[i, :, :, :] = im
             i += 1
         batch = torch.from_numpy(batch_arr).float().to(device)
-        model_output = self.augment_model.forward(batch)
+        model_output = self.model.forward(batch)
         model_output = (Variable(model_output).data).cpu().numpy()
         for i, (y, x) in enumerate(batch_indices):
             output[:, y:y + self.input_size, x:x + self.input_size] += model_output[i] * kernel[np.newaxis, ...]
