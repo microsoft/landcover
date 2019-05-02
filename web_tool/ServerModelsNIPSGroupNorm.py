@@ -151,7 +151,6 @@ class UnetgnFineTune(BackendModel):
     def retrain(self, train_steps=15, corrections_from_ui=True, learning_rate=0.003):
         print('In retrain')
         num_labels = np.count_nonzero(self.correction_labels)
-        
         height = self.naip_data.shape[1]
         width = self.naip_data.shape[2]
         batch_count = 0
@@ -183,7 +182,6 @@ class UnetgnFineTune(BackendModel):
         batch_y = torch.from_numpy(batch_y).float().to(device)
         self.init_model()
         optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate, eps=1e-5)
-
         optimizer.zero_grad()
         criterion = multiclass_ce().to(device)
 
