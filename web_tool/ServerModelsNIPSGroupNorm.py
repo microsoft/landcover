@@ -123,8 +123,8 @@ class UnetgnFineTune(BackendModel):
         self.num_corrected_pixels = 0
         self.batch_count = 0
         self.run_done = False
-        self.rows =0
-        self.cols =0
+        self.rows = 892
+        self.cols = 892
 
     def run(self, naip_data, naip_fn, extent, padding):
 
@@ -139,10 +139,10 @@ class UnetgnFineTune(BackendModel):
         if padding > 0:
             self.tile_padding = padding
         self.naip_data = naip_data  # keep non-trimmed size, i.e. with padding
-        if not self.run_done:
-            self.run_done = True
-            self.rows = naip_data.shape[1]+2
-            self.cols = naip_data.shape[2]+2
+        # if not self.run_done:
+        #     self.run_done = True
+        #     self.rows = naip_data.shape[1]+2
+        #     self.cols = naip_data.shape[2]+2
         self.correction_labels = np.zeros((naip_data.shape[1], naip_data.shape[2], self.output_channels),
                                           dtype=np.float32)
 
@@ -168,10 +168,10 @@ class UnetgnFineTune(BackendModel):
                 for j in range(correction_labels.shape[1]):
                     label_index = self.last_output[i][j].argmax()
                     correction_labels[i, j, label_index + 1] = 1.0
-        batch_xi = np.zeros((4, self.rows, self.cols))
-        batch_xi[:,:height, :width] = self.naip_data
-        batch_yi =  np.zeros((self.rows, self.cols))
-        batch_yi[:height, :width] = np.argmax(correction_labels, axis=2)
+       # batch_xi = np.zeros((4, self.rows, self.cols))
+        batch_xi = self.naip_data[:, 130:self.rows + 130, 130:self.cols + 130]
+        #batch_yi =  np.zeros((self.rows, self.cols))
+        batch_yi = np.argmax(correction_labels, axis=2)
         if(num_labels>0):
             self.batch_x.append(batch_xi)
             self.batch_y.append(batch_yi)
@@ -194,15 +194,13 @@ class UnetgnFineTune(BackendModel):
             for j in range(number_windows):
                 print('window %d' % j)
                 with torch.set_grad_enabled(True):
-                    norm_image = (batch_x[j])
-                    _, w, h = norm_image.shape
                     # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-                    out = torch.zeros((5, w, h))
+                    out = torch.zeros((5, self.rows, self.cols))
 
-                    norm_image1 = norm_image[:, 130:w - (w % 892) + 130, 130:h - (h % 892) + 130]
-                    x_c_tensor1 = torch.from_numpy(norm_image1).float().to(device)
+                    #norm_image1 = norm_image[:, 130:w - (w % 892) + 130, 130:h - (h % 892) + 130]
+                    x_c_tensor1 = torch.from_numpy(batch_x[j]).float().to(device)
                     y_pred1 = self.model.forward(x_c_tensor1.unsqueeze(0))
-                    out[:, 92 + 130:w - (w % 892) + 130 - 92, 92 + 130:h - (h % 892) - 92 + 130] = y_pred1
+                    out[:, 92: -92, 92:-92] = y_pred1
         
                     outputs = out.float().to(device)
                     y_hat1 = (Variable(out).data).cpu().numpy()
