@@ -137,10 +137,10 @@ class UnetgnFineTune(BackendModel):
         if padding > 0:
             self.tile_padding = padding
         self.naip_data = naip_data  # keep non-trimmed size, i.e. with padding
-        if not self.run_done:
-            self.run_done = True
-            self.rows = naip_data.shape[1]+2
-            self.cols = naip_data.shape[2]+2
+        # if not self.run_done:
+        #     self.run_done = True
+        #     self.rows = naip_data.shape[1]+2
+        #     self.cols = naip_data.shape[2]+2
         self.correction_labels = np.zeros((naip_data.shape[1], naip_data.shape[2], self.output_channels),
                                           dtype=np.float32)
 
