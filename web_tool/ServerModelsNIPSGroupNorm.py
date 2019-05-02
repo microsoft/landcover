@@ -163,7 +163,7 @@ class UnetgnFineTune(BackendModel):
         if corrections_from_ui:
             correction_labels = self.correction_labels
         else:
-            correction_labels = np.zeros(( self.last_output.shape[0], self.last_output.shape[1], 5))
+            correction_labels = np.zeros((self.last_output.shape[0], self.last_output.shape[1], 5))
             for i in range(correction_labels.shape[0]):
                 for j in range(correction_labels.shape[1]):
                     label_index = self.last_output[i][j].argmax()
@@ -188,7 +188,7 @@ class UnetgnFineTune(BackendModel):
         criterion = multiclass_ce().to(device)
 
         for i in range(train_steps):
-            print('step %d' % i)
+           # print('step %d' % i)
             iou = 0
             acc = 0
             for j in range(number_windows):
@@ -227,7 +227,7 @@ class UnetgnFineTune(BackendModel):
 
     def add_sample(self, tdst_row, bdst_row, tdst_col, bdst_col, class_idx):
         padding = self.tile_padding
-        print("adding sample ", tdst_row)
+        print("adding sample: class %d (incremented to %d) at (%d, %d)" % (class_idx, class_idx + 1, tdst_row, tdst_row))
         self.correction_labels[tdst_row + padding: bdst_row + 1 + padding,
         tdst_col + padding: bdst_col + 1 + padding, :] = 0.0
         self.correction_labels[tdst_row + padding: bdst_row + 1 + padding,
