@@ -148,7 +148,7 @@ class UnetgnFineTune(BackendModel):
         return output
 
 #FIXME: add retrain method
-    def retrain(self, train_steps=1000, corrections_from_ui=True, learning_rate=0.001):
+    def retrain(self, train_steps=1000, corrections_from_ui=True, learning_rate=0.0001):
         print('In retrain')
         num_labels = np.count_nonzero(self.correction_labels)
         height = self.naip_data.shape[1]
@@ -204,7 +204,6 @@ class UnetgnFineTune(BackendModel):
                     y_hat1 = (Variable(out).data).cpu().numpy()
                     y_hat1 = np.argmax(y_hat1, axis=0)
                     y_true = (Variable(batch_y[j]).data).cpu().numpy()
-
                    # iou+=mean_IoU(y_hat1, y_true,{0})
                     acc += pixel_accuracy(y_hat1, y_true, {0})
                     loss = criterion(torch.unsqueeze(batch_y[j],0).long(), torch.unsqueeze(outputs,0))
