@@ -171,7 +171,7 @@ class UnetgnFineTune(BackendModel):
        # batch_xi = np.zeros((4, self.rows, self.cols))
         batch_xi = self.naip_data[:, 130:self.rows + 130, 130:self.cols + 130]
         #batch_yi =  np.zeros((self.rows, self.cols))
-        batch_yi = np.argmax(correction_labels, axis=2)
+        batch_yi = np.argmax(correction_labels[:, 130:self.rows + 130, 130:self.cols + 130], axis=2)
         if(num_labels>0):
             self.batch_x.append(batch_xi)
             self.batch_y.append(batch_yi)
