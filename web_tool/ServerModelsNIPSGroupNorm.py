@@ -150,7 +150,7 @@ class UnetgnFineTune(BackendModel):
         return output
 
 #FIXME: add retrain method
-    def retrain(self, train_steps=15, corrections_from_ui=True, learning_rate=0.003):
+    def retrain(self, train_steps=1000, corrections_from_ui=True, learning_rate=0.001):
         print('In retrain')
         num_labels = np.count_nonzero(self.correction_labels)
         height = self.naip_data.shape[1]
