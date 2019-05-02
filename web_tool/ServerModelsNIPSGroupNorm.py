@@ -151,6 +151,7 @@ class UnetgnFineTune(BackendModel):
 
 #FIXME: add retrain method
     def retrain(self, train_steps=2000, corrections_from_ui=True, learning_rate=0.0005):
+        print_every_k_steps = 1
         pdb.set_trace()
         print('In retrain')
         num_labels = np.count_nonzero(self.correction_labels)
@@ -215,7 +216,7 @@ class UnetgnFineTune(BackendModel):
             iou/=number_windows
             acc/=number_windows
            # print("Step mean IoU: ", iou)
-            if(i%5 == 0):
+            if i % print_every_k_steps == 0:
                 print("Step pixel acc: ", acc)
 
 
