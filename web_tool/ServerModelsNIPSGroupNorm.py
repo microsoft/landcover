@@ -148,7 +148,7 @@ class UnetgnFineTune(BackendModel):
         return output
 
 #FIXME: add retrain method
-    def retrain(self, train_steps=1000, corrections_from_ui=True, learning_rate=0.0001):
+    def retrain(self, train_steps=2000, corrections_from_ui=True, learning_rate=0.0005):
         print('In retrain')
         num_labels = np.count_nonzero(self.correction_labels)
         height = self.naip_data.shape[1]
@@ -190,7 +190,8 @@ class UnetgnFineTune(BackendModel):
             iou = 0
             acc = 0
             for j in range(number_windows):
-                print('window %d' % j)
+                if (i % 5 == 0):
+                    print('window %d' % j)
                 with torch.set_grad_enabled(True):
                     # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
                     out = torch.zeros((5, self.rows, self.cols))
