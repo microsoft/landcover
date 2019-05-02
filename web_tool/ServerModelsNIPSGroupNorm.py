@@ -193,8 +193,6 @@ class UnetgnFineTune(BackendModel):
             iou = 0
             acc = 0
             for j in range(number_windows):
-                if (i % 5 == 0):
-                    # print('window %d' % j)
                 with torch.set_grad_enabled(True):
                     # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
                     out = torch.zeros((5, self.rows, self.cols))
