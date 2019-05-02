@@ -5,7 +5,7 @@ var doRetrain = function(){
     $.ajax({
         type: "POST",
         url: BACKEND_URL + "retrainModel",
-        data: JSON.stringify({"retrain": true, "experiment": EXP_NAME}),
+        data: JSON.stringify({"retrain": true, "experiment": EXP_NAME, "retrainArgs": retrainArgs}),
         success: function(data, textStatus, jqXHR){
             if(data["success"]){
                 notifySuccess(data, textStatus, jqXHR);

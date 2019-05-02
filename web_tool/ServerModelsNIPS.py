@@ -34,6 +34,7 @@ class KerasDenseFineTune(BackendModel):
         os.environ["CUDA_VISIBLE_DEVICES"] = str(gpuid)
         import keras
         import keras.models
+        import keras.backend as K
 
         self.model_fn = model_fn
         
@@ -199,6 +200,7 @@ class KerasBackPropFineTune(BackendModel):
         os.environ["CUDA_VISIBLE_DEVICES"] = str(gpuid)
         import keras
         import keras.models
+        import keras.backend as K
 
         self.model_fn = model_fn
         
@@ -245,85 +247,105 @@ class KerasBackPropFineTune(BackendModel):
             self.tile_padding = padding
             naip_data_trimmed = naip_data[padding:-padding,padding:-padding,:]
             output_trimmed = output[padding:-padding, padding:-padding, :]
-        self.naip_data = naip_data  # keep non-trimmed size, i.e. with padding
-        self.correction_labels = np.zeros((naip_data.shape[0], naip_data.shape[1], self.output_channels), dtype=np.float32)
 
+        self.naip_data = naip_data  # keep non-trimmed size, i.e. with padding
         self.last_output = output
         
         return output
 
-    def retrain(self, train_steps=10, last_k_layers=3, corrections_from_ui=True, learning_rate=0.003, **kwargs):
-        #pdb.set_trace()
+    def retrain(self, number_of_steps=10, last_k_layers=2, learning_rate=0.003, **kwargs):
         
-        for layer in self.model.layers[:-last_k_layers]:
+        for layer in self.model.layers:
             layer.trainable = False
+
+        num_layers = len(self.model.layers)
+        for i in range(num_layers-last_k_layers, num_layers):
+            print("Reseting layer %d" % (i))
+            self.model.layers[i].trainable = True
+            self.model.layers[i].set_weights(self.old_model.layers[i].get_weights())
+
+        self.model.compile(optimizers.Adam(lr=learning_rate, decay=1e-6), "categorical_crossentropy")
+        #self.model.summary()
+        #print("Number of trainable parameters: %d" % (self.model.count_params()))
+
+        x_train = np.array(self.batch_x)
+        y_train = np.array(self.batch_y)
+        print("Training set shape: ", x_train.shape, y_train.shape)
+        label_set = y_train.argmax(axis=3)
+        print("Label set: ", np.unique(label_set[label_set!=0], return_counts=True))
+
+        batch_size = 16
+
+        print("Starting fine-tuning for %d steps using %d samples with lr of %f" % (number_of_steps, len(self.batch_x), learning_rate))
         
-        num_labels = np.count_nonzero(self.correction_labels)
-        print("Fitting model with %d new labels" % num_labels)
-        
-        height = self.naip_data.shape[0]
-        width = self.naip_data.shape[1]
-
-        batch_x = []
-        batch_y = []
-        batch_count = 0
-
-        number_corrected_pixels = 0.0
-        
-        if corrections_from_ui:
-            correction_labels = self.correction_labels
-        else:
-            correction_labels = np.zeros((self.last_output.shape[0], self.last_output.shape[1], 5))
-            for i in range(correction_labels.shape[0]):
-                for j in range(correction_labels.shape[1]):
-                    label_index = self.last_output[i][j].argmax()
-                    correction_labels[i, j, label_index + 1] = 1.0
-
-        for y_index in (list(range(0, height - self.input_size, self.stride_y)) + [height - self.input_size,]):
-            for x_index in (list(range(0, width - self.input_size, self.stride_x)) + [width - self.input_size,]):
-                naip_im = self.naip_data[y_index:y_index+self.input_size, x_index:x_index+self.input_size, :]
-                correction_labels_slice = correction_labels[y_index:y_index+self.input_size, x_index:x_index+self.input_size, :]
-                # correction_labels = test_correction_labels[y_index:y_index+self.input_size, x_index:x_index+self.input_size, :]
-
-                batch_x.append(naip_im)
-                batch_y.append(correction_labels_slice)
-                
-                batch_count+=1
-                number_corrected_pixels += len(correction_labels_slice.nonzero()[0])
-
-        self.batch_x.append(batch_x)
-        self.batch_y.append(batch_y)
-        self.num_corrected_pixels += number_corrected_pixels
-                
-        learning_rate *= (self.input_size * self.input_size * len(batch_x) * len(self.batch_x)) / self.num_corrected_pixels
-
-        self.model.compile(optimizers.Adam(lr=0.01, decay=1e-6), "categorical_crossentropy")
-        
-        # pdb.set_trace()
+        self.model.fit(
+            x_train, y_train,
+            batch_size=batch_size,
+            epochs=number_of_steps
+        )
+        '''
+        for i in range(number_of_steps):
+            idxs = np.arange(x_train.shape[0])
+            np.random.shuffle(idxs)
+            x_train = x_train[idxs]
+            y_train = y_train[idxs]
             
-        for i in range(train_steps):
-            for batch_x, batch_y in zip(self.batch_x, self.batch_y):
-                self.model.train_on_batch(np.array(batch_x),
-                                          np.array(batch_y))
+            training_losses = []
+            for j in range(0, x_train.shape[0], batch_size):
+                batch_x = x_train[j:j+batch_size]
+                batch_y = y_train[j:j+batch_size]
 
-        # pdb.set_trace()
-            
+                actual_batch_size = batch_x.shape[0]
+
+                training_loss = self.model.train_on_batch(batch_x, batch_y)
+                training_losses.append(training_loss)
+            print(np.mean(training_losses))
+        '''
         success = True
-        message = "Re-trained model with %d samples" % num_labels
+        message = "Re-trained model with %d samples" % (x_train.shape[0])
         
         return success, message
 
     def add_sample(self, tdst_row, bdst_row, tdst_col, bdst_col, class_idx):
-        padding = self.tile_padding
         
-        self.correction_labels[tdst_row + padding : bdst_row + 1 + padding,
-                               tdst_col + padding : bdst_col + 1 + padding, :] = 0.0
-        self.correction_labels[tdst_row + padding : bdst_row + 1 + padding,
-                               tdst_col + padding : bdst_col + 1 + padding,
-                               class_idx + 1] = 1.0
+        padding = self.tile_padding
+        height = self.naip_data.shape[0]
+        width = self.naip_data.shape[1]
+
+        correction_labels = np.zeros((height, width, self.output_channels), dtype=np.float32)
+        correction_labels[tdst_row + padding : bdst_row + 1 + padding, tdst_col + padding : bdst_col + 1 + padding, class_idx + 1] = 1.0
+
+        print("Adding correction using class id %d" % (class_idx))
+        print("Correction shape: ", correction_labels[tdst_row + padding : bdst_row + 1 + padding, tdst_col + padding : bdst_col + 1 + padding, :].shape)
+
+        batch_x = []
+        batch_y = []
+        batch_count = 0
+        num_skips = 0
+        for y_index in (list(range(0, height - self.input_size, self.stride_y)) + [height - self.input_size,]):
+            for x_index in (list(range(0, width - self.input_size, self.stride_x)) + [width - self.input_size,]):
+                naip_im = self.naip_data[y_index:y_index+self.input_size, x_index:x_index+self.input_size, :]
+                correction_labels_slice = correction_labels[y_index:y_index+self.input_size, x_index:x_index+self.input_size, :].copy()
+
+                if not np.all(correction_labels_slice == 0):
+                    batch_x.append(naip_im)
+                    batch_y.append(correction_labels_slice)
+
+                    correction_labels[y_index:y_index+self.input_size, x_index:x_index+self.input_size, :] = 0
+                else:
+                    num_skips += 1
+        print("Added %d samples, skipped %d samples" % (len(batch_x), num_skips))
+        self.batch_x.extend(batch_x)
+        self.batch_y.extend(batch_y)
+
+
         
     def reset(self):
-        self.model = self.old_model
+        self.model = copy.deepcopy(self.old_model)
+        self.batch_x = []
+        self.batch_y = []
+        self.naip_data = None
+        self.tile_padding = 0
         
     def run_model_on_tile(self, naip_tile, batch_size=32):
         # pdb.set_trace()

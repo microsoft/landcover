@@ -36,6 +36,7 @@ def get_random_string(length):
 
 class AugmentationState():
     #BASE_DIR = "output/"
+    debug_mode = False
     BASE_DIR = "/mnt/blobfuse/pred-output/user_study/"
     current_snapshot_string = "%s_" + get_random_string(8) + "_%d"
     current_snapshot_idx = 0
@@ -62,8 +63,9 @@ class AugmentationState():
         model_fn = os.path.join(AugmentationState.BASE_DIR, "%s_model.p" % (snapshot_id))
         request_list_fn = os.path.join(AugmentationState.BASE_DIR, "%s_request_list.p" % (snapshot_id))
 
-        joblib.dump(AugmentationState.model, model_fn, protocol=pickle.HIGHEST_PROTOCOL)
-        joblib.dump(AugmentationState.request_list, request_list_fn, protocol=pickle.HIGHEST_PROTOCOL)
+        if not AugmentationState.debug_mode:
+            joblib.dump(AugmentationState.model, model_fn, protocol=pickle.HIGHEST_PROTOCOL)
+            joblib.dump(AugmentationState.request_list, request_list_fn, protocol=pickle.HIGHEST_PROTOCOL)
         
         AugmentationState.current_snapshot_idx += 1
 
@@ -124,7 +126,7 @@ def retrain_model():
     data["time"] = time.ctime()
     AugmentationState.request_list.append(data)
 
-    success, message = AugmentationState.model.retrain()
+    success, message = AugmentationState.model.retrain(**data["retrainArgs"])
 
     if success:
         bottle.response.status = 200
@@ -176,8 +178,6 @@ def record_correction():
     # Color stuff
     num_corrected = (bdst_row-tdst_row) * (bdst_col-tdst_col)
     y_pred = AugmentationState.current_output.copy()
-    print(y_pred.shape)
-    print(y_pred[tdst_row:bdst_row+1, tdst_col:bdst_col+1, :].shape)
     y_pred[tdst_row:bdst_row+1, tdst_col:bdst_col+1, :] = 0
     y_pred[tdst_row:bdst_row+1, tdst_col:bdst_col+1, class_idx] = 1
     AugmentationState.current_output = y_pred
@@ -372,6 +372,7 @@ def main():
     parser = argparse.ArgumentParser(description="Backend Server")
 
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debugging", default=False)
+    parser.add_argument("--debug", action="store_true", help="Enable debug mode", default=False)
     parser.add_argument("--host", action="store", dest="host", type=str, help="Host to bind to", default="0.0.0.0")
     parser.add_argument("--port", action="store", dest="port", type=int, help="Port to listen on", default=4444)
     parser.add_argument("--model", action="store", dest="model",
@@ -426,6 +427,7 @@ def main():
         return
 
     AugmentationState.model = model
+    AugmentationState.debug_mode = args.debug
 
     # Setup the bottle server 
     app = bottle.Bottle()
