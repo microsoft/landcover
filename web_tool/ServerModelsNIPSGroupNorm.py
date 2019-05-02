@@ -208,7 +208,7 @@ class UnetgnFineTune(BackendModel):
                     y_hat1 = (Variable(out).data).cpu().numpy()
                     y_hat1 = np.argmax(y_hat1, axis=0)
                     y_true = (Variable(batch_y[j]).data).cpu().numpy()
-                    iou+=mean_IoU(y_pred1, y_true,{0})
+                    iou+=mean_IoU(y_hat1, y_true,{0})
                     acc += pixel_accuracy(y_pred1, y_true, {0})
                     loss = criterion(torch.unsqueeze(batch_y[j],0).long(), torch.unsqueeze(outputs,0))
                     print(loss.item())
