@@ -152,7 +152,6 @@ class UnetgnFineTune(BackendModel):
     def retrain(self, train_steps=15, corrections_from_ui=True, learning_rate=0.003):
         print('In retrain')
         num_labels = np.count_nonzero(self.correction_labels)
-        
         height = self.naip_data.shape[1]
         width = self.naip_data.shape[2]
         batch_count = 0
@@ -211,7 +210,6 @@ class UnetgnFineTune(BackendModel):
         success = True
         message = "Fine-tuned Group norm params with %d samples. 4 Groups. 8 params, 1 layer." % self.num_corrected_pixels
         print(message)
-
         return success, message
 
     def add_sample(self, tdst_row, bdst_row, tdst_col, bdst_col, class_idx):
