@@ -297,7 +297,7 @@ class KerasBackPropFineTune(BackendModel):
                 
         learning_rate *= (self.input_size * self.input_size * len(batch_x) * len(self.batch_x)) / self.num_corrected_pixels
 
-        self.model.compile(optimizers.SGD(lr=learning_rate, decay=1e-6), "categorical_crossentropy")
+        self.model.compile(optimizers.Adam(lr=0.01, decay=1e-6), "categorical_crossentropy")
         
         # pdb.set_trace()
             

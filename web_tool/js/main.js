@@ -173,7 +173,7 @@ var doSendCorrection = function(polygon, idx){
             animateSuccessfulCorrection(10, 80);
             //notifySuccess(data, textStatus, jqXHR);
             
-            /* var srcs = [
+            var srcs = [
                 "data:image/png;base64," + data.output_soft,
                 "data:image/png;base64," + data.output_hard,
             ];
@@ -184,7 +184,7 @@ var doSendCorrection = function(polygon, idx){
             
             if(pred0_naip1 == 0){
                 currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
-            } */
+            }
         },
         error: notifyFail,
         dataType: "json",

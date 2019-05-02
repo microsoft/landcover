@@ -146,6 +146,7 @@ def record_correction():
 
     tlat, tlon = data["extent"]["ymax"], data["extent"]["xmin"]
     blat, blon = data["extent"]["ymin"], data["extent"]["xmax"]
+    color_list = data["colors"]
     class_idx = data["value"] # what we want to switch the class to
 
     src_crs, dst_crs, dst_transform, rev_dst_transform, padding = AugmentationState.current_transform
@@ -170,34 +171,30 @@ def record_correction():
     tdst_row, bdst_row = min(tdst_row, bdst_row)-padding, max(tdst_row, bdst_row)-padding
     tdst_col, bdst_col = min(tdst_col, bdst_col)-padding, max(tdst_col, bdst_col)-padding
 
-
-    y_pred = AugmentationState.current_output[tdst_row:bdst_row+1, tdst_col:bdst_col+1, :].copy().reshape(-1, AugmentationState.current_output.shape[2])
-    '''
-    x_train = AugmentationState.current_features[tdst_row:bdst_row+1, tdst_col:bdst_col+1, :].copy().reshape(-1, current_features.shape[2])
-
-    y_train = np.zeros((x_train.shape[0]), dtype=np.uint8)
-    y_train[:] = class_idx
-
-    current_predictions[tdst_row:bdst_row+1, tdst_col:bdst_col+1, :] = 0
-    current_predictions[tdst_row:bdst_row+1, tdst_col:bdst_col+1, class_idx] = 1
-    '''
-
     AugmentationState.model.add_sample(tdst_row, bdst_row, tdst_col, bdst_col, class_idx)
 
-    '''
-    img_soft = np.round(utils.class_prediction_to_img(current_predictions, False)*255,0).astype(np.uint8)
+    # Color stuff
+    num_corrected = (bdst_row-tdst_row) * (bdst_col-tdst_col)
+    y_pred = AugmentationState.current_output.copy()
+    print(y_pred.shape)
+    print(y_pred[tdst_row:bdst_row+1, tdst_col:bdst_col+1, :].shape)
+    y_pred[tdst_row:bdst_row+1, tdst_col:bdst_col+1, :] = 0
+    y_pred[tdst_row:bdst_row+1, tdst_col:bdst_col+1, class_idx] = 1
+    AugmentationState.current_output = y_pred
+    
+    img_soft = np.round(utils.class_prediction_to_img(y_pred, False, color_list)*255,0).astype(np.uint8)
     img_soft = cv2.imencode(".png", cv2.cvtColor(img_soft, cv2.COLOR_RGB2BGR))[1].tostring()
     img_soft = base64.b64encode(img_soft).decode("utf-8")
     data["output_soft"] = img_soft
 
-    img_hard = np.round(utils.class_prediction_to_img(current_predictions, True)*255,0).astype(np.uint8)
+    img_hard = np.round(utils.class_prediction_to_img(y_pred, True, color_list)*255,0).astype(np.uint8)
     img_hard = cv2.imencode(".png", cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGR))[1].tostring()
     img_hard = base64.b64encode(img_hard).decode("utf-8")
     data["output_hard"] = img_hard
-    '''
+    
 
     data["message"] = "Successfully submitted correction"
-    data["count"] = y_pred.shape[0]
+    data["count"] = num_corrected
     data["success"] = True
 
     bottle.response.status = 200
