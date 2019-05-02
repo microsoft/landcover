@@ -5,6 +5,7 @@ import torch.nn as nn
 import copy
 import os, json
 import pdb
+from training.pytorch.utils.eval_segm import mean_IoU, pixel_accuracy
 
 from training.pytorch.models.fusionnet import Fusionnet
 from training.pytorch.models.unet import Unet
@@ -188,6 +189,8 @@ class UnetgnFineTune(BackendModel):
 
         for i in range(train_steps):
             print('step %d' % i)
+            iou = 0
+            acc = 0
             for j in range(number_windows):
                 print('window %d' % j)
                 with torch.set_grad_enabled(True):
@@ -202,10 +205,20 @@ class UnetgnFineTune(BackendModel):
                     out[:, 92 + 130:w - (w % 892) + 130 - 92, 92 + 130:h - (h % 892) - 92 + 130] = y_pred1
         
                     outputs = out.float().to(device)
+                    y_hat1 = (Variable(out).data).cpu().numpy()
+                    y_hat1 = np.argmax(y_hat1, axis=0)
+                    y_true = (Variable(batch_y[j]).data).cpu().numpy()
+                    iou+=mean_IoU(y_pred1, y_true,{0})
+                    acc += pixel_accuracy(y_pred1, y_true, {0})
                     loss = criterion(torch.unsqueeze(batch_y[j],0).long(), torch.unsqueeze(outputs,0))
                     print(loss.item())
                     loss.backward()
                     optimizer.step()
+            iou/=number_windows
+            acc/=number_windows
+            print("Step mean IoU: ", iou)
+            print("Step pixel acc: ", acc)
+
 
         success = True
         message = "Fine-tuned Group norm params with %d samples. 4 Groups. 8 params, 1 layer." % self.num_corrected_pixels
