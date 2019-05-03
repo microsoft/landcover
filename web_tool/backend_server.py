@@ -174,9 +174,10 @@ def record_correction():
     tdst_col, bdst_col = min(tdst_col, bdst_col)-padding, max(tdst_col, bdst_col)-padding
 
     AugmentationState.model.add_sample(tdst_row, bdst_row, tdst_col, bdst_col, class_idx)
+    num_corrected = (bdst_row-tdst_row) * (bdst_col-tdst_col)
 
     # Color stuff
-    num_corrected = (bdst_row-tdst_row) * (bdst_col-tdst_col)
+    '''
     y_pred = AugmentationState.current_output.copy()
     y_pred[tdst_row:bdst_row+1, tdst_col:bdst_col+1, :] = 0
     y_pred[tdst_row:bdst_row+1, tdst_col:bdst_col+1, class_idx] = 1
@@ -191,7 +192,7 @@ def record_correction():
     img_hard = cv2.imencode(".png", cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGR))[1].tostring()
     img_hard = base64.b64encode(img_hard).decode("utf-8")
     data["output_hard"] = img_hard
-    
+    '''
 
     data["message"] = "Successfully submitted correction"
     data["count"] = num_corrected
