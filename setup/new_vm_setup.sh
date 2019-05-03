@@ -13,13 +13,13 @@ source deactivate
 
 
 # Deal with data
-./mount_remotes_development.sh
+./after_restart.sh
 cd web_tool
 cp -r /mnt/afs/chesapeake/demo_data/ data/
 mkdir tiles/
 cp data/tiles.zip tiles/
 cp data/demo_set_1.zip tiles/
-cd data
+cd tiles
 unzip tiles.zip
 unzip demo_set_1.zip
 cd ..
