@@ -49,9 +49,14 @@ def get_naip_same_loc(naip):
         return naip_d[naip2id(naip)]
     return [naip,]
 
-assert all([os.path.exists(fn) for fn in [
-    ROOT_DIR + "/data/list_all_naip.txt",
-]])
+try:
+    assert all([os.path.exists(fn) for fn in [
+        ROOT_DIR + "/data/list_all_naip.txt",
+    ]])
+except:
+    raise Exception('Did not find all necessary data files as specified in %s. \n'
+                    'Have you run `cp -r /mnt/afs/chesapeake/demo_data/ data/` from inside `%s` directory? \n'
+                    '(Have you followed all steps in README.md?)' % (ROOT_DIR + "/data/list_all_naip.txt", ROOT_DIR))
 
 naip_d = {}
 fdid = open(ROOT_DIR + '/data/list_all_naip.txt', 'r')
