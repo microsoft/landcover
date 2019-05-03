@@ -223,6 +223,7 @@ class UnetgnFineTune(BackendModel):
         return success, message
 
     def add_sample(self, tdst_row, bdst_row, tdst_col, bdst_col, class_idx):
+        pdb.set_trace()
         padding = 0
         print("adding sample: class %d (incremented to %d) at (%d, %d)" % (class_idx, class_idx + 1, tdst_row, tdst_row))
         self.correction_labels[tdst_row + padding: bdst_row + 1 + padding,
