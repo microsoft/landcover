@@ -12,6 +12,17 @@ pip install --user einops
 source deactivate
 
 
+# Deal with data
+./mount_remotes_development.sh
+cd web_tool
+cp -r /mnt/afs/chesapeake/demo_data/ data/
+mkdir tiles/
+cp data/tiles.zip tiles/
+cp data/demo_set_1.zip tiles/
+cd data
+unzip tiles.zip
+unzip demo_set_1.zip
+cd ..
 
 # sometimes the GPU doesn't work
 sudo shutdown -r now
