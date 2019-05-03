@@ -13,7 +13,7 @@ source deactivate
 
 
 # Deal with data
-./after_restart.sh
+source after_restart.sh
 cd web_tool
 cp -r /mnt/afs/chesapeake/demo_data/ data/
 mkdir tiles/

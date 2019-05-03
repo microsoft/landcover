@@ -16,7 +16,7 @@ This repository holds both the "frontend" web-application and "backend" web API 
 - `cd setup/`
 - `./new_vm_setup.sh`, this will restart the machine at the end as I have faced GPU problems on newly provisioned DLVM image machines
 - Log in to VM again
-- Any time the VM has been shut down, run: `cd landcover/setup; ./login.sh; cd ..`
+- Any time the VM has been shut down, run: `cd landcover/setup; source login.sh; cd ..`
 
 - `cp web-tool/endpoints.js web-tool/endpoints.mine.js`; Edit endpoints.mine.js to point to your own server URL; indicating ports for whichever backend server.py instances you are running (you can set alternate ports from command line flags, see below)
 
