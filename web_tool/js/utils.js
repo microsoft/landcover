@@ -37,7 +37,7 @@ var animateSuccessfulCorrection = function(countdown, time){
     }
 }
 
-var notifySuccess = function(data, textStatus, jqXHR){
+var notifySuccess = function(data, textStatus, jqXHR, timeout=500){
     var resp = data;
     var respType = 'success';
 
@@ -48,7 +48,7 @@ var notifySuccess = function(data, textStatus, jqXHR){
         type: respType,
         text: resp.message,
         layout: 'topCenter',
-        timeout: 500,
+        timeout: timeout,
         theme: 'metroui'
     }).show();        
 };

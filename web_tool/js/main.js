@@ -8,7 +8,7 @@ var doRetrain = function(){
         data: JSON.stringify({"retrain": true, "experiment": EXP_NAME, "retrainArgs": retrainArgs}),
         success: function(data, textStatus, jqXHR){
             if(data["success"]){
-                notifySuccess(data, textStatus, jqXHR);
+                notifySuccess(data, textStatus, jqXHR, 5000);
                 retrainCounts += 1;
 
                 $("#label-retrains").html(retrainCounts);

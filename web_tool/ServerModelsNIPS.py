@@ -201,6 +201,7 @@ class KerasBackPropFineTune(BackendModel):
         import keras
         import keras.models
         import keras.backend as K
+        K.set_learning_phase(0)
 
         self.model_fn = model_fn
         
@@ -216,7 +217,13 @@ class KerasBackPropFineTune(BackendModel):
             feature_layer_idx = -3
         
         self.model = keras.models.Model(inputs=tmodel.inputs, outputs=tmodel.outputs[0])
+        for layer in self.model.layers:
+            layer.trainable = False
+            if isinstance(layer, keras.layers.normalization.BatchNormalization):
+                layer._per_input_updates = {}
+                layer.training = False
         self.model.compile("sgd","categorical_crossentropy")
+        
         self.old_model = copy.deepcopy(self.model)
         
         self.output_channels = self.model.output_shape[3]
@@ -238,51 +245,62 @@ class KerasBackPropFineTune(BackendModel):
         # pdb.set_trace()
         
     def run(self, naip_data, naip_fn, extent, padding):
-        # pdb.set_trace()
-        
+
+        if self.correction_labels is not None:
+            self.process_correction_labels()
+
+        naip_data = naip_data / 255.0
+        height = naip_data.shape[0]
+        width = naip_data.shape[1]
         output = self.run_model_on_tile(naip_data)
 
-        # apply padding to the output_features
-        if padding > 0:
-            self.tile_padding = padding
-            naip_data_trimmed = naip_data[padding:-padding,padding:-padding,:]
-            output_trimmed = output[padding:-padding, padding:-padding, :]
-
-        self.naip_data = naip_data  # keep non-trimmed size, i.e. with padding
+        self.tile_padding = padding
+        self.correction_labels = np.zeros((height, width, self.output_channels), dtype=np.float32)
+        self.naip_data = naip_data.copy()
         self.last_output = output
         
         return output
 
-    def retrain(self, number_of_steps=10, last_k_layers=2, learning_rate=0.003, **kwargs):
+    def retrain(self, number_of_steps=10, last_k_layers=2, learning_rate=0.003, batch_size = 32, **kwargs):
         
-        for layer in self.model.layers:
-            layer.trainable = False
+        self.process_correction_labels()
 
         num_layers = len(self.model.layers)
-        for i in range(num_layers-last_k_layers, num_layers):
-            print("Reseting layer %d" % (i))
-            self.model.layers[i].trainable = True
-            self.model.layers[i].set_weights(self.old_model.layers[i].get_weights())
+        for i in range(num_layers):
+            if self.model.layers[i].trainable:
+                print("Reseting layer %d" % (i))
+                self.model.layers[i].set_weights(self.old_model.layers[i].get_weights())
+            self.model.layers[i].trainable = False
 
-        self.model.compile(optimizers.Adam(lr=learning_rate, decay=1e-6), "categorical_crossentropy")
-        #self.model.summary()
-        #print("Number of trainable parameters: %d" % (self.model.count_params()))
+        for i in range(num_layers-last_k_layers, num_layers):
+            self.model.layers[i].trainable = True
+
+        self.model.compile(optimizers.Adam(lr=learning_rate, amsgrad=True), "categorical_crossentropy")
+        self.model.summary()
 
         x_train = np.array(self.batch_x)
         y_train = np.array(self.batch_y)
+        y_train_labels = y_train.argmax(axis=3)
+
         print("Training set shape: ", x_train.shape, y_train.shape)
-        label_set = y_train.argmax(axis=3)
-        print("Label set: ", np.unique(label_set[label_set!=0], return_counts=True))
+        print("Label set: ", np.unique(y_train_labels[y_train_labels!=0], return_counts=True))
+        print("Starting fine-tuning for %d steps over the last %d layers using %d samples with lr of %f" % 
+            (number_of_steps, last_k_layers, len(self.batch_x), learning_rate)
+        )
 
-        batch_size = 16
-
-        print("Starting fine-tuning for %d steps using %d samples with lr of %f" % (number_of_steps, len(self.batch_x), learning_rate))
-        
-        self.model.fit(
+        history = self.model.fit(
             x_train, y_train,
             batch_size=batch_size,
             epochs=number_of_steps
         )
+
+        y_pred = self.model.predict(x_train)        
+        y_pred_labels = y_pred.argmax(axis=3)
+        mask = y_train_labels != 0
+        acc = np.sum(y_train_labels[mask] == y_pred_labels[mask]) / np.sum(mask)
+        print("training acc", acc)
+        print("training loss", history.history["loss"][0], history.history["loss"][-1])
+
         '''
         for i in range(number_of_steps):
             idxs = np.arange(x_train.shape[0])
@@ -302,7 +320,11 @@ class KerasBackPropFineTune(BackendModel):
             print(np.mean(training_losses))
         '''
         success = True
-        message = "Re-trained model with %d samples" % (x_train.shape[0])
+        message = "Re-trained model with %d samples<br>Starting loss:%f<br>Ending loss:%f<br>Training acc: %f." % (
+            x_train.shape[0],
+            history.history["loss"][0], history.history["loss"][-1],
+            acc
+        )
         
         return success, message
 
@@ -312,11 +334,16 @@ class KerasBackPropFineTune(BackendModel):
         height = self.naip_data.shape[0]
         width = self.naip_data.shape[1]
 
-        correction_labels = np.zeros((height, width, self.output_channels), dtype=np.float32)
-        correction_labels[tdst_row + padding : bdst_row + 1 + padding, tdst_col + padding : bdst_col + 1 + padding, class_idx + 1] = 1.0
+        self.correction_labels[tdst_row + padding : bdst_row + 1 + padding, tdst_col + padding : bdst_col + 1 + padding, class_idx + 1] = 1.0
 
         print("Adding correction using class id %d" % (class_idx))
-        print("Correction shape: ", correction_labels[tdst_row + padding : bdst_row + 1 + padding, tdst_col + padding : bdst_col + 1 + padding, :].shape)
+        print("Correction shape: ", self.correction_labels[tdst_row + padding : bdst_row + 1 + padding, tdst_col + padding : bdst_col + 1 + padding, :].shape)
+
+
+    def process_correction_labels(self):
+
+        height = self.naip_data.shape[0]
+        width = self.naip_data.shape[1]
 
         batch_x = []
         batch_y = []
@@ -324,20 +351,19 @@ class KerasBackPropFineTune(BackendModel):
         num_skips = 0
         for y_index in (list(range(0, height - self.input_size, self.stride_y)) + [height - self.input_size,]):
             for x_index in (list(range(0, width - self.input_size, self.stride_x)) + [width - self.input_size,]):
-                naip_im = self.naip_data[y_index:y_index+self.input_size, x_index:x_index+self.input_size, :]
-                correction_labels_slice = correction_labels[y_index:y_index+self.input_size, x_index:x_index+self.input_size, :].copy()
+                naip_im = self.naip_data[y_index:y_index+self.input_size, x_index:x_index+self.input_size, :].copy()
+                correction_labels_slice = self.correction_labels[y_index:y_index+self.input_size, x_index:x_index+self.input_size, :].copy()
 
                 if not np.all(correction_labels_slice == 0):
                     batch_x.append(naip_im)
                     batch_y.append(correction_labels_slice)
 
-                    correction_labels[y_index:y_index+self.input_size, x_index:x_index+self.input_size, :] = 0
+                    self.correction_labels[y_index:y_index+self.input_size, x_index:x_index+self.input_size, :] = 0
                 else:
                     num_skips += 1
         print("Added %d samples, skipped %d samples" % (len(batch_x), num_skips))
         self.batch_x.extend(batch_x)
         self.batch_y.extend(batch_y)
-
 
         
     def reset(self):
@@ -346,12 +372,9 @@ class KerasBackPropFineTune(BackendModel):
         self.batch_y = []
         self.naip_data = None
         self.tile_padding = 0
+        self.correction_labels = None
         
     def run_model_on_tile(self, naip_tile, batch_size=32):
-        # pdb.set_trace()
-        
-        naip_tile = naip_tile / 255.0
-
         height = naip_tile.shape[0]
         width = naip_tile.shape[1]
         
@@ -374,6 +397,7 @@ class KerasBackPropFineTune(BackendModel):
                 batch.append(naip_im)
                 batch_indices.append((y_index, x_index))
                 batch_count+=1
+
 
         model_output = self.model.predict(np.array(batch), batch_size=batch_size, verbose=0)
         
