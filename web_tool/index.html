@@ -70,7 +70,10 @@
 
                         <div style="text-align: center; margin-top:10px;">
                             <button id="btnRetrain">Retrain (<span id="label-retrains">0</span> times)</button>
-                        </div>  
+                        </div>
+                        <div style="text-align: center; margin-top:10px;">
+                            <button id="btnReset">Reset</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -455,6 +458,7 @@
             });
 
             $("#btnRetrain").click(doRetrain);
+            $("#btnReset").click(doReset);
     
             //----------------------------------------------------------------------
             // Setup radio button change detection
