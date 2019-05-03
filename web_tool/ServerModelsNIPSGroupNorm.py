@@ -128,7 +128,7 @@ class UnetgnFineTune(BackendModel):
 
         # apply padding to the output_features
         x=naip_data
-        x = np.swapaxes(x, 0, 2)
+        x = np.moveaxis(x, 0, 2)
         x = np.swapaxes(x, 1, 2)
         x = np.rollaxis(x, 2, 1)
         x = x[:4, :, :]
@@ -150,7 +150,7 @@ class UnetgnFineTune(BackendModel):
 #FIXME: add retrain method
     def retrain(self, train_steps=200, corrections_from_ui=True, learning_rate=0.0015):
         print_every_k_steps = 1
-        pdb.set_trace()
+        #pdb.set_trace()
         print('In retrain')
         num_labels = np.count_nonzero(self.correction_labels)
         height = self.naip_data.shape[1]
@@ -226,10 +226,15 @@ class UnetgnFineTune(BackendModel):
        # pdb.set_trace()
         padding = self.tile_padding
         print("adding sample: class %d (incremented to %d) at (%d, %d)" % (class_idx, class_idx + 1, tdst_row, tdst_row))
-        self.correction_labels[tdst_row + padding: bdst_row + 1 + padding,
-                               tdst_col + padding: bdst_col + 1 + padding, :] = 0.0
-        self.correction_labels[tdst_row + padding: bdst_row + 1 + padding,
-                               tdst_col + padding: bdst_col + 1 + padding, class_idx + 1] = 1.0
+        #self.correction_labels[tdst_row + padding: bdst_row + 1 + padding,
+         #                      tdst_col + padding: bdst_col + 1 + padding, :] = 0.0
+        #self.correction_labels[tdst_row + padding: bdst_row + 1 + padding,
+         #                      tdst_col + padding: bdst_col + 1 + padding, class_idx + 1] = 1.0
+
+        self.correction_labels[tdst_col + padding: bdst_col + 1 + padding, tdst_row + padding: bdst_row + 1 + padding,
+             :] = 0.0
+        self.correction_labels[tdst_col + padding: bdst_col + 1 + padding, tdst_row + padding: bdst_row + 1 + padding,
+             class_idx + 1] = 1.0
 
     def init_model(self):
         self.model = GroupParams(self.inf_framework.model)
