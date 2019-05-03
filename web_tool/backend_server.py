@@ -136,8 +136,6 @@ def retrain_model():
     return json.dumps(data)
 
 def record_correction():
-    pdb.set_trace()
-
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
     data["time"] = time.ctime()
