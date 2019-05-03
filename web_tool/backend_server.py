@@ -419,7 +419,7 @@ def main():
             model = ServerModelsNIPS.KerasBackPropFineTune(args.model_fn, args.gpuid, superres=False)
     elif args.model == "group_norm":
         if args.fine_tune == "last_k_layers":
-            model = ServerModelsNIPSGroupNorm.LastKLayersFineTune(args.model_fn, args.gpuid, last_k_layers=2)
+            model = ServerModelsNIPSGroupNorm.LastKLayersFineTune(args.model_fn, args.gpuid, last_k_layers=1)
         elif args.fine_tune == "group_params":
             model = ServerModelsNIPSGroupNorm.UnetgnFineTune(args.model_fn, args.gpuid)
     else:
