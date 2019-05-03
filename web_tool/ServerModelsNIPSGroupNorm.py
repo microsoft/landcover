@@ -223,13 +223,12 @@ class UnetgnFineTune(BackendModel):
         return success, message
 
     def add_sample(self, tdst_row, bdst_row, tdst_col, bdst_col, class_idx):
-        padding = self.tile_padding
+        padding = self.tile_padding - 130
         print("adding sample: class %d (incremented to %d) at (%d, %d)" % (class_idx, class_idx + 1, tdst_row, tdst_row))
         self.correction_labels[tdst_row + padding: bdst_row + 1 + padding,
-        tdst_col + padding: bdst_col + 1 + padding, :] = 0.0
+                               tdst_col + padding: bdst_col + 1 + padding, :] = 0.0
         self.correction_labels[tdst_row + padding: bdst_row + 1 + padding,
-        tdst_col + padding: bdst_col + 1 + padding,
-        class_idx + 1] = 1.0
+                               tdst_col + padding: bdst_col + 1 + padding, class_idx + 1] = 1.0
 
     def init_model(self):
         self.model = GroupParams(self.inf_framework.model)
