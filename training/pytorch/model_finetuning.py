@@ -16,7 +16,7 @@ from training.pytorch.models.unet import Unet
 from training.pytorch.models.fusionnet import Fusionnet
 from torch.optim import lr_scheduler
 import copy
-from training.pytorch.utils.eval_segm import mean_IoU
+from training.pytorch.utils.eval_segm import mean_IoU, pixel_accuracy
 from training.pytorch.utils.experiments_utils import improve_reproducibility
 from training.pytorch.losses import (multiclass_ce, multiclass_dice_loss, multiclass_jaccard_loss, multiclass_tversky_loss, multiclass_ce_points)
 from training.pytorch.data_loader import DataGenerator
@@ -36,8 +36,9 @@ parser.add_argument('--model_file', type=str,
 # parser.add_argument('--data_sub_dirs', type=str, nargs='+', help="Sub-directories of `data_path` to get data from", default=['val1',]) # 'test1', 'test2', 'test3', 'test4'])
 
 parser.add_argument('--run_validation', action="store_true", help="Whether to run validation")
-parser.add_argument('--validation_patches_fn', type=str, help="Filename with list of validation patch files", default='training/data/finetuning/val2_test_patches_500.txt')
-parser.add_argument('--training_patches_fn', type=str, help="Filename with list of training patch files", default="training/data/finetuning/val2_train_patches.txt")
+#parser.add_argument('--validation_patches_fn', type=str, help="Filename with list of validation patch files", default='training/data/finetuning/val2_test_patches_500.txt')
+parser.add_argument('--validation_patches_fn', type=str, help="Filename with list of training patch files", default="training/data/finetuning/val2_train_patches_50.txt")
+parser.add_argument('--training_patches_fn', type=str, help="Filename with list of training patch files", default="training/data/finetuning/val2_train_patches_50.txt")
 
 parser.add_argument('--log_fn', type=str, help="Where to store training results", default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/val/val2/finetune_results_last_k_layers.csv")
 
@@ -146,7 +147,7 @@ def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, hyper_
     return model_2_finetune
 
 
-def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=5, superres=False, masking=True):
+def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True):
     global results_writer
     
     # mask_id indices (points per patch): [1, 2, 3, 4, 5, 10, 15, 20, 40, 60, 80, 100]
@@ -160,19 +161,25 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
     duration_til_best_epoch = since - since
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
+    # Each epoch has a training and validation phase
+    phases = ['train', 'val']
+        
     for epoch in range(-1, num_epochs):
         print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         print('-' * 10)
+        
+        statistics = {
+            'mean_IoU': -1,
+            'loss': -1,
+            'accuracy': -1
+        }
 
-        train_mean_IoU = -1
-        train_loss = -1
-        val_mean_IoU = -1
-        val_loss = -1
+        epoch_statistics = {
+            phase: copy.deepcopy(statistics)
+            for phase in phases
+        }
+        # print(epoch_statistics)
 
-        # Each epoch has a training and validation phase
-        phases = ['train']
-        if args.run_validation:
-            phases += ['val']
         for phase in phases:
             if phase == 'train':
                 scheduler.step()
@@ -182,9 +189,15 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
                     model.eval()   # Set model to evaluate mode
                 else:
                     continue
-
+                
+            epoch_statistics[phase]['loss'] = 0.0
+            epoch_statistics[phase]['mean_IoU'] = 0.0
+            epoch_statistics[phase]['accuracy'] = 0.0
+            
             running_loss = 0.0
             meanIoU = 0.0
+            accuracy = 0.0
+            
             n_iter = 0
 
             # Iterate over data.
@@ -228,11 +241,13 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
                         loss.backward()
                         optimizer.step()
 
-                # statistics
-                running_loss += loss.item()
-                n_iter+=1
-                #if phase == 'val':
+                # Store ground truth
                 y_hr = np.squeeze(labels.cpu().numpy(), axis=1)
+                # TODO: I think we need the below... causes error though:
+                #if phase == 'train':
+                    #y_hr = y_hr * mask.cpu().detach().numpy()
+                
+                # Store current outputs
                 batch_size, _, _ = y_hr.shape
                 # TODO: do we need this check below?
                 if phase == 'train':
@@ -240,32 +255,42 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
                 else:
                     y_hat = outputs.cpu().numpy()
                 y_hat = np.argmax(y_hat, axis=1)
+
+                        
+                # statistics
+                n_iter += 1
+
+                # 1) Loss
+                epoch_statistics[phase]['loss'] += loss.item()
+                
+                # 2) mean_IoU
                 batch_meanIoU = 0
-                if phase == 'val':
-                    for j in range(batch_size):
-                        #pdb.set_trace()
-                        batch_meanIoU += mean_IoU(y_hat[j], y_hr[j], ignored_classes={0})
-                    batch_meanIoU /= batch_size
-                    meanIoU += batch_meanIoU
-                    # print('batch_meanIoU: %f' % batch_meanIoU)
+                for j in range(batch_size):
+                    batch_meanIoU += mean_IoU(y_hat[j], y_hr[j], ignored_classes={0})
+                batch_meanIoU /= batch_size
+                epoch_statistics[phase]['mean_IoU'] += batch_meanIoU
+                
+                # 3) accuracy
+                batch_accuracy = 0
+                for j in range(batch_size):
+                    batch_accuracy += pixel_accuracy(y_hat[j], y_hr[j], ignored_classes={0})
+                batch_accuracy /= batch_size
+                epoch_statistics[phase]['accuracy'] += batch_accuracy
+                
+                # Normalize statistics per training iteration in epoch
+                for key in epoch_statistics[phase]:
+                    epoch_statistics[phase][key] /= n_iter
 
-                if phase == 'val':
-                    val_loss = running_loss / n_iter
-                    val_mean_IoU = meanIoU / n_iter
-                elif phase == 'train':
-                    train_loss = running_loss / n_iter
-                    #train_mean_IoU = meanIoU / n_iter
-
-            #print('{} Loss: {:.4f} Acc: {:.4f}'.format(
-            #      phase, epoch_loss, epoch_mean_IoU))
         result_row = {
             'run_id': hyper_parameters['run_id'],
             'hyper_parameters': hyper_parameters,
             'epoch': epoch,
-      #      'train_IoU': train_mean_IoU,
-            'train_loss': train_loss,
-            'val_IoU': val_mean_IoU,
-            'val_loss': val_loss,
+            'train_loss': epoch_statistics['train']['loss'],
+            'train_accuracy': epoch_statistics['train']['accuracy'],
+            'train_mean_IoU': epoch_statistics['train']['mean_IoU'],
+            'val_loss': epoch_statistics['val']['loss'],
+            'val_accuracy': epoch_statistics['val']['accuracy'],
+            'val_mean_IoU': epoch_statistics['val']['mean_IoU'],
             'total_time': datetime.now() - since
         }
         print(result_row)
@@ -298,7 +323,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
 def main(finetune_methods, validation_patches_fn=None):
     global results_writer
     results_file = open(args.log_fn, 'w+')
-    results_writer = csv.DictWriter(results_file, ['run_id', 'hyper_parameters', 'epoch', 'train_IoU', 'train_loss', 'val_IoU', 'val_loss', 'total_time'])
+    results_writer = csv.DictWriter(results_file, ['run_id', 'hyper_parameters', 'epoch', 'train_loss', 'train_accuracy', 'train_mean_IoU', 'val_loss', 'val_accuracy', 'val_mean_IoU', 'total_time'])
     results_writer.writeheader()
     
     params = json.load(open(args.config_file, "r"))
@@ -346,7 +371,7 @@ def main(finetune_methods, validation_patches_fn=None):
         hyper_params['run_id'] = run_id
         print('Fine-tune hyper-params: %s' % str(hyper_params))
         improve_reproducibility()
-        model, result = finetune_function(path, loss, dataloaders, params, hyper_params, results_writer, n_epochs=10)
+        model, result = finetune_function(path, loss, dataloaders, params, hyper_params, results_writer, n_epochs=20)
         results[finetune_method_name] = result
         
         savedir = args.model_output_directory
@@ -372,10 +397,10 @@ if __name__ == "__main__":
     params_sweep_last_k = {
         'method_name': ['last_k_layers'],
         'optimizer_method': [torch.optim.Adam], #, torch.optim.SGD],
-        'last_k_layers': [1, 2, 4], #, 8],
-        'learning_rate': [0.01], #, 0.005, 0.001],
-        'lr_schedule_step_size': [5],
-        'mask_id': range(12),
+        'last_k_layers': [2], # [1, 2, 4], #, 8],
+        'learning_rate': [0.001], #, 0.005, 0.001],
+        'lr_schedule_step_size': [20],  # [5],
+        'mask_id': [5], # mask-id 5 --> 10 px / patch;   # range(12),
     }
 
     params_sweep_group_norm = {
@@ -389,6 +414,6 @@ if __name__ == "__main__":
     params_list_last_k = list(product_dict(**params_sweep_last_k))
     params_list_group_norm = list(product_dict(**params_sweep_group_norm))
     
-    main([('Group params', finetune_group_params, hypers) for hypers in params_list_group_norm] + \
+    main(# [('Group params', finetune_group_params, hypers) for hypers in params_list_group_norm] + \
          [('Last k layers', finetune_last_k_layers, hypers) for hypers in params_list_last_k])
 
