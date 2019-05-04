@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 MODEL="group_norm"
-FINE_TUNE="group_params"
+FINE_TUNE="last_k_layers"
 MODEL_FN="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/checkpoint_best.pth.tar"
 #MODEL_FN="/mnt/blobfuse/train-output/conditioning/models/backup_fusionnet32_gn_8_isotropic/training/checkpoint_best.pth.tar"
 
