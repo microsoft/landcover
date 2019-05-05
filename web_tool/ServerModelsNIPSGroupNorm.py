@@ -128,9 +128,13 @@ class UnetgnFineTune(BackendModel):
 
         # apply padding to the output_features
         x=naip_data
-        x = np.moveaxis(x, 0, 2)
+        print(x.shape)
+        x = np.swapaxes(x, 0, 2)
+        print(x.shape)
         x = np.swapaxes(x, 1, 2)
-        x = np.rollaxis(x, 2, 1)
+        print(x.shape)
+#        x = np.rollaxis(x, 2, 1)
+        print(x.shape)
         x = x[:4, :, :]
         naip_data = x / 255.0
         output = self.run_model_on_tile(naip_data)
@@ -148,7 +152,7 @@ class UnetgnFineTune(BackendModel):
         return output
 
 #FIXME: add retrain method
-    def retrain(self, train_steps=200, corrections_from_ui=True, learning_rate=0.0015):
+    def retrain(self, train_steps=40, corrections_from_ui=True, learning_rate=0.003):
         print_every_k_steps = 1
         #pdb.set_trace()
         print('In retrain')
@@ -226,10 +230,10 @@ class UnetgnFineTune(BackendModel):
        # pdb.set_trace()
         padding = self.tile_padding
         print("adding sample: class %d (incremented to %d) at (%d, %d)" % (class_idx, class_idx + 1, tdst_row, tdst_row))
-        #self.correction_labels[tdst_row + padding: bdst_row + 1 + padding,
-        #                       tdst_col + padding: bdst_col + 1 + padding, :] = 0.0
-        #self.correction_labels[tdst_row + padding: bdst_row + 1 + padding,
-        #                       tdst_col + padding: bdst_col + 1 + padding, class_idx + 1] = 1.0
+        self.correction_labels[tdst_row + padding: bdst_row + 1 + padding,
+                               tdst_col + padding: bdst_col + 1 + padding, :] = 0.0
+        self.correction_labels[tdst_row + padding: bdst_row + 1 + padding,
+                               tdst_col + padding: bdst_col + 1 + padding, class_idx + 1] = 1.0
 
         self.correction_labels[tdst_col + padding: bdst_col + 1 + padding, tdst_row + padding: bdst_row + 1 + padding,
              :] = 0.0
@@ -267,7 +271,9 @@ class UnetgnFineTune(BackendModel):
         y_hat1 = (Variable(y_pred1).data).cpu().numpy()
         out[:, 92 + 130:w - (w % 892) + 130 - 92, 92 + 130:h - (h % 892) - 92 + 130] = y_hat1
         pred = np.rollaxis(out, 0, 3)
-        pred = np.moveaxis(pred, 0, 1)
+        print(pred.shape)
+#        pred = np.moveaxis(pred, 0, 1)
+ #       print(pred.shape)
         return pred
 
 
