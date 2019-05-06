@@ -152,7 +152,7 @@ class UnetgnFineTune(BackendModel):
         return output
 
 #FIXME: add retrain method
-    def retrain(self, train_steps=40, corrections_from_ui=True, learning_rate=0.003):
+    def retrain(self, train_steps=50, corrections_from_ui=True, learning_rate=0.001):
         print_every_k_steps = 1
         #pdb.set_trace()
         print('In retrain')
@@ -187,7 +187,8 @@ class UnetgnFineTune(BackendModel):
         batch_y = np.array(self.batch_y)
         batch_y = torch.from_numpy(batch_y).float().to(device)
         self.init_model()
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate, eps=1e-5)
+        #optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate, eps=1e-5)
+        optimizer = torch.optim.LBFGS(self.model.parameters(), max_iter=4, history_size=7,  batch_mode=True)
         optimizer.zero_grad()
         criterion = multiclass_ce().to(device)
 
@@ -204,20 +205,21 @@ class UnetgnFineTune(BackendModel):
                     x_c_tensor1 = torch.from_numpy(batch_x[j]).float().to(device)
                     y_pred1 = self.model.forward(x_c_tensor1.unsqueeze(0))
                     out[:, 92: -92, 92:-92] = y_pred1
-        
-                    outputs = out.float().to(device)
                     y_hat1 = (Variable(out).data).cpu().numpy()
                     y_hat1 = np.argmax(y_hat1, axis=0)
                     y_true = (Variable(batch_y[j]).data).cpu().numpy()
-                   # iou+=mean_IoU(y_hat1, y_true,{0})
+                    # iou+=mean_IoU(y_hat1, y_true,{0})
                     acc += pixel_accuracy(y_hat1, y_true, {0})
-                    loss = criterion(torch.unsqueeze(batch_y[j],0).long(), torch.unsqueeze(outputs,0))
-             #       print(loss.item())
-                    loss.backward()
-                    optimizer.step()
+                    #loss = criterion(torch.unsqueeze(batch_y[j], 0).long(), torch.unsqueeze(outputs, 0))
+                    #loss.backward()
+                    def closure():
+                        out[:, 92: -92, 92:-92] = y_pred1
+                        outputs = out.float().to(device)
+                        loss = criterion(torch.unsqueeze(batch_y[j],0).long(), torch.unsqueeze(outputs,0))
+                        loss.backward()
+                    optimizer.step(closure)
             iou/=number_windows
             acc/=number_windows
-           # print("Step mean IoU: ", iou)
             if i % print_every_k_steps == 0:
                 print("Step pixel acc: ", acc)
 
