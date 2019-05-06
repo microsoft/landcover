@@ -240,10 +240,10 @@ class UnetgnFineTune(BackendModel):
         self.correction_labels[tdst_row + padding: bdst_row + 1 + padding,
                                tdst_col + padding: bdst_col + 1 + padding, class_idx + 1] = 1.0
 
-        self.correction_labels[tdst_col + padding: bdst_col + 1 + padding, tdst_row + padding: bdst_row + 1 + padding,
-             :] = 0.0
-        self.correction_labels[tdst_col + padding: bdst_col + 1 + padding, tdst_row + padding: bdst_row + 1 + padding,
-             class_idx + 1] = 1.0
+        #self.correction_labels[tdst_col + padding: bdst_col + 1 + padding, tdst_row + padding: bdst_row + 1 + padding,
+        #     :] = 0.0
+       # self.correction_labels[tdst_col + padding: bdst_col + 1 + padding, tdst_row + padding: bdst_row + 1 + padding,
+         #    class_idx + 1] = 1.0
 
     def init_model(self):
         self.model = GroupParams(self.inf_framework.model)
