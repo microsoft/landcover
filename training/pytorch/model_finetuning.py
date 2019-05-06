@@ -234,6 +234,15 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
                 # track history if only in train
                 with torch.set_grad_enabled(phase == 'train' and epoch > -1):
                     outputs = model.forward(inputs)
+                    rgb_outputs = np.array(outputs.shape)
+                    
+                    pdb.set_trace()
+                    # Dump visualization of predictions
+                    # save to hyper_parameters['predictions_path']
+                    for (output_num, output) in outputs:
+                        
+                        np.save(outputs, str(hyper_parameters['predictions_path']) + '_output_[%d]_epoch_[%d].npy' % (output_num, epoch))
+
                     loss = criterion(torch.squeeze(labels,1).long(), outputs)
 
                     # backward + optimize only if in training phase
@@ -320,7 +329,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
     # model.load_state_dict(best_model_wts)
     return model, FineTuneResult(best_mean_IoU=best_mean_IoU, train_duration=duration)
 
-def main(finetune_methods, validation_patches_fn=None):
+def main(finetune_methods, predictions_path, validation_patches_fn=None):
     global results_writer
     results_file = open(args.log_fn, 'w+')
     results_writer = csv.DictWriter(results_file, ['run_id', 'hyper_parameters', 'epoch', 'train_loss', 'train_accuracy', 'train_mean_IoU', 'val_loss', 'val_accuracy', 'val_mean_IoU', 'total_time'])
@@ -369,6 +378,7 @@ def main(finetune_methods, validation_patches_fn=None):
     results = {}
     for run_id, (finetune_method_name, finetune_function, hyper_params) in enumerate(finetune_methods):
         hyper_params['run_id'] = run_id
+        hyper_params['predictions_path'] = str(predictions_path / str(hyper_params))
         print('Fine-tune hyper-params: %s' % str(hyper_params))
         improve_reproducibility()
         model, result = finetune_function(path, loss, dataloaders, params, hyper_params, results_writer, n_epochs=20)
@@ -394,13 +404,15 @@ def product_dict(**kwargs):
 
         
 if __name__ == "__main__":
+    # mask_id indices (points per patch): [1, 2, 3, 4, 5, 10, 15, 20, 40, 60, 80, 100]
+
     params_sweep_last_k = {
         'method_name': ['last_k_layers'],
         'optimizer_method': [torch.optim.Adam], #, torch.optim.SGD],
         'last_k_layers': [2], # [1, 2, 4], #, 8],
-        'learning_rate': [0.001], #, 0.005, 0.001],
-        'lr_schedule_step_size': [20],  # [5],
-        'mask_id': [5], # mask-id 5 --> 10 px / patch;   # range(12),
+        'learning_rate': [0.0035], #, 0.005, 0.001],
+        'lr_schedule_step_size': [1000],  # [5],
+        'mask_id': [7], # mask-id 5 --> 10 px / patch;   # range(12),
     }
 
     params_sweep_group_norm = {
@@ -413,7 +425,10 @@ if __name__ == "__main__":
 
     params_list_last_k = list(product_dict(**params_sweep_last_k))
     params_list_group_norm = list(product_dict(**params_sweep_group_norm))
+
+    predictions_path = Path(args.model_output_directory) / "predictions"
     
     main(# [('Group params', finetune_group_params, hypers) for hypers in params_list_group_norm] + \
-         [('Last k layers', finetune_last_k_layers, hypers) for hypers in params_list_last_k])
+         [('Last k layers', finetune_last_k_layers, hypers) for hypers in params_list_last_k],
+        predictions_path)
 
