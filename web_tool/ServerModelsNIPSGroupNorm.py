@@ -276,8 +276,8 @@ class LastKLayersFineTune(UnetgnFineTune):
         except:
             print("Trying to copy inf_framework before it exists")
 
- """           
-class GnLastKLayersFineTune(UnetgnFineTune):
+
+class GroupParamsLastKLayersFineTune(UnetgnFineTune):
 
     def __init__(self, model_fn, gpuid, last_k_layers=1):
         super().__init__(model_fn, gpuid)
@@ -288,9 +288,6 @@ class GnLastKLayersFineTune(UnetgnFineTune):
     def init_model(self):
         try:
             self.inf_framework = copy.deepcopy(self.old_inference_framework)
-            self.model = self.inf_framework.model
-            self.model.to(self.device)
-
             k = self.last_k_layers
 
             # Freeze all but last k layers
@@ -302,6 +299,10 @@ class GnLastKLayersFineTune(UnetgnFineTune):
             for layer in list(self.model.children())[-k:]:
                 for param in layer.parameters():
                     param.requires_grad = True
+
+            self.model = GroupParams(self.inf_framework.model)
+            self.model.to(self.device)
+
         except:
             print("Trying to copy inf_framework before it exists")
 
@@ -316,5 +317,5 @@ class InferenceFramework():
         self.model.load_state_dict(checkpoint['model'])
         self.model.eval()
 
-"""
+
 
