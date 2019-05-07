@@ -151,6 +151,8 @@ class UnetgnFineTune(BackendModel):
             self.batch_count += batch_count
 
     def retrain(self, train_steps=25, learning_rate=0.0015):
+        if self.batch_count != 0 and self.correction_labels is not None:
+            self.set_corrections()
         print_every_k_steps = 1
 
         print("Fine tuning group norm params with %d new labels. 4 Groups, 8 Params" % self.num_corrected_pixels)

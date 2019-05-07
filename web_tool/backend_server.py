@@ -427,7 +427,7 @@ def main():
         elif args.fine_tune == "last_k_plus_group_params":
             model = ServerModelsNIPSGroupNorm.GroupParamsLastKLayersFineTune(args.model_fn, args.gpuid, last_k_layers=2)
         elif args.fine_tune == "group_params_then_last_k":
-            model = ServerModelsNIPSGroupNorm.GroupParamsLastKLayersFineTune(args.model_fn, args.gpuid, last_k_layers=2)
+            model = ServerModelsNIPSGroupNorm.GroupParamsThenLastKLayersFineTune(args.model_fn, args.gpuid, last_k_layers=2)
 
     else:
         print("Model isn't implemented, aborting")
