@@ -234,16 +234,11 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
                 # track history if only in train
                 with torch.set_grad_enabled(phase == 'train' and epoch > -1):
                     outputs = model.forward(inputs)
-                    rgb_outputs = np.array(outputs.shape)
+                    ground_truth = torch.squeeze(labels,1).long()
                     
-                    pdb.set_trace()
-                    # Dump visualization of predictions
-                    # save to hyper_parameters['predictions_path']
-                    for (output_num, output) in outputs:
-                        
-                        np.save(outputs, str(hyper_parameters['predictions_path']) + '_output_[%d]_epoch_[%d].npy' % (output_num, epoch))
+                    # save_visualized(inputs, outputs, ground_truth)
 
-                    loss = criterion(torch.squeeze(labels,1).long(), outputs)
+                    loss = criterion(ground_truth, outputs)
 
                     # backward + optimize only if in training phase
                     if phase == 'train' and epoch > -1:
@@ -381,7 +376,7 @@ def main(finetune_methods, predictions_path, validation_patches_fn=None):
         hyper_params['predictions_path'] = str(predictions_path / str(hyper_params))
         print('Fine-tune hyper-params: %s' % str(hyper_params))
         improve_reproducibility()
-        model, result = finetune_function(path, loss, dataloaders, params, hyper_params, results_writer, n_epochs=20)
+        model, result = finetune_function(path, loss, dataloaders, params, hyper_params, results_writer, n_epochs=100)
         results[finetune_method_name] = result
         
         savedir = args.model_output_directory
