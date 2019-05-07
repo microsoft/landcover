@@ -296,6 +296,7 @@ class KerasBackPropFineTune(BackendModel):
         )
         '''
         
+        history = []
         for i in range(number_of_steps):
             idxs = np.arange(x_train.shape[0])
             np.random.shuffle(idxs)
@@ -312,19 +313,28 @@ class KerasBackPropFineTune(BackendModel):
                 training_loss = self.model.train_on_batch(batch_x, batch_y)
                 training_losses.append(training_loss)
             print(i, np.mean(training_losses))
-
+            history.append(np.mean(training_losses))
+        
+        '''
+        beginning_loss = history.history["loss"][0]
+        end_loss = history.history["loss"][-1]
+        '''
+        beginning_loss = history[0]
+        end_loss = history[-1]
+        
+        
         y_pred = self.model.predict(x_train)        
         y_pred_labels = y_pred.argmax(axis=3)
         mask = y_train_labels != 0
         acc = np.sum(y_train_labels[mask] == y_pred_labels[mask]) / np.sum(mask)
         print("training acc", acc)
-        print("training loss", history.history["loss"][0], history.history["loss"][-1])
+        print("training loss", beginning_loss, end_loss])
         
         
         success = True
         message = "Re-trained model with %d samples<br>Starting loss:%f<br>Ending loss:%f<br>Training acc: %f." % (
             x_train.shape[0],
-            history.history["loss"][0], history.history["loss"][-1],
+            beginning_loss, end_loss,
             acc
         )
         
