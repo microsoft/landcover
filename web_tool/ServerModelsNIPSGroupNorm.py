@@ -82,7 +82,7 @@ class UnetgnFineTune(BackendModel):
         self.output_channels = 5
         self.input_size = 240
         self.model_fn = model_fn
-        self.opts = json.load(open("/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn8/training/params.json", "r"))["model_opts"]
+        self.opts = json.load(open("/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/params.json", "r"))["model_opts"]
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.inf_framework = InferenceFramework(Unet, self.opts)
         self.inf_framework.load_model(self.model_fn)
@@ -119,6 +119,8 @@ class UnetgnFineTune(BackendModel):
         self.cols = 892
 
     def run(self, naip_data, naip_fn, extent, padding):
+        if self.correction_labels is not None:
+            self.set_corrections()
 
         # apply padding to the output_features
         x=naip_data
@@ -135,21 +137,11 @@ class UnetgnFineTune(BackendModel):
         self.last_output = output
         return output
 
-#FIXME: add retrain method
-    def retrain(self, train_steps=25, corrections_from_ui=True, learning_rate=0.0015):
-        print_every_k_steps = 1
+    def set_corrections(self):
         num_labels = np.count_nonzero(self.correction_labels)
         batch_count = 0
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        correction_labels = self.correction_labels
 
-        if corrections_from_ui:
-            correction_labels = self.correction_labels
-        else:
-            correction_labels = np.zeros((self.last_output.shape[0], self.last_output.shape[1], 5))
-            for i in range(correction_labels.shape[0]):
-                for j in range(correction_labels.shape[1]):
-                    label_index = self.last_output[i][j].argmax()
-                    correction_labels[i, j, label_index + 1] = 1.0
         batch_xi = self.naip_data[:, 130:self.rows + 130, 130:self.cols + 130]
         batch_yi = np.argmax(correction_labels[130:self.rows + 130, 130:self.cols + 130, :], axis=2)
         if(num_labels>0):
@@ -157,6 +149,11 @@ class UnetgnFineTune(BackendModel):
             self.batch_y.append(batch_yi)
             self.num_corrected_pixels += num_labels
             self.batch_count += batch_count
+
+#FIXME: add retrain method
+    def retrain(self, train_steps=25, learning_rate=0.0015):
+        print_every_k_steps = 1
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         print("Fine tuning group norm params with %d new labels. 4 Groups, 8 Params" % self.num_corrected_pixels)
         batch_x = np.array(self.batch_x)
         number_windows, channels, rows , cols = batch_x.shape
