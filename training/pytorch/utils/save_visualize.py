@@ -41,10 +41,12 @@ def save_visualize(inputs, outputs, ground_truth):
         np.save(outputs, str(hyper_parameters['predictions_path']) + '_output_[%d]_epoch_[%d].npy' % (output_num, epoch))
 
 
-def crop_to_smallest_dimensions(small_tensor, large_tensor):
+def crop_to_smallest_dimensions(small_tensor, large_tensor, dimension_indices):
     '''
     Return a `small_tensor`-sized slice of `large_tensor`, such that the slice has an equal margin on all sides.
 
+>>> import numpy as np
+>>> from training.pytorch.utils.save_visualize import *
 >>> x = np.ones((4, 4))
 >>> y = np.ones((8, 8)) * 2
 >>> y[5, 5] = 9
@@ -63,7 +65,7 @@ array([[2., 2., 2., 2., 2., 2., 2., 2.],
        [2., 2., 2., 2., 2., 9., 2., 2.],
        [2., 2., 2., 2., 2., 2., 2., 2.],
        [2., 2., 2., 2., 2., 2., 2., 2.]])
->>> crop_to_smallest_dimensions(x, y)
+>>> crop_to_smallest_dimensions(x, y, (0, 1))
 array([[2., 2., 2., 2.],
        [2., 2., 8., 2.],
        [2., 2., 2., 2.],
@@ -72,8 +74,8 @@ array([[2., 2., 2., 2.],
     if len(small_tensor.shape) != len(large_tensor.shape):
         raise Exception('small_tensor and large_tensor must have same number of dimensions')
     
-    margins = [0] * len(small_tensor.shape)
-    for d in range(len(small_tensor.shape)):
+    margins = [0] * len(large_tensor.shape)
+    for d in dimension_indices:
         margins[d] = (large_tensor.shape[d] - small_tensor.shape[d]) / 2
         if margins[d].is_integer():
             margins[d] = int(margins[d])
@@ -86,16 +88,18 @@ array([[2., 2., 2., 2.],
                     large_tensor.shape[d] - margins[d])
               for d in range(len(small_tensor.shape))]
 
-    new_tensor = large_tensor[np.ix_(*ranges)]
+    cropped_tensor = large_tensor[np.ix_(*ranges)]
     
-    return new_tensor
+    return cropped_tensor
 
         
 
-def center_in_larger_dimensions(small_tensor, large_tensor):
+def center_in_larger_dimensions(small_tensor, large_tensor, dimension_indices):
     '''
     Pad `small_tensor` with zeros to meet the dimensions of `large_tensor`, keeping an equal padding on all sides
 
+>>> import numpy as np
+>>> from training.pytorch.utils.save_visualize import *
 >>> x = np.ones((5, 5))
 >>> y = np.ones((9, 9)) * 2
 >>> x
@@ -129,9 +133,10 @@ array([[0., 0., 0., 0., 0., 0., 0., 0., 0.],
     if len(small_tensor.shape) != len(large_tensor.shape):
         raise Exception('small_tensor and large_tensor must have same number of dimensions')
     
-    new_shape = list(large_tensor.shape)
+    new_shape = list(small_tensor.shape)
     margins = [0] * len(new_shape)
-    for d in range(len(new_shape)):
+    for d in dimension_indices:
+        new_shape[d] = large_tensor.shape[d]
         margins[d] = (large_tensor.shape[d] - small_tensor.shape[d]) / 2
         if margins[d].is_integer():
             margins[d] = int(margins[d])
@@ -139,13 +144,13 @@ array([[0., 0., 0., 0., 0., 0., 0., 0., 0.],
             raise Exception('Cannot symmetrically embed tensor of shape %s inside of %s in dimensions %s:'
                             'dimension %d gives a margin that is not a whole number (%d - %d) / 2 == %f' %
                             (small_tensor.shape, large_tensor.shape, dimension_indices, d, small_tensor.shape[d], large_tensor.shape[d], (large_tensor.shape[d] - small_tensor.shape[d]) / 2 ))
-    new_tensor = np.zeros(new_shape)
-    
+
     ranges = [range(margins[d],
                     large_tensor.shape[d] - margins[d])
               for d in range(len(small_tensor.shape))]
 
-    new_tensor[np.ix_(*ranges)] = small_tensor
+    enlarged_tensor = np.zeros(new_shape)
+    enlarged_tensor[np.ix_(*ranges)] = small_tensor
     
-    return new_tensor
+    return enlarged_tensor
 
