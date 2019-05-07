@@ -152,7 +152,7 @@ class UnetgnFineTune(BackendModel):
         return output
 
 #FIXME: add retrain method
-    def retrain(self, train_steps=50, corrections_from_ui=True, learning_rate=0.001):
+    def retrain(self, train_steps=25, corrections_from_ui=True, learning_rate=0.0015):
         print_every_k_steps = 1
         #pdb.set_trace()
         print('In retrain')
