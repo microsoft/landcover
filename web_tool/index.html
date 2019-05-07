@@ -313,7 +313,38 @@
                 }
             );
             opacitySlider.addTo(map);
-            
+
+            //
+            // Sharpness slider
+            L.control.slider( // Sharpness slider
+                function(value){
+                    pred0_naip1 = value;
+
+                    for(idx=0; idx<currentPatches.length; idx++){
+                        if(pred0_naip1 == 1){
+                            var naipImg = currentPatches[idx]["naipImg"];
+                            currentPatches[idx]["imageLayer"].setUrl(naipImg);
+                        }
+                        else{
+                            var tActiveImgIdx = currentPatches[idx]["activeImgIdx"];
+                            var srcs = currentPatches[idx]["patches"][tActiveImgIdx]["srcs"];
+                            currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
+                        }
+                    }
+                }, {
+                position: 'bottomleft',
+                id: 'soft_hard_slider',
+                orientation: 'horizontal',
+                collapsed: true,
+                syncSlider: true,
+                min: 0,
+                max: 1,
+                value: 0,
+                logo: "Sharpness",
+                size: "171px"
+                }
+            ).addTo(map);
+
 
             //----------------------------------------------------------------------
             // Setup leaflet-sidebar-v2 and open the "#home" tab 

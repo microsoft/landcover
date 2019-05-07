@@ -153,17 +153,17 @@ class UnetgnFineTune(BackendModel):
 #FIXME: add retrain method
     def retrain(self, train_steps=25, learning_rate=0.0015):
         print_every_k_steps = 1
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
         print("Fine tuning group norm params with %d new labels. 4 Groups, 8 Params" % self.num_corrected_pixels)
         batch_x = np.array(self.batch_x)
         number_windows, channels, rows , cols = batch_x.shape
         batch_y = np.array(self.batch_y)
-        batch_y = torch.from_numpy(batch_y).float().to(device)
+        batch_y = torch.from_numpy(batch_y).float().to(self.device)
         self.init_model()
         optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate, eps=1e-5)
         #optimizer = torch.optim.LBFGS(self.model.parameters(), max_iter=4, history_size=7)
         optimizer.zero_grad()
-        criterion = multiclass_ce().to(device)
+        criterion = multiclass_ce().to(self.device)
 
         for i in range(train_steps):
            # print('step %d' % i)
@@ -173,10 +173,10 @@ class UnetgnFineTune(BackendModel):
                 with torch.set_grad_enabled(True):
                     # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
                     out = torch.zeros((5, self.rows, self.cols))
-                    x_c_tensor1 = torch.from_numpy(batch_x[j]).float().to(device)
+                    x_c_tensor1 = torch.from_numpy(batch_x[j]).float().to(self.device)
                     y_pred1 = self.model.forward(x_c_tensor1.unsqueeze(0))
                     out[:, 92: -92, 92:-92] = y_pred1
-                    outputs = out.float().to(device)
+                    outputs = out.float().to(self.device)
                     y_hat1 = (Variable(out).data).cpu().numpy()
                     y_hat1 = np.argmax(y_hat1, axis=0)
                     y_true = (Variable(batch_y[j]).data).cpu().numpy()
@@ -276,6 +276,35 @@ class LastKLayersFineTune(UnetgnFineTune):
         except:
             print("Trying to copy inf_framework before it exists")
 
+ """           
+class GnLastKLayersFineTune(UnetgnFineTune):
+
+    def __init__(self, model_fn, gpuid, last_k_layers=1):
+        super().__init__(model_fn, gpuid)
+        self.old_inference_framework = copy.deepcopy(self.inf_framework)
+        self.last_k_layers = last_k_layers
+        self.init_model()
+
+    def init_model(self):
+        try:
+            self.inf_framework = copy.deepcopy(self.old_inference_framework)
+            self.model = self.inf_framework.model
+            self.model.to(self.device)
+
+            k = self.last_k_layers
+
+            # Freeze all but last k layers
+            for layer in list(self.model.children())[:-k]:
+                for param in layer.parameters():
+                    param.requires_grad = False
+
+            # Un-freeze last k layers
+            for layer in list(self.model.children())[-k:]:
+                for param in layer.parameters():
+                    param.requires_grad = True
+        except:
+            print("Trying to copy inf_framework before it exists")
+
 
 class InferenceFramework():
     def __init__(self, model, opts):
@@ -287,5 +316,5 @@ class InferenceFramework():
         self.model.load_state_dict(checkpoint['model'])
         self.model.eval()
 
-
+"""
 
