@@ -322,10 +322,9 @@
 
                     for(idx=0; idx<currentPatches.length; idx++){
                         if(pred0_naip1 == 1){
-                            active_im_id = currentPatchModelIDs[idx];
-                            currentPatches[idx].setUrl(currentPatchSrcs[idx][active_im_id][soft0_hard1]);
-                        }
-                        else{
+                            var naipImg = currentPatches[idx]["naipImg"];
+                            currentPatches[idx]["imageLayer"].setUrl(naipImg);
+                        }else{
                             var tActiveImgIdx = currentPatches[idx]["activeImgIdx"];
                             var srcs = currentPatches[idx]["patches"][tActiveImgIdx]["srcs"];
                             currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
