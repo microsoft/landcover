@@ -410,6 +410,15 @@ class GroupParamsThenLastKLayersFineTune(UnetgnFineTune):
         print(message)
         return success, message
 
+    def reset(self):
+        self.old_inference_framework = copy.deepcopy(self.inf_framework)
+        self.init_model()
+        self.model_trained = False
+        self.batch_x = []
+        self.batch_y = []
+        self.run_done = False
+        self.num_corrected_pixels = 0
+
 
 class InferenceFramework():
     def __init__(self, model, opts):

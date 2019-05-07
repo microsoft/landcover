@@ -314,33 +314,35 @@
             );
             opacitySlider.addTo(map);
 
-            //
-            // Sharpness slider
-            L.control.slider( // Sharpness slider
+              //----------------------------------------------------------------------
+            // Setup the sharpness slider to control which type of image is shown
+            //----------------------------------------------------------------------
+            L.control.slider( // sharpness slider
                 function(value){
-                    pred0_naip1 = value;
-
+                    soft0_hard1 = value;
                     for(idx=0; idx<currentPatches.length; idx++){
-                        if(pred0_naip1 == 1){
-                            var naipImg = currentPatches[idx]["naipImg"];
-                            currentPatches[idx]["imageLayer"].setUrl(naipImg);
-                        }else{
-                            var tActiveImgIdx = currentPatches[idx]["activeImgIdx"];
+                        var tActiveImgIdx = currentPatches[idx]["activeImgIdx"];
+                        var srcs = currentPatches[idx]["patches"][tActiveImgIdx]["srcs"];
+                        currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
+                    }
+                    if(currentPatches.length>0){
+                        var idx = currentPatches.length - 1;
+                        for(var tActiveImgIdx=0; tActiveImgIdx<currentPatches[idx]["patches"].length; tActiveImgIdx++){
                             var srcs = currentPatches[idx]["patches"][tActiveImgIdx]["srcs"];
-                            currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
+                            $("#exampleImage_"+tActiveImgIdx).attr("src", srcs[soft0_hard1]);
                         }
                     }
                 }, {
-                position: 'bottomleft',
-                id: 'soft_hard_slider',
-                orientation: 'horizontal',
-                collapsed: true,
-                syncSlider: true,
-                min: 0,
-                max: 1,
-                value: 0,
-                logo: "Sharpness",
-                size: "171px"
+                    position: 'bottomleft',
+                    id: 'soft_hard_slider',
+                    orientation: 'horizontal',
+                    collapsed: true,
+                    syncSlider: true,
+                    min: 0,
+                    max: 1,
+                    value: 1,
+                    logo: "Sharpness",
+                    size: "171px"
                 }
             ).addTo(map);
 
