@@ -412,7 +412,10 @@ class GroupParamsThenLastKLayersFineTune(UnetgnFineTune):
 
 
     def reset(self):
-        self.inf_framework = copy.deepcopy(InferenceFramework(Unet, self.opts))
+        self.inf_framework = InferenceFramework(Unet, self.opts)
+        self.inf_framework.load_model(self.model_fn)
+        for param in self.inf_framework.model.parameters():
+            param.requires_grad = False
         self.init_model()
         self.model_trained = False
         self.batch_x = []
