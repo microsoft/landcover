@@ -328,7 +328,7 @@ class KerasBackPropFineTune(BackendModel):
         mask = y_train_labels != 0
         acc = np.sum(y_train_labels[mask] == y_pred_labels[mask]) / np.sum(mask)
         print("training acc", acc)
-        print("training loss", beginning_loss, end_loss])
+        print("training loss", beginning_loss, end_loss)
         
         
         success = True
