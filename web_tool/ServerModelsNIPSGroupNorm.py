@@ -151,8 +151,8 @@ class UnetgnFineTune(BackendModel):
             self.batch_count += batch_count
 
     def retrain(self, train_steps=25, learning_rate=0.0015):
-        if self.batch_count != 0 and self.correction_labels is not None:
-            self.set_corrections()
+        #if self.batch_count != 0 and self.correction_labels is not None:
+        self.set_corrections()
         print_every_k_steps = 1
 
         print("Fine tuning group norm params with %d new labels. 4 Groups, 8 Params" % self.num_corrected_pixels)
@@ -315,7 +315,9 @@ class GroupParamsThenLastKLayersFineTune(UnetgnFineTune):
         self.last_k_layers = last_k_layers
         self.init_model()
 
-    def retrain(self, train_steps=25, learning_rate=0.0015):
+    def retrain(self, train_steps=8, learning_rate=0.0015):
+        #if self.batch_count != 0 and self.correction_labels is not None:
+        self.set_corrections()
         print_every_k_steps = 1
         k = self.last_k_layers
 
@@ -371,7 +373,7 @@ class GroupParamsThenLastKLayersFineTune(UnetgnFineTune):
             for param in layer.parameters():
                 param.requires_grad = True
 
-        for i in range(train_steps):
+        for i in range(int(train_steps/2)):
             # print('step %d' % i)
             iou = 0
             acc = 0

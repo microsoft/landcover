@@ -318,17 +318,16 @@
             // Sharpness slider
             L.control.slider( // Sharpness slider
                 function(value){
-                    pred0_naip1 = value;
-
+                    soft0_hard1 = value;
                     for(idx=0; idx<currentPatches.length; idx++){
-                        if(pred0_naip1 == 1){
-                            var naipImg = currentPatches[idx]["naipImg"];
-                            currentPatches[idx]["imageLayer"].setUrl(naipImg);
-                        }
-                        else{
-                            var tActiveImgIdx = currentPatches[idx]["activeImgIdx"];
-                            var srcs = currentPatches[idx]["patches"][tActiveImgIdx]["srcs"];
-                            currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
+                        active_im_id = currentPatchModelIDs[idx];
+                        currentPatches[idx].setUrl(currentPatchSrcs[idx][active_im_id][soft0_hard1]);
+                    }
+                    if(currentPatchModelIDs.length>0){
+                        last_idx = currentPatchSrcs.length-1;
+                        for(idx=0; idx<exampleImgsList.length; idx++){
+                            exampleImgsList[idx].attr("src",
+                                currentPatchSrcs[last_idx][idx][soft0_hard1]);
                         }
                     }
                 }, {
@@ -339,7 +338,7 @@
                 syncSlider: true,
                 min: 0,
                 max: 1,
-                value: 0,
+                value: 1,
                 logo: "Sharpness",
                 size: "171px"
                 }
