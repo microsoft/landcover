@@ -388,7 +388,8 @@ def main():
             "last_layer",
             "last_k_layers",
             "group_params",
-            "last_k_plus_group_params"
+            "last_k_plus_group_params",
+            "group_params_then_last_k"
         ],
         help="Model to use", required=True
     )
@@ -422,9 +423,12 @@ def main():
         if args.fine_tune == "last_k_layers":
             model = ServerModelsNIPSGroupNorm.LastKLayersFineTune(args.model_fn, args.gpuid, last_k_layers=1)
         elif args.fine_tune == "group_params":
-            model = ServerModelsNIPSGroupNorm.UnetgnFineTune(args.model_fn, args.gpuid, last_k_layers=2)
+            model = ServerModelsNIPSGroupNorm.UnetgnFineTune(args.model_fn, args.gpuid)
         elif args.fine_tune == "last_k_plus_group_params":
-            model = ServerModelsNIPSGroupNorm.GroupParamsLastKLayersFineTune(args.model_fn, args.gpuid)
+            model = ServerModelsNIPSGroupNorm.GroupParamsLastKLayersFineTune(args.model_fn, args.gpuid, last_k_layers=2)
+        elif args.fine_tune == "group_params_then_last_k":
+            model = ServerModelsNIPSGroupNorm.GroupParamsLastKLayersFineTune(args.model_fn, args.gpuid, last_k_layers=2)
+
     else:
         print("Model isn't implemented, aborting")
         return
