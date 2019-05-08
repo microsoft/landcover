@@ -8,22 +8,25 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from itertools import product
 import csv
+import math
+import copy
+import json
+import os
+import random
 
 import torch
 import torch.nn as nn
-import json
+from torch.utils import data
+from torch.optim import lr_scheduler
+
 from training.pytorch.models.unet import Unet
 from training.pytorch.models.fusionnet import Fusionnet
-from torch.optim import lr_scheduler
-import copy
 from training.pytorch.utils.save_visualize import save_visualize
 from training.pytorch.utils.eval_segm import mean_IoU, pixel_accuracy
 from training.pytorch.utils.experiments_utils import improve_reproducibility
 from training.pytorch.utils.filesystem import ensure_dir
 from training.pytorch.losses import (multiclass_ce, multiclass_dice_loss, multiclass_jaccard_loss, multiclass_tversky_loss, multiclass_ce_points)
 from training.pytorch.data_loader import DataGenerator
-from torch.utils import data
-import os
 
 
 parser = argparse.ArgumentParser()
@@ -127,6 +130,8 @@ def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, hyper_
     unet.load_state_dict(checkpoint['model'])
     unet.eval()
 
+    # pdb.set_trace()
+    
     for layer in list(unet.children())[:-last_k_layers]:
         for param in layer.parameters():
             param.requires_grad = False
@@ -337,6 +342,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
 
 def main(finetune_methods, predictions_path, validation_patches_fn=None):
     global results_writer
+    os.makedirs(str(Path(args.log_fn).parent), exist_ok=True)
     results_file = open(args.log_fn, 'w+')
     results_writer = csv.DictWriter(results_file, ['run_id', 'hyper_parameters', 'epoch', 'train_loss', 'train_accuracy', 'train_mean_IoU', 'val_loss', 'val_accuracy', 'val_mean_IoU', 'total_time'])
     results_writer.writeheader()
@@ -384,10 +390,10 @@ def main(finetune_methods, predictions_path, validation_patches_fn=None):
     results = {}
     for run_id, (finetune_method_name, finetune_function, hyper_params) in enumerate(finetune_methods):
         hyper_params['run_id'] = run_id
-        hyper_params['predictions_path'] = str(predictions_path / str(hyper_params))
+        
         print('Fine-tune hyper-params: %s' % str(hyper_params))
         improve_reproducibility()
-        model, result = finetune_function(path, loss, dataloaders, params, hyper_params, results_writer, n_epochs=2)
+        model, result = finetune_function(path, loss, dataloaders, params, hyper_params, results_writer, n_epochs=hyper_params['n_epochs']) #, predictions_path=str(predictions_path / str(hyper_params)))
         results[finetune_method_name] = result
         
         savedir = args.model_output_directory
@@ -413,30 +419,43 @@ def product_dict(**kwargs):
 if __name__ == "__main__":
     # mask_id indices (points per patch): [1, 2, 3, 4, 5, 10, 15, 20, 40, 60, 80, 100]
 
-    params_sweep_last_k = {
-        'method_name': ['last_k_layers'],
-        'optimizer_method': [torch.optim.Adam], #, torch.optim.SGD],
-        'last_k_layers': [1, 2, 4], #, 8],
-        'learning_rate': [0.004], # [0.001, 0.002, 0.003, 0.004, 0.01, 0.03],
-        'lr_schedule_step_size': [1000],  # [5],
-        'mask_id': [9], #  [0, 4, 7, 11] # range(12) # [4], # mask-id 5 --> 10 px / patch
+    hyper_parameters = {
+        'method_name': 'last_k_layers',
+        'optimizer_method': torch.optim.Adam, #, torch.optim.SGD],
+        'learning_rate': 0.004, # [0.001, 0.002, 0.003, 0.004, 0.01, 0.03],
+        'lr_schedule_step_size': 1000,  # [5],
+        'mask_id': 9, #  [0, 4, 7, 11] # range(12) # [4], # mask-id 5 --> 10 px / patch
+        'n_epochs': 30,
     }
 
-    params_sweep_group_norm = {
-        'method_name': ['group_params'],
-        'optimizer_method': [torch.optim.Adam], #, torch.optim.SGD],
-        'learning_rate': [0.03], # 0.03, 0.01], # 0.005, 0.001],
-        'lr_schedule_step_size': [1000],
-        'mask_id': [9] # range(12),
-    }
+    num_learning_rates = 6
+    num_last_k_layers = 10
 
-    params_list_last_k = list(product_dict(**params_sweep_last_k))
-    params_list_group_norm = list(product_dict(**params_sweep_group_norm))
+    experiment_configs = []
 
-    predictions_path = Path(args.model_output_directory) / "predictions"
+    # Random hyper-parameter sweep
+    for method_name in ['last_k_layers', 'group_params']:
+        for mask_id in [0, 1, 2, 4, 5, 7, 9, 11]:
+            if method_name == 'last_k_layers':
+                num_iters = num_learning_rates * num_last_k_layers
+            else:
+                num_iters = num_learning_rates
+            
+            for i in range(num_iters):
+                hyper_parameters['method_name'] = method_name
+                hyper_parameters['mask_id'] = mask_id
+                hyper_parameters['learning_rate'] = math.pow(10, random.gauss(-2.55, 0.85))   # random sample centered between 10^-3.4 and 10^-1.7 (0.0004 to 0.02), sampled on log-Gaussian scale
+            
+                if method_name == 'last_k_layers':
+                    fine_tune_function = finetune_last_k_layers
+                    hyper_parameters['last_k_layers'] = random.randint(1, 10) # model has 10 layers; in the extreme case, we re-train the whole network...
+                else:
+                    fine_tune_function = finetune_group_params
+
+                experiment_configs += [(method_name, fine_tune_function, hyper_parameters)]
+                hyper_parameters = copy.deepcopy(hyper_parameters)
     
-    main([('Group params', finetune_group_params, hypers) for hypers in params_list_group_norm] + \
-         [('Last k layers', finetune_last_k_layers, hypers) for hypers in params_list_last_k],
-#         [('Group + Last k', finetune_last_k_layers, hypers) for hypers in params_list_last_k],
-        predictions_path)
+    predictions_path = Path(args.model_output_directory) / "predictions"
+    # pdb.set_trace()
+    main(experiment_configs, predictions_path)
 
