@@ -1,7 +1,9 @@
+import os
 import numpy as np
 import torch
 import einops
 from PIL import Image
+from pathlib import Path
 
 import pdb
 
@@ -29,31 +31,38 @@ def save_visualize(inputs, outputs, ground_truth, path):
     # (batch_size, height_output, width_output)
     # ground_truth has same shape as outputs
 
-    cropped_inputs = crop_to_smallest_dimensions(inputs, outputs, (2, 3))
-    outputs_color = to_rgb(output_classes, CLASS_TO_COLOR)
-    ground_truth_color = to_rgb(ground_truth, CLASS_TO_COLOR)
+    sanitized_inputs = inputs_to_rgb(inputs)
     
+    cropped_inputs = crop_to_smallest_dimensions(sanitized_inputs, outputs, (2, 3))
+    outputs_color = classes_to_rgb(output_classes, CLASS_TO_COLOR)
+    ground_truth_color = classes_to_rgb(ground_truth, CLASS_TO_COLOR)
+
     # save cropped_inputs, outputs, ground_truth
-    save_batch(inputs, path, 'input')
+    save_batch(sanitized_inputs, path, 'input')
     save_batch(cropped_inputs, path, 'cropped_input')
     save_batch(outputs_color, path, 'predictions')
     save_batch(ground_truth_color, path, 'ground_truth')
     
-    # Dump visualization of predictions
-    # save to hyper_parameters['predictions_path']
-    for (output_num, output) in outputs:
-        np.save(outputs, str(hyper_parameters['predictions_path']) + '_output_[%d]_epoch_[%d].npy' % (output_num, epoch))
-
 
 def save_batch(batch, path, file_name_prefix):
     # batch: (batch_size, RGB_channels, height, width)
     for i, image_tensor in enumerate(batch):
         image_numpy = image_tensor.cpu().numpy()
+        image_numpy = einops.rearrange(image_numpy, 'rgb height width -> height width rgb')
+        os.makedirs(path, exist_ok=True)
         Image.fromarray(image_numpy).save(str(Path(path) / ('%s_%d.png' % (file_name_prefix, i))))
 
-    
         
-def to_rgb(predictions, color_map):
+def inputs_to_rgb(inputs):
+    # inputs: (batch_size, channels, height, width)
+    # Convert channels from [R, G, B, IR] --> [R, G, B]
+    # Convert pixel values from [0.0, 1.0] --> [0, 255]
+    return torch.as_tensor(
+        inputs[:, :3, :, :] * 255,
+        dtype=torch.uint8)
+
+
+def classes_to_rgb(predictions, color_map):
     # predictions: (batch_size, height, width)
     # return: (batch_size, rgb_channels, height_width)
     predictions = torch.as_tensor(predictions, dtype=torch.uint8)

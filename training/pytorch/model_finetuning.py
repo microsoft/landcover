@@ -44,7 +44,7 @@ parser.add_argument('--training_patches_fn', type=str, help="Filename with list 
 
 parser.add_argument('--log_fn', type=str, help="Where to store training results", default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/val/val2/finetune_results_last_k_layers.csv")
 
-parser.add_argument('--model_output_directory', help='Where to store fine-tuned model', default='/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/val/val2/')
+parser.add_argument('--model_output_directory', help='Where to store fine-tuned model', default='/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/val/val2_fix/')
 
 
 
@@ -241,7 +241,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
                     ground_truth = torch.squeeze(labels,1).long()
                     print(outputs.shape)
                     print(ground_truth.shape)
-                    path = str(Path(args.model_output_directory) / ("epoch_" + str(epoch)))
+                    path = str(Path(args.model_output_directory) / ("epoch_" + str(epoch) + "_" + phase))
                     ensure_dir(path)
                     print('Save to path: %s' % path)
                     save_visualize(inputs, outputs, ground_truth, path)
