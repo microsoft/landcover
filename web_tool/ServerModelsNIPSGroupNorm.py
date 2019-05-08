@@ -81,6 +81,7 @@ class UnetgnFineTune(BackendModel):
         os.environ["CUDA_VISIBLE_DEVICES"] = str(gpuid)
         self.output_channels = 5
         self.input_size = 240
+        self.did_correction = False
         self.model_fn = model_fn
         self.opts = json.load(open("/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/params.json", "r"))["model_opts"]
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -138,6 +139,7 @@ class UnetgnFineTune(BackendModel):
         return output
 
     def set_corrections(self):
+        self.did_correction = True
         num_labels = np.count_nonzero(self.correction_labels)
         batch_count = 0
         correction_labels = self.correction_labels
@@ -151,8 +153,8 @@ class UnetgnFineTune(BackendModel):
             self.batch_count += batch_count
 
     def retrain(self, train_steps=25, learning_rate=0.0015):
-        #if self.batch_count != 0 and self.correction_labels is not None:
-        self.set_corrections()
+        if not self.did_correction:
+            self.set_corrections()
         print_every_k_steps = 1
 
         print("Fine tuning group norm params with %d new labels. 4 Groups, 8 Params" % self.num_corrected_pixels)
@@ -316,8 +318,8 @@ class GroupParamsThenLastKLayersFineTune(UnetgnFineTune):
         self.init_model()
 
     def retrain(self, train_steps=8, learning_rate=0.0015):
-        #if self.batch_count != 0 and self.correction_labels is not None:
-        self.set_corrections()
+        if not self.did_correction:
+            self.set_corrections()
         print_every_k_steps = 1
         k = self.last_k_layers
 
