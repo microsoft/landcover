@@ -1,3 +1,4 @@
+
 from web_tool.ServerModelsAbstract import BackendModel
 import torch
 import numpy as np
@@ -153,8 +154,8 @@ class UnetgnFineTune(BackendModel):
             self.batch_count += batch_count
 
     def retrain(self, train_steps=25, learning_rate=0.0015):
-        if not self.did_correction:
-            self.set_corrections()
+#        if not self.did_correction:
+        self.set_corrections()
         print_every_k_steps = 1
 
         print("Fine tuning group norm params with %d new labels. 4 Groups, 8 Params" % self.num_corrected_pixels)
@@ -317,9 +318,9 @@ class GroupParamsThenLastKLayersFineTune(UnetgnFineTune):
         self.last_k_layers = last_k_layers
         self.init_model()
 
-    def retrain(self, train_steps=8, learning_rate=0.0015):
-        if not self.did_correction:
-            self.set_corrections()
+    def retrain(self, train_steps=5,gn_learning_rate=0.0025, learning_rate=0.0005):
+        #if not self.did_correction:
+        self.set_corrections()
         print_every_k_steps = 1
         k = self.last_k_layers
 
@@ -329,7 +330,7 @@ class GroupParamsThenLastKLayersFineTune(UnetgnFineTune):
         batch_y = np.array(self.batch_y)
         batch_y = torch.from_numpy(batch_y).float().to(self.device)
         self.init_model()
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate, eps=1e-5)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=gn_learning_rate, eps=1e-5)
         # optimizer = torch.optim.LBFGS(self.model.parameters(), max_iter=4, history_size=7)
         optimizer.zero_grad()
         criterion = multiclass_ce().to(self.device)
@@ -374,8 +375,12 @@ class GroupParamsThenLastKLayersFineTune(UnetgnFineTune):
         for layer in list(self.model.children())[-k:]:
             for param in layer.parameters():
                 param.requires_grad = True
-
-        for i in range(int(train_steps/2)):
+        
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate, eps=1e-5)
+        # optimizer = torch.optim.LBFGS(self.model.parameters(), max_iter=4, history_size=7)
+        optimizer.zero_grad()
+        criterion = multiclass_ce().to(self.device)
+        for i in range(int(2*train_steps/3)):
             # print('step %d' % i)
             iou = 0
             acc = 0
