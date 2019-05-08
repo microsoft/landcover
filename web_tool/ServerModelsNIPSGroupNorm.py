@@ -103,6 +103,7 @@ class UnetgnFineTune(BackendModel):
 
         self.augment_x_train = []
         self.augment_y_train = []
+        self.model = GroupParams(self.inf_framework.model)
         self.init_model()
         self.model_trained = False
         self.naip_data = None
@@ -319,7 +320,7 @@ class GroupParamsThenLastKLayersFineTune(UnetgnFineTune):
         self.last_k_layers = last_k_layers
         self.init_model()
 
-    def retrain(self, train_steps=5,gn_learning_rate=0.0025, learning_rate=0.0005):
+    def retrain(self, train_steps=3,gn_learning_rate=0.0025, learning_rate=0.0005):
         start_time = time.time()
         #if not self.did_correction:
         self.set_corrections()
@@ -422,15 +423,20 @@ class GroupParamsThenLastKLayersFineTune(UnetgnFineTune):
         return success, message
 
     def init_model(self):
+#        self.inf_framework = InferenceFramework(Unet, self.opts)
+ #       self.inf_framework.load_model(self.model_fn)
+  #      for param in self.inf_framework.model.parameters():
+   #         param.requires_grad = False
+     #   self.model = GroupParams(self.inf_framework.model)
+        self.model.to(self.device)
+
+
+    def reset(self):
         self.inf_framework = InferenceFramework(Unet, self.opts)
         self.inf_framework.load_model(self.model_fn)
         for param in self.inf_framework.model.parameters():
             param.requires_grad = False
         self.model = GroupParams(self.inf_framework.model)
-        self.model.to(self.device)
-
-
-    def reset(self):
         self.init_model()
         self.model_trained = False
         self.batch_x = []
