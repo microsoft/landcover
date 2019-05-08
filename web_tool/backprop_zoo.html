@@ -70,7 +70,10 @@
 
                         <div style="text-align: center; margin-top:10px;">
                             <button id="btnRetrain">Retrain (<span id="label-retrains">0</span> times)</button>
-                        </div>  
+                        </div>
+                        <div style="text-align: center; margin-top:10px;">
+                            <button id="btnReset">Reset</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -181,6 +184,13 @@
         // Runtime entrance
         //----------------------------------------------------------------------
         $(document).ready(function(){
+
+            //----------------------------------------------------------------------
+            // Remove the default behavior of the shift key
+            //----------------------------------------------------------------------
+            document.onselectstart = function() {
+                return false;
+            }
 
             //----------------------------------------------------------------------
             // Remove the default behavior of the shift key
@@ -302,6 +312,65 @@
                 }
             );
             opacitySlider.addTo(map);
+
+
+            //----------------------------------------------------------------------
+            // Backprop sliders
+            //----------------------------------------------------------------------
+            learningRateSlider = L.control.slider( // opacity slider
+                function(value){
+                    retrainArgs["learning_rate"] = parseFloat(value);
+                }, {
+                    position: 'bottomleft',
+                    id: 'learningRateSlider',
+                    orientation: 'horizontal',
+                    collapsed: true,
+                    syncSlider: true,
+                    min: 0.001,
+                    max: 0.1,
+                    step: 0.001,
+                    value: 0.015,
+                    logo: "Learning Rate",
+                    size: "171px"
+                }
+            );
+            learningRateSlider.addTo(map);
+
+            numberOfStepsSlider = L.control.slider( // opacity slider
+                function(value){
+                    retrainArgs["number_of_steps"] = parseInt(value);
+                }, {
+                    position: 'bottomleft',
+                    id: 'numberOfStepsSlider',
+                    orientation: 'horizontal',
+                    collapsed: true,
+                    syncSlider: true,
+                    min: 1,
+                    max: 30,
+                    value: 4,
+                    logo: "Training Steps",
+                    size: "171px"
+                }
+            );
+            numberOfStepsSlider.addTo(map);
+
+            lastKLayersSlider = L.control.slider( // opacity slider
+                function(value){
+                    retrainArgs["last_k_layers"] = parseInt(value);
+                }, {
+                    position: 'bottomleft',
+                    id: 'lastKLayersSlider',
+                    orientation: 'horizontal',
+                    collapsed: true,
+                    syncSlider: true,
+                    min: 2,
+                    max: 10,
+                    value: 3,
+                    logo: "Trainable layers",
+                    size: "171px"
+                }
+            );
+            lastKLayersSlider.addTo(map);
             
 
             //----------------------------------------------------------------------
@@ -393,6 +462,7 @@
 
             
             $(document).keydown(function(e) {
+
                 console.debug(e.which);
                 if(e.which == 97 || e.which == 65) { // "a"
                     visible = false;
@@ -447,6 +517,7 @@
             });
 
             $("#btnRetrain").click(doRetrain);
+            $("#btnReset").click(doReset);
     
             //----------------------------------------------------------------------
             // Setup radio button change detection

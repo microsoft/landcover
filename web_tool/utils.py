@@ -64,18 +64,19 @@ def to_one_hot_batch(batch, class_num):
         one_hot[:, class_id, :, :] = (batch == class_id).astype(np.float32)
     return one_hot
 
-def class_prediction_to_img(y_pred, hard=True):
+def class_prediction_to_img(y_pred, hard=True, color_list=None):
     assert len(y_pred.shape) == 3, "Input must have shape (height, width, num_classes)"
     height, width, num_classes = y_pred.shape
 
-    if num_classes > 10:
-        colour_map = COLOR_MAP_NLCD
-    elif num_classes == 6:
-        colour_map = COLOR_MAP_LC6
-    elif num_classes == 4:
+    if color_list is None:
         colour_map = COLOR_MAP_LC4
     else:
-        raise TypeError("num_classes must match a known prediction format")
+        new_color_list = []
+        for color in color_list:
+            color = color.lstrip("#")
+            color = tuple(int(color[i:i+2], 16) / 255.0 for i in (0, 2, 4))
+            new_color_list.append(color)
+        colour_map = np.array(new_color_list)
 
     img = np.zeros((height, width, 3), dtype=np.float32)
 

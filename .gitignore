@@ -1,5 +1,5 @@
-web-tool/data/
-web-tool/tiles/
+web_tool/data/
+web_tool/tiles/
 output/
 __pycache__/
 .ipynb_checkpoints/
@@ -12,3 +12,6 @@ sync_up.sh
 .idea/
 mount_remotes_deployment.sh
 mount_remotes_development.sh
+
+data/
+tiles/

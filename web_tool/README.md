@@ -7,25 +7,24 @@ This repository holds both the "frontend" web-application and "backend" web API 
 ## Setup Instructions
 
 - Create a new Deep Learning Virtual Machine (DLVM) Ubuntu image on Azure
-- `git clone git@github.com:Microsoft/landcover.git`
-- `cd landcover/web_tool`
-- Run `new_vm_setup.sh`, this will restart the machine at the end as I have faced GPU problems on newly provisioned DLVM image machines
-- Download `mount_remotes_development.sh` and `mount_remotes_deployment.sh` from https://ms.portal.azure.com/#blade/Microsoft_Azure_Storage/FileShareMenuBlade/overview/storageAccountId/%2Fsubscriptions%2Fc9726640-cf74-4111-92f5-0d1c87564b93%2FresourceGroups%2FLandcover2%2Fproviders%2FMicrosoft.Storage%2FstorageAccounts%2Fmslandcoverstorageeast/path/vm-fileshare (please request permission if you do not have access). 
-- Run `mount_remotes_development.sh` (must be re-run any time machine is re-started, as `/mnt/` directory is cleared on Azure DLVMs)
-- `cp -r /mnt/afs/chesapeake/demo_data/ data/`
-- `mkdir tiles/`
-- `cp data/tiles.zip tiles/`
-- `cp data/demo_set_1.zip tiles/`
-- `cd data`
-- `unzip tiles.zip`
-- `unzip demo_set_1.zip`
-- `cd ..`
 - Open up ports 4040 and 4444 to the machine through the Azure Portal
-- `export PYTHONPATH=.`
-- `python web-tool/frontend_server.py` this will start up a HTTP server on :4040 to serve the actual webpage
-- `python web-tool/backend_server.py --port 4444 --model nips_sr --fine_tune last_layer --model_fn /mnt/blobfuse/train-output/ForICCV/ForICCV-landcover-batch_size-16-loss-superres-lr-0.003-model-unet2-schedule-stepped-note-replication_1/final_model.h5 --gpu 0 --verbose` will start up a HTTP server on :4444 that serves our precomputed results with the documented API
+- `git clone git@github.com:Microsoft/landcover.git`
+- `cd landcover`
+- Download mount_remotes_development.sh and mount_remotes_deployment.sh to setup/
+  - Do NOT commit these files to Git -- though they should be ignored anyway via .gitignore
+- `./mount_remotes_development.sh`
+- `cd setup/`
+- `./new_vm_setup.sh`, this will restart the machine at the end as I have faced GPU problems on newly provisioned DLVM image machines
+- Log in to VM again
+- Any time the VM has been shut down, run: `cd landcover/setup; source login.sh; cd ..`
+
+- `cp web-tool/endpoints.js web-tool/endpoints.mine.js`; Edit endpoints.mine.js to point to your own server URL; indicating ports for whichever backend server.py instances you are running (you can set alternate ports from command line flags, see below)
+
+- To run the servers:
+  - `python web-tool/frontend_server.py` this will start up a HTTP server on :4040 to serve the actual webpage
+  - `python web-tool/backend_server.py --port 4444 --model nips_sr --fine_tune last_layer --model_fn /mnt/blobfuse/train-output/ForICCV/ForICCV-landcover-batch_size-16-loss-superres-lr-0.003-model-unet2-schedule-stepped-note-replication_1/final_model.h5 --gpu 0 --verbose` will start up a HTTP server on :4444 that serves our precomputed results with the documented API
   - alternatively use --model 2 to serve results that are computed from a CNTK model
-- `cp web-tool/endpoints.js web-tool/endpoints.mine.js`; Edit endpoints.mine.js to point to whichever backend server.py  instances you want (you can set alternate ports from command line flags)
+
 
 
 ## Overview
