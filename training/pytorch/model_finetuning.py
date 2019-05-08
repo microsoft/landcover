@@ -429,13 +429,13 @@ if __name__ == "__main__":
     }
 
     num_learning_rates = 6
-    num_last_k_layers = 10
+    num_last_k_layers = 6
 
     experiment_configs = []
 
     # Random hyper-parameter sweep
     for method_name in ['last_k_layers', 'group_params']:
-        for mask_id in [0, 1, 2, 4, 5, 7, 9, 11]:
+        for mask_id in [0, 4, 7, 11]:  # 1, 5, 20, or 100 points per patch
             if method_name == 'last_k_layers':
                 num_iters = num_learning_rates * num_last_k_layers
             else:
