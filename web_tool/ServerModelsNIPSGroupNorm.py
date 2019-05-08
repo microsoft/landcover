@@ -8,6 +8,7 @@ import os, json
 from training.pytorch.utils.eval_segm import mean_IoU, pixel_accuracy
 from training.pytorch.models.unet import Unet
 from torch.autograd import Variable
+import time
 
 
 def softmax(output):
@@ -319,6 +320,7 @@ class GroupParamsThenLastKLayersFineTune(UnetgnFineTune):
         self.init_model()
 
     def retrain(self, train_steps=5,gn_learning_rate=0.0025, learning_rate=0.0005):
+        start_time = time.time()
         #if not self.did_correction:
         self.set_corrections()
         print_every_k_steps = 1
@@ -413,6 +415,8 @@ class GroupParamsThenLastKLayersFineTune(UnetgnFineTune):
                 print("Step pixel acc: ", acc)
 
         success = True
+        end_time = time.time()
+        print("Total retraining time: ", end_time - start_time)
         message = "Fine-tuned Group norm params with %d samples. 4 Groups. 8 params, 1 layer." % self.num_corrected_pixels
         print(message)
         return success, message
