@@ -39,10 +39,10 @@ parser.add_argument('--model_file', type=str,
 
 parser.add_argument('--run_validation', action="store_true", help="Whether to run validation")
 #parser.add_argument('--validation_patches_fn', type=str, help="Filename with list of validation patch files", default='training/data/finetuning/val2_test_patches_500.txt')
-parser.add_argument('--validation_patches_fn', type=str, help="Filename with list of training patch files", default="training/data/finetuning/val2_train_patches_100.txt")
-parser.add_argument('--training_patches_fn', type=str, help="Filename with list of training patch files", default="training/data/finetuning/val2_train_patches_100.txt")
+parser.add_argument('--validation_patches_fn', type=str, help="Filename with list of training patch files", default="training/data/finetuning/val2_train_patches_5.txt")
+parser.add_argument('--training_patches_fn', type=str, help="Filename with list of training patch files", default="training/data/finetuning/val2_train_patches_5.txt")
 
-parser.add_argument('--log_fn', type=str, help="Where to store training results", default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/val/val2/finetune_results_last_k_layers.csv")
+parser.add_argument('--log_fn', type=str, help="Where to store training results", default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/val/val2/10_patches/finetune_results.csv")
 
 parser.add_argument('--model_output_directory', help='Where to store fine-tuned model', default='/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/val/val2_fix/')
 
@@ -239,12 +239,12 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
                 with torch.set_grad_enabled(phase == 'train' and epoch > -1):
                     outputs = model.forward(inputs)
                     ground_truth = torch.squeeze(labels,1).long()
-                    print(outputs.shape)
-                    print(ground_truth.shape)
+                    # print(outputs.shape)
+                    # print(ground_truth.shape)
                     path = str(Path(args.model_output_directory) / ("epoch_" + str(epoch) + "_" + phase))
                     ensure_dir(path)
-                    print('Save to path: %s' % path)
-                    save_visualize(inputs, outputs, ground_truth, path)
+                    # print('Save to path: %s' % path)
+                    # save_visualize(inputs, outputs, ground_truth, path)
 
                     loss = criterion(ground_truth, outputs)
 
@@ -307,7 +307,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
             'val_mean_IoU': epoch_statistics['val']['mean_IoU'],
             'total_time': datetime.now() - since
         }
-        print(result_row)
+        pprint(result_row)
         results_writer.writerow(result_row)
 
 
@@ -387,16 +387,17 @@ def main(finetune_methods, predictions_path, validation_patches_fn=None):
         hyper_params['predictions_path'] = str(predictions_path / str(hyper_params))
         print('Fine-tune hyper-params: %s' % str(hyper_params))
         improve_reproducibility()
-        model, result = finetune_function(path, loss, dataloaders, params, hyper_params, results_writer, n_epochs=100)
+        model, result = finetune_function(path, loss, dataloaders, params, hyper_params, results_writer, n_epochs=2)
         results[finetune_method_name] = result
         
         savedir = args.model_output_directory
         if not os.path.exists(savedir):
             os.makedirs(savedir)
-        
-        if model_opts["model"] == "unet":
-            finetuned_fn = str(Path(savedir) / ("finetuned_unet_gn.pth_%s.tar" % str(hyper_params)))
-            torch.save(model.state_dict(), finetuned_fn)
+
+        # TODO: figure out error, then put this back:
+#        if model_opts["model"] == "unet":
+#            finetuned_fn = str(Path(savedir) / ("finetuned_unet_gn.pth_%s.tar" % str(hyper_params)))
+#            torch.save(model.state_dict(), finetuned_fn)
 
     pprint(results)
     results_file.close()
@@ -415,18 +416,18 @@ if __name__ == "__main__":
     params_sweep_last_k = {
         'method_name': ['last_k_layers'],
         'optimizer_method': [torch.optim.Adam], #, torch.optim.SGD],
-        'last_k_layers': [2], # [1, 2, 4], #, 8],
-        'learning_rate': [0.004], #, 0.005, 0.001],
+        'last_k_layers': [1, 2, 4], #, 8],
+        'learning_rate': [0.004], # [0.001, 0.002, 0.003, 0.004, 0.01, 0.03],
         'lr_schedule_step_size': [1000],  # [5],
-        'mask_id': [11], # mask-id 5 --> 10 px / patch;   # range(12),
+        'mask_id': [9], #  [0, 4, 7, 11] # range(12) # [4], # mask-id 5 --> 10 px / patch
     }
 
     params_sweep_group_norm = {
         'method_name': ['group_params'],
         'optimizer_method': [torch.optim.Adam], #, torch.optim.SGD],
         'learning_rate': [0.03], # 0.03, 0.01], # 0.005, 0.001],
-        'lr_schedule_step_size': [5],
-        'mask_id': range(12),
+        'lr_schedule_step_size': [1000],
+        'mask_id': [9] # range(12),
     }
 
     params_list_last_k = list(product_dict(**params_sweep_last_k))
@@ -434,7 +435,7 @@ if __name__ == "__main__":
 
     predictions_path = Path(args.model_output_directory) / "predictions"
     
-    main(# [('Group params', finetune_group_params, hypers) for hypers in params_list_group_norm] + \
+    main([('Group params', finetune_group_params, hypers) for hypers in params_list_group_norm] + \
          [('Last k layers', finetune_last_k_layers, hypers) for hypers in params_list_last_k],
 #         [('Group + Last k', finetune_last_k_layers, hypers) for hypers in params_list_last_k],
         predictions_path)
