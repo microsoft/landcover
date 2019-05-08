@@ -1,6 +1,9 @@
 import numpy as np
 import torch
 import einops
+from PIL import Image
+
+import pdb
 
 
 RED = [255, 0, 0]
@@ -8,40 +11,95 @@ GREEN = [0, 255, 0]
 BLUE = [0, 0, 255]
 BLACK = [0, 0, 0]
 
-WATER = BLUE
-FIELD = GREEN
-TREES = [0, 200, 0]
-BUILT = [128, 128, 128]
-UNKNOWN = BLACK
+CLASS_TO_COLOR = {
+    0:  BLACK,             # UNKNOWN
+    1:  BLUE,              # WATER
+    2:  [0, 200, 0],       # TREES
+    3:  GREEN,             # FIELD
+    4:  [128, 128, 128]    # BUILT
+}
 
 
-def save_visualize(inputs, outputs, ground_truth):
-    # inputs: (batch_size, channels_in, height_outer, width_outer)
-    # outputs: (batch_size, channels_out, height_inner, )
-    # ground_truth: 
-    
+def save_visualize(inputs, outputs, ground_truth, path):
     batch_size, channels_output, height_output, width_output = outputs.shape
     batch_size, channels_input,  height_input,  width_input  = inputs.shape
     batch_size,                  height_output, width_output = ground_truth.shape
 
-    outputs = outputs.argmax(dim=1)
-    # (batch_size, height_out, width_out)
+    output_classes = outputs.argmax(dim=1)
+    # (batch_size, height_output, width_output)
+    # ground_truth has same shape as outputs
 
-    margin = (width_input - width_output) / 2
+    cropped_inputs = crop_to_smallest_dimensions(inputs, outputs, (2, 3))
+    outputs_color = to_rgb(output_classes, CLASS_TO_COLOR)
+    ground_truth_color = to_rgb(ground_truth, CLASS_TO_COLOR)
     
-    channels = 3
-    rgb_outputs = np.zeros((batch_size, channels, height, width))
-
+    # save cropped_inputs, outputs, ground_truth
+    save_batch(inputs, path, 'input')
+    save_batch(cropped_inputs, path, 'cropped_input')
+    save_batch(outputs_color, path, 'predictions')
+    save_batch(ground_truth_color, path, 'ground_truth')
     
-    
-    pdb.set_trace()
     # Dump visualization of predictions
     # save to hyper_parameters['predictions_path']
     for (output_num, output) in outputs:
         np.save(outputs, str(hyper_parameters['predictions_path']) + '_output_[%d]_epoch_[%d].npy' % (output_num, epoch))
 
 
-def crop_to_smallest_dimensions(small_tensor, large_tensor, dimension_indices):
+def save_batch(batch, path, file_name_prefix):
+    # batch: (batch_size, RGB_channels, height, width)
+    for i, image_tensor in enumerate(batch):
+        image_numpy = image_tensor.cpu().numpy()
+        Image.fromarray(image_numpy).save(str(Path(path) / ('%s_%d.png' % (file_name_prefix, i))))
+
+    
+        
+def to_rgb(predictions, color_map):
+    # predictions: (batch_size, height, width)
+    # return: (batch_size, rgb_channels, height_width)
+    predictions = torch.as_tensor(predictions, dtype=torch.uint8)
+    batch_size, height, width = predictions.shape
+    
+    rgb_channels = 3
+    rgb_outputs = torch.zeros((batch_size, height, width, rgb_channels), dtype=torch.uint8)
+
+    for class_type in color_map:
+        color = torch.tensor(color_map[class_type], dtype=torch.uint8)
+        rgb_outputs[predictions == class_type] = color
+    
+    rgb_outputs = einops.rearrange(rgb_outputs, 'batch height width rgb -> batch rgb height width')
+    return rgb_outputs
+
+
+def test_convert_to_rgb():
+    CLASS_TO_COLOR = {
+        0:  BLACK,             # UNKNOWN
+        1:  BLUE,              # WATER
+        2:  [0, 200, 0],       # TREES
+        3:  GREEN,             # FIELD
+        4:  [128, 128, 128]    # BUILT
+    }
+
+    x = np.zeros((1, 3, 3))
+    x[0,0,0] = 1
+    x[0,1,1] = 2
+    y = to_rgb(x, CLASS_TO_COLOR)
+    print(y)
+    assert y == np.array(
+        [[[[  0,   0,   0,]
+           [  0,   0,   0,]
+           [  0,   0,   0,]]
+
+          [[  0,   0,   0,]
+           [  0, 200,   0,]
+           [  0,   0,   0,]]
+
+          [[255,   0,   0,]
+           [  0,   0,   0,]
+           [  0,   0,   0,]]]])
+    
+    
+        
+def crop_to_smallest_dimensions(large_tensor, small_tensor, dimension_indices):
     '''
     Return a `small_tensor`-sized slice of `large_tensor`, such that the slice has an equal margin on all sides.
 
@@ -65,7 +123,7 @@ array([[2., 2., 2., 2., 2., 2., 2., 2.],
        [2., 2., 2., 2., 2., 9., 2., 2.],
        [2., 2., 2., 2., 2., 2., 2., 2.],
        [2., 2., 2., 2., 2., 2., 2., 2.]])
->>> crop_to_smallest_dimensions(x, y, (0, 1))
+>>> crop_to_smallest_dimensions(y, x, (0, 1))
 array([[2., 2., 2., 2.],
        [2., 2., 8., 2.],
        [2., 2., 2., 2.],

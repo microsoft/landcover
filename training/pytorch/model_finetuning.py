@@ -16,8 +16,10 @@ from training.pytorch.models.unet import Unet
 from training.pytorch.models.fusionnet import Fusionnet
 from torch.optim import lr_scheduler
 import copy
+from training.pytorch.utils.save_visualize import save_visualize
 from training.pytorch.utils.eval_segm import mean_IoU, pixel_accuracy
 from training.pytorch.utils.experiments_utils import improve_reproducibility
+from training.pytorch.utils.filesystem import ensure_dir
 from training.pytorch.losses import (multiclass_ce, multiclass_dice_loss, multiclass_jaccard_loss, multiclass_tversky_loss, multiclass_ce_points)
 from training.pytorch.data_loader import DataGenerator
 from torch.utils import data
@@ -37,8 +39,8 @@ parser.add_argument('--model_file', type=str,
 
 parser.add_argument('--run_validation', action="store_true", help="Whether to run validation")
 #parser.add_argument('--validation_patches_fn', type=str, help="Filename with list of validation patch files", default='training/data/finetuning/val2_test_patches_500.txt')
-parser.add_argument('--validation_patches_fn', type=str, help="Filename with list of training patch files", default="training/data/finetuning/val2_train_patches_50.txt")
-parser.add_argument('--training_patches_fn', type=str, help="Filename with list of training patch files", default="training/data/finetuning/val2_train_patches_50.txt")
+parser.add_argument('--validation_patches_fn', type=str, help="Filename with list of training patch files", default="training/data/finetuning/val2_train_patches_100.txt")
+parser.add_argument('--training_patches_fn', type=str, help="Filename with list of training patch files", default="training/data/finetuning/val2_train_patches_100.txt")
 
 parser.add_argument('--log_fn', type=str, help="Where to store training results", default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/val/val2/finetune_results_last_k_layers.csv")
 
@@ -180,6 +182,8 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
         }
         # print(epoch_statistics)
 
+        hyper_parameters['epoch'] = epoch
+        
         for phase in phases:
             if phase == 'train':
                 scheduler.step()
@@ -235,8 +239,12 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
                 with torch.set_grad_enabled(phase == 'train' and epoch > -1):
                     outputs = model.forward(inputs)
                     ground_truth = torch.squeeze(labels,1).long()
-                    
-                    # save_visualized(inputs, outputs, ground_truth)
+                    print(outputs.shape)
+                    print(ground_truth.shape)
+                    path = str(Path(args.model_output_directory) / ("epoch_" + str(epoch)))
+                    ensure_dir(path)
+                    print('Save to path: %s' % path)
+                    save_visualize(inputs, outputs, ground_truth, path)
 
                     loss = criterion(ground_truth, outputs)
 
@@ -300,8 +308,9 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
         print(result_row)
         results_writer.writerow(result_row)
 
-        hyper_parameters['epoch'] = epoch
-        hyper_parameters_str = sorted(hyper_parameters.items())
+
+        # hyper_parameters_str = sorted(hyper_parameters.items())
+        hyper_parameters_str = str(epoch)
         finetuned_fn = str(Path(args.model_output_directory) / ("finetuned_unet_gn.pth_%s.tar" % hyper_parameters_str))
         torch.save(model.state_dict(), finetuned_fn)
         
@@ -405,9 +414,9 @@ if __name__ == "__main__":
         'method_name': ['last_k_layers'],
         'optimizer_method': [torch.optim.Adam], #, torch.optim.SGD],
         'last_k_layers': [2], # [1, 2, 4], #, 8],
-        'learning_rate': [0.0035], #, 0.005, 0.001],
+        'learning_rate': [0.004], #, 0.005, 0.001],
         'lr_schedule_step_size': [1000],  # [5],
-        'mask_id': [7], # mask-id 5 --> 10 px / patch;   # range(12),
+        'mask_id': [11], # mask-id 5 --> 10 px / patch;   # range(12),
     }
 
     params_sweep_group_norm = {
@@ -425,5 +434,6 @@ if __name__ == "__main__":
     
     main(# [('Group params', finetune_group_params, hypers) for hypers in params_list_group_norm] + \
          [('Last k layers', finetune_last_k_layers, hypers) for hypers in params_list_last_k],
+#         [('Group + Last k', finetune_last_k_layers, hypers) for hypers in params_list_last_k],
         predictions_path)
 
