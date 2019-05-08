@@ -289,10 +289,12 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
                 batch_accuracy /= batch_size
                 epoch_statistics[phase]['accuracy'] += batch_accuracy
                 
-                # Normalize statistics per training iteration in epoch
-                for key in epoch_statistics[phase]:
-                    epoch_statistics[phase][key] /= n_iter
-
+            # Normalize statistics per training iteration in epoch
+            for key in epoch_statistics[phase]:
+                epoch_statistics[phase][key] /= n_iter  # divide by how many batches were processed in this epoch
+            print('number of batches in epoch', len(dataloaders[phase]))
+            print('n_iter', n_iter)
+                
         result_row = {
             'run_id': hyper_parameters['run_id'],
             'hyper_parameters': hyper_parameters,
