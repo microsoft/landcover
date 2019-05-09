@@ -16,30 +16,51 @@ while getopts ":t:g:" opt; do
 done
 shift $((OPTIND -1))
 
-echo "gpu"
-echo $CUDA_VISIBLE_DEVICES
-echo "test region"
-echo $TEST_REGION
+#echo "gpu"
+#echo $CUDA_VISIBLE_DEVICES
+#echo "test region"
+#echo $TEST_REGION
 
 
 #conda activate py35
 #export PYTHONPATH=../../..
 export PYTHONPATH=.
 
+echo "model, mean_IoU, pixel_accuracy"
+
+num_patches=40
+MODELS_DIR="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/test/test${TEST_REGION}/${num_patches}_patches"
+
+#i=1
+
+
+# Test original model
+#python training/pytorch/test_finetuning.py --model_file "/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/test/test1/40_patches/rand_40_${i}/finetuned_unet_gn.pth_group_params_lr_0.002500_epoch_-1.tar" --test_tile_fn training/data/finetuning/test${TEST_REGION}.txt
+
+
+
 # Train fine-tuned model
-python training/pytorch/model_finetuning.py --model_file "/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/checkpoint_best.pth.tar" --training_patches_fn "training/data/finetuning/test${TEST_REGION}_train_patches.txt" --log_fn "/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/test/test$TEST_REGION/finetune.csv" --model_output_directory "/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/test/test${TEST_REGION}"
+for i in {1..5}
+do
+       python training/pytorch/model_finetuning.py --model_file "/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/checkpoint_best.pth.tar" --training_patches_fn "training/data/finetuning/test${TEST_REGION}_train_patches_rand_${num_patches}_${i}.txt" --log_fn "${MODELS_DIR}/rand_${num_patches}_${i}/train_results.csv" --model_output_directory "${MODELS_DIR}/rand_${num_patches}_${i}"
 
 
 # Test fine-tuned models
-for mask_id in {0..11}
-do
-    python training/pytorch/test_finetuning.py --model_file "/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/test/test${TEST_REGION}/finetuned_unet_gn.pth_[('epoch', 9), ('learning_rate', 0.03), ('lr_schedule_step_size', 5), ('mask_id', $mask_id), ('method_name', 'group_params'), ('optimizer_method', <class 'torch.optim.adam.Adam'>), ('run_id', "*")].tar" --test_tile_fn training/data/finetuning/test${TEST_REGION}.txt
-    python training/pytorch/test_finetuning.py --model_file "/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/test/test${TEST_REGION}/finetuned_unet_gn.pth_[('epoch', 9), ('last_k_layers', 1), ('learning_rate', 0.03), ('lr_schedule_step_size', 5), ('mask_id', $mask_id), ('method_name', 'last_k_layers'), ('optimizer_method', <class 'torch.optim.adam.Adam'>), ('run_id', "*")].tar" --test_tile_fn training/data/finetuning/test${TEST_REGION}.txt
-    python training/pytorch/test_finetuning.py --model_file "/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/test/test${TEST_REGION}/finetuned_unet_gn.pth_[('epoch', 9), ('last_k_layers', 2), ('learning_rate', 0.03), ('lr_schedule_step_size', 5), ('mask_id', $mask_id), ('method_name', 'last_k_layers'), ('optimizer_method', <class 'torch.optim.adam.Adam'>), ('run_id', "*")].tar" --test_tile_fn training/data/finetuning/test${TEST_REGION}.txt
-    python training/pytorch/test_finetuning.py --model_file "/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/test/test${TEST_REGION}/finetuned_unet_gn.pth_[('epoch', 9), ('last_k_layers', 4), ('learning_rate', 0.03), ('lr_schedule_step_size', 5), ('mask_id', $mask_id), ('method_name', 'last_k_layers'), ('optimizer_method', <class 'torch.optim.adam.Adam'>), ('run_id', "*")].tar" --test_tile_fn training/data/finetuning/test${TEST_REGION}.txt
+
+    MODELS=(
+	"/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/test/test1/40_patches/rand_40_${i}/finetuned_unet_gn.pth_group_params_lr_0.002500_epoch_10.tar"
+	"/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/test/test1/40_patches/rand_40_${i}/finetuned_unet_gn.pth_last_k_layers_lr_0.015000_epoch_1_last_k_1.tar"
+	"/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/test/test1/40_patches/rand_40_${i}/finetuned_unet_gn.pth_last_k_layers_lr_0.000600_epoch_8_last_k_2.tar"
+	"/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/test/test1/40_patches/rand_40_${i}/finetuned_unet_gn.pth_last_k_layers_lr_0.004500_epoch_0_last_k_3.tar"
+    )
+
+    # for model_file in $(ls $MODELS_DIR/rand_${num_patches}*/*_epoch_9*)
+    for model_file in ${MODELS[*]}
+    do
+	# echo $model_file
+	python training/pytorch/test_finetuning.py --model_file "$model_file" --test_tile_fn training/data/finetuning/test${TEST_REGION}.txt
+    done
 done
     
-# Test original model
-python training/pytorch/test_finetuning.py --model_file "/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/checkpoint_best.pth.tar" --test_tile_fn training/data/finetuning/test${TEST_REGION}.txt
     
 

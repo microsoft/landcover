@@ -19,6 +19,7 @@ from web_tool.ServerModelsNIPSGroupNorm import GroupParams
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--config_file', type=str, default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/params.json", help="json file containing the configuration")
+
 parser.add_argument('--model_file', type=str,
                     help="Checkpoint saved model",
                     default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/checkpoint_best.pth.tar")
@@ -86,8 +87,6 @@ def run_model_on_tile(model, naip_tile, batch_size=32):
 
 
 def run(model, naip_data):
-    # pdb.set_trace()
-    
     # apply padding to the output_features
     # naip_data: (batch, channel, height, width)
     x = np.squeeze(naip_data, 0)
@@ -106,6 +105,7 @@ def run(model, naip_data):
 
 
 def load_model(path_2_saved_model, model_opts, outer_class=None):
+    # pdb.set_trace()
     checkpoint = torch.load(path_2_saved_model)
     model = Unet(model_opts)
     if outer_class:
@@ -118,6 +118,7 @@ def load_model(path_2_saved_model, model_opts, outer_class=None):
 def main(model_file, config_file):
     params = json.load(open(config_file, "r"))
     is_group_params = ('group_params' in model_file)
+    
     model = load_model(model_file, params['model_opts'], outer_class=(GroupParams if is_group_params else None))
     
     f = open(args.test_tile_fn, "r")
@@ -134,10 +135,10 @@ def main(model_file, config_file):
     for test_tile in test_tiles_files:
         tile = np.load(test_tile.replace('.mrf', '.npy'))
         # (batch, channel, height, width)
-        print(tile.shape)
+        # print(tile.shape)
         result = run(model, tile)
         # (height, width)
-        print('successfully run')
+        # print('successfully run')
         
         y_train_hr = tile[0, 4, :, :]
         height, width = y_train_hr.shape

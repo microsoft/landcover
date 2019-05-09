@@ -155,7 +155,7 @@ def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, hyper_
 
 
 def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True):
-    global results_writer
+    global results_writer, results_file
     
     # mask_id indices (points per patch): [1, 2, 3, 4, 5, 10, 15, 20, 40, 60, 80, 100]
     mask_id = hyper_parameters['mask_id']
@@ -172,8 +172,8 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
     phases = ['train', 'val']
         
     for epoch in range(-1, num_epochs):
-        print('Epoch {}/{}'.format(epoch, num_epochs - 1))
-        print('-' * 10)
+        #print('Epoch {}/{}'.format(epoch, num_epochs - 1))
+        #print('-' * 10)
         
         statistics = {
             'mean_IoU': -1,
@@ -297,8 +297,8 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
             # Normalize statistics per training iteration in epoch
             for key in epoch_statistics[phase]:
                 epoch_statistics[phase][key] /= n_iter  # divide by how many batches were processed in this epoch
-            print('number of batches in epoch', len(dataloaders[phase]))
-            print('n_iter', n_iter)
+            # print('number of batches in epoch', len(dataloaders[phase]))
+            # print('n_iter', n_iter)
                 
         result_row = {
             'run_id': hyper_parameters['run_id'],
@@ -312,13 +312,13 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
             'val_mean_IoU': epoch_statistics['val']['mean_IoU'],
             'total_time': datetime.now() - since
         }
-        pprint(result_row)
+        # pprint(result_row)
         results_writer.writerow(result_row)
+        results_file.flush()
 
-
-        # hyper_parameters_str = sorted(hyper_parameters.items())
-        hyper_parameters_str = str(epoch)
-        finetuned_fn = str(Path(args.model_output_directory) / ("finetuned_unet_gn.pth_%s.tar" % hyper_parameters_str))
+        model_file_name_suffix = hyper_parameters_str(hyper_parameters)
+        
+        finetuned_fn = str(Path(args.model_output_directory) / ("finetuned_unet_gn.pth_%s.tar" % model_file_name_suffix))
         torch.save(model.state_dict(), finetuned_fn)
         
             # deep copy the model
@@ -327,21 +327,34 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
             #    best_model_wts = copy.deepcopy(model.state_dict())
             #    best_epoch = epoch
             #    duration_til_best_epoch = datetime.now() - since
-        print()
+        # print()
 
     duration = datetime.now() - since
     seconds_elapsed = duration.total_seconds()
     
-    #print('Training complete in {:.0f}m {:.0f}s'.format(
+    ## print('Training complete in {:.0f}m {:.0f}s'.format(
     #    seconds_elapsed // 60, seconds_elapsed % 60))
-    #print('Best val IoU: {:4f}'.format(best_mean_IoU))
+    ## print('Best val IoU: {:4f}'.format(best_mean_IoU))
 
     # load best model weights
     # model.load_state_dict(best_model_wts)
     return model, FineTuneResult(best_mean_IoU=best_mean_IoU, train_duration=duration)
 
+
+def hyper_parameters_str(hyper_parameters):
+    # hyper_parameters_str = sorted(hyper_parameters.items())
+    hyper_parameters_str = "%s_lr_%f_epoch_%d" % (
+        hyper_parameters['method_name'],
+        hyper_parameters['learning_rate'],
+        hyper_parameters['epoch'],
+    )
+    if 'last_k_layers' in hyper_parameters:
+        hyper_parameters_str += ("_last_k_" + str(hyper_parameters['last_k_layers']))
+    return hyper_parameters_str
+
 def main(finetune_methods, predictions_path, validation_patches_fn=None):
-    global results_writer
+    global results_writer, results_file
+    
     os.makedirs(str(Path(args.log_fn).parent), exist_ok=True)
     results_file = open(args.log_fn, 'w+')
     results_writer = csv.DictWriter(results_file, ['run_id', 'hyper_parameters', 'epoch', 'train_loss', 'train_accuracy', 'train_mean_IoU', 'val_loss', 'val_accuracy', 'val_mean_IoU', 'total_time'])
@@ -391,7 +404,7 @@ def main(finetune_methods, predictions_path, validation_patches_fn=None):
     for run_id, (finetune_method_name, finetune_function, hyper_params) in enumerate(finetune_methods):
         hyper_params['run_id'] = run_id
         
-        print('Fine-tune hyper-params: %s' % str(hyper_params))
+        # print('Fine-tune hyper-params: %s' % str(hyper_params))
         improve_reproducibility()
         model, result = finetune_function(path, loss, dataloaders, params, hyper_params, results_writer, n_epochs=hyper_params['n_epochs']) #, predictions_path=str(predictions_path / str(hyper_params)))
         results[finetune_method_name] = result
@@ -405,7 +418,7 @@ def main(finetune_methods, predictions_path, validation_patches_fn=None):
 #            finetuned_fn = str(Path(savedir) / ("finetuned_unet_gn.pth_%s.tar" % str(hyper_params)))
 #            torch.save(model.state_dict(), finetuned_fn)
 
-    pprint(results)
+    # pprint(results)
     results_file.close()
 
 
@@ -445,16 +458,16 @@ def hyper_parameters_fixed(hyper_parameters):
     # Add last-k-layers hypers
     for last_k_layers, learning_rate in [(1, 0.015), (2, 0.0006), (3, 0.0045)]:
         new_hyper_parameters = copy.deepcopy(hyper_parameters)
-        new_hyper_parameters['method_name']: 'last_k_layers'
+        new_hyper_parameters['method_name'] = 'last_k_layers'
         new_hyper_parameters['last_k_layers'] = last_k_layers
         new_hyper_parameters['learning_rate'] = learning_rate
         experiment_configs += [(new_hyper_parameters['method_name'], finetune_last_k_layers, new_hyper_parameters)]
 
     # Add group-params method
     new_hyper_parameters = copy.deepcopy(hyper_parameters)
-    new_hyper_parameters['method_name']: 'group_params'
+    new_hyper_parameters['method_name'] = 'group_params'
     new_hyper_parameters['learning_rate'] = 0.0025
-    experiment_configs += [(new_hyper_parameters['method_name'], finetune_last_k_layers, new_hyper_parameters)]
+    experiment_configs += [(new_hyper_parameters['method_name'], finetune_group_params, new_hyper_parameters)]
 
     return experiment_configs
 
