@@ -261,7 +261,7 @@ class KerasBackPropFineTune(BackendModel):
         
         return output
 
-    def retrain(self, number_of_steps=10, last_k_layers=2, learning_rate=0.003, batch_size = 32, **kwargs):
+    def retrain(self, number_of_steps=8, last_k_layers=3, learning_rate=0.015, batch_size = 32, **kwargs):
         
         self.process_correction_labels()
 
