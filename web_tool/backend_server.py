@@ -304,14 +304,14 @@ def pred_tile():
     tmp_id = get_random_string(8)
     img_hard = np.round(utils.class_prediction_to_img(output, True, color_list)*255,0).astype(np.uint8)
     img_hard = cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGR)
-    cv2.imwrite("tmp/%s.png" % (tmp_id), img_hard)
+    cv2.imwrite(os.path.join(ROOT_DIR, "tmp/%s.png" % (tmp_id)), img_hard)
     data["downloadPNG"] = "tmp/%s.png" % (tmp_id)
 
     new_profile = naip_profile.copy()
     new_profile['driver'] = 'GTiff'
     new_profile['dtype'] = 'uint8'
     new_profile['count'] = 1
-    f = rasterio.open("tmp/%s.tif" % (tmp_id), 'w', **new_profile)
+    f = rasterio.open(os.path.join(ROOT_DIR, "tmp/%s.tif" % (tmp_id)), 'w', **new_profile)
     f.write(output.argmax(axis=2).astype(np.uint8), 1)
     f.close()
     data["downloadTIFF"] = "tmp/%s.tif" % (tmp_id)
