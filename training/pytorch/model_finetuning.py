@@ -408,30 +408,12 @@ def main(finetune_methods, predictions_path, validation_patches_fn=None):
     pprint(results)
     results_file.close()
 
-    
-def product_dict(**kwargs):
-    keys = kwargs.keys()
-    vals = kwargs.values()
-    for instance in product(*vals):
-        yield dict(zip(keys, instance))
 
-        
-if __name__ == "__main__":
-    # mask_id indices (points per patch): [1, 2, 3, 4, 5, 10, 15, 20, 40, 60, 80, 100]
-
-    hyper_parameters = {
-        'method_name': 'last_k_layers',
-        'optimizer_method': torch.optim.Adam, #, torch.optim.SGD],
-        'learning_rate': 0.004, # [0.001, 0.002, 0.003, 0.004, 0.01, 0.03],
-        'lr_schedule_step_size': 1000,  # [5],
-        'mask_id': 9, #  [0, 4, 7, 11] # range(12) # [4], # mask-id 5 --> 10 px / patch
-        'n_epochs': 30,
-    }
+def hyper_parameters_search(hyper_parameters):
+    experiment_configs = []
 
     num_learning_rates = 6
     num_last_k_layers = 6
-
-    experiment_configs = []
 
     # Random hyper-parameter sweep
     for method_name in ['last_k_layers', 'group_params']:
@@ -454,6 +436,53 @@ if __name__ == "__main__":
 
                 experiment_configs += [(method_name, fine_tune_function, hyper_parameters)]
                 hyper_parameters = copy.deepcopy(hyper_parameters)
+    return experiment_configs
+
+
+def hyper_parameters_fixed(hyper_parameters):
+    experiment_configs = []
+
+    # Add last-k-layers hypers
+    for last_k_layers, learning_rate in [(1, 0.015), (2, 0.0006), (3, 0.0045)]:
+        new_hyper_parameters = copy.deepcopy(hyper_parameters)
+        new_hyper_parameters['method_name']: 'last_k_layers'
+        new_hyper_parameters['last_k_layers'] = last_k_layers
+        new_hyper_parameters['learning_rate'] = learning_rate
+        experiment_configs += [(new_hyper_parameters['method_name'], finetune_last_k_layers, new_hyper_parameters)]
+
+    # Add group-params method
+    new_hyper_parameters = copy.deepcopy(hyper_parameters)
+    new_hyper_parameters['method_name']: 'group_params'
+    new_hyper_parameters['learning_rate'] = 0.0025
+    experiment_configs += [(new_hyper_parameters['method_name'], finetune_last_k_layers, new_hyper_parameters)]
+
+    return experiment_configs
+
+    
+def product_dict(**kwargs):
+    keys = kwargs.keys()
+    vals = kwargs.values()
+    for instance in product(*vals):
+        yield dict(zip(keys, instance))
+
+        
+if __name__ == "__main__":
+    # mask_id indices (points per patch): [1, 2, 3, 4, 5, 10, 15, 20, 40, 60, 80, 100]
+
+    hyper_parameters_init = {
+        'method_name': 'last_k_layers',
+        'optimizer_method': torch.optim.Adam, #, torch.optim.SGD],
+        'learning_rate': 0.004, # [0.001, 0.002, 0.003, 0.004, 0.01, 0.03],
+        'lr_schedule_step_size': 1000,  # [5],
+        'mask_id': 5, #  [0, 4, 7, 11] # range(12) # [4], # mask-id 5 --> 10 px / patch
+        'n_epochs': 30,
+    }
+
+    if args.run_validation:
+        experiment_configs = hyper_parameters_search(hyper_parameters_init)
+    else:
+        experiment_configs = hyper_parameters_fixed(hyper_parameters_init)
+    
     
     predictions_path = Path(args.model_output_directory) / "predictions"
     # pdb.set_trace()
