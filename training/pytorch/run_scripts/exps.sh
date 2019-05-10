@@ -31,11 +31,8 @@ python training/pytorch/test_finetuning.py --area test${TEST_REGION} --model_fil
 
 for num_patches in ${NUMS_PATCHES[*]}
 do
-num_patches=40
-
     MODELS_DIR="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/test/test${TEST_REGION}/${num_patches}_patches"
 
-    random_seed=1
     for random_seed in {1..5}
 		       
     do
