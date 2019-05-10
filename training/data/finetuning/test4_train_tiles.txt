@@ -1,0 +1,1 @@
+/mnt/blobfuse/esri-naip/data/v1/2013/states/ny/ny_1m_2013/43075/m_4307563_nw_18_1_20130620.mrf

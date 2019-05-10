@@ -1,0 +1,1 @@
+/mnt/blobfuse/esri-naip/data/v1/2014/states/va/va_1m_2014/38077/m_3807721_nw_18_1_20140826.mrf

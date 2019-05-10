@@ -2,6 +2,8 @@ import argparse
 import numpy as np
 import rasterio
 import json
+from pathlib import Path
+import os
 
 import pdb
 
@@ -23,7 +25,10 @@ parser.add_argument('--config_file', type=str, default="/mnt/blobfuse/train-outp
 parser.add_argument('--model_file', type=str,
                     help="Checkpoint saved model",
                     default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/checkpoint_best.pth.tar")
-parser.add_argument('--test_tile_fn', type=str, help="Filename with tile file names in npy format", default="training/data/finetuning/test1.txt")  #   training/data/finetuning/val1_test_patches.txt
+parser.add_argument('--test_tile_fn', type=str, help="Filename with tile file names in npy format", default="training/data/finetuning/test1_test_tiles.txt")  #   training/data/finetuning/val1_test_patches.txt
+parser.add_argument('--tile_type', type=str, help="Filename with tile file names in npy format", default="test")
+parser.add_argument('--area', type=str, help="Name of area being tested in: test1, test2, test3, test4, or val1", default="test1")
+
 
 args = parser.parse_args()
 
@@ -77,16 +82,17 @@ def predict_entire_image_unet_fine(model, x):
     return pred
 
 
-def run_model_on_tile(model, naip_tile, batch_size=32):
+def run_model_on_tile(model, naip_tile, output_file_path, batch_size=32):
     # (height, width, channel)
     y_hat = predict_entire_image_unet_fine(model, naip_tile)
     # (h, w, c)
+    np.save(output_file_path, y_hat)
     return np.argmax(y_hat, axis=-1)
     # (h, w)
 
 
 
-def run(model, naip_data):
+def run(model, naip_data, output_file_path):
     # apply padding to the output_features
     # naip_data: (batch, channel, height, width)
     x = np.squeeze(naip_data, 0)
@@ -99,13 +105,12 @@ def run(model, naip_data):
     x = x[:, :, :4]
     naip_data = x
     # (height, width, channel)
-    output = run_model_on_tile(model, naip_data)
+    output = run_model_on_tile(model, naip_data, output_file_path)
     # (height, width)
     return output
 
 
 def load_model(path_2_saved_model, model_opts, outer_class=None):
-    # pdb.set_trace()
     checkpoint = torch.load(path_2_saved_model)
     model = Unet(model_opts)
     if outer_class:
@@ -132,13 +137,13 @@ def main(model_file, config_file):
     running_mean_IoU = 0
     running_pixel_accuracy = 0
 
-    for test_tile in test_tiles_files:
+    for i, test_tile in enumerate(test_tiles_files):
         tile = np.load(test_tile.replace('.mrf', '.npy'))
         # (batch, channel, height, width)
-        # print(tile.shape)
-        result = run(model, tile)
+        prediction_file_path = model_file.replace('.tar', '_predictions/%s_%d_%s.npy' % (args.tile_type, i, Path(test_tile).name))
+        os.makedirs(str(Path(prediction_file_path).parent), exist_ok=True)
+        result = run(model, tile, prediction_file_path)
         # (height, width)
-        # print('successfully run')
         
         y_train_hr = tile[0, 4, :, :]
         height, width = y_train_hr.shape
@@ -150,23 +155,14 @@ def main(model_file, config_file):
         y_train_hr[y_train_hr == 6] = 4
 
         margin = model.border_margin_px
-        #try:
-        running_mean_IoU += mean_IoU(result[margin:height-margin, margin:width-margin], y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
-        running_pixel_accuracy += pixel_accuracy(result[margin:height-margin, margin:width-margin], y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
-        #except e:
-            
-        # pdb.set_trace()
-        #print(running_mean_IoU)
-        #print(running_pixel_accuracy)
-            
-    running_mean_IoU /= len(test_tiles_files)
-    running_pixel_accuracy /= len(test_tiles_files)
-    
-    print('%s, %f, %f' % (model_file, running_mean_IoU, running_pixel_accuracy))
+        tile_mean_IoU = mean_IoU(result[margin:height-margin, margin:width-margin], y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
+        tile_pixel_accuracy = pixel_accuracy(result[margin:height-margin, margin:width-margin], y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
 
+
+        print('%s, %s, %s, %d, %f, %f, %s, %s,' % (Path(model_file).name, args.area, args.tile_type, i, tile_mean_IoU, tile_pixel_accuracy, test_tile, prediction_file_path))
+        
+    
 
 if __name__ == '__main__':
-    #try:
     main(args.model_file, args.config_file)
-    #except:
-    #    pdb.set_trace()
+

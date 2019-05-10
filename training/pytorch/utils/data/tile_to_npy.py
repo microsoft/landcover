@@ -97,7 +97,10 @@ def main(tile_fn, save_npy=False):
         result = merged[np.newaxis].data
         if save_npy:
             np.save(output_fn, result)
-        return result
+        if args.sample:
+            # CAUTION: if a list of tiles was provided, only the first one will be returned
+            # TODO: Fix above caution
+            return result
 
 
 def sample(tile, patch_fns_fn, patches_output_directory, patch_dimension, num_patches):
