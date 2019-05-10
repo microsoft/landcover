@@ -18,7 +18,7 @@ shift $((OPTIND -1))
 
 export PYTHONPATH=.
 
-#TEST_LOG_FILE="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/test/results.csv"
+
 echo "model, area, tile_type, tile_index, mean_IoU, pixel_accuracy, tile_path, predictions_path"
 
 NUMS_PATCHES=(2 4 6 8 10 40 100 200 400 1000 2000)
@@ -37,7 +37,12 @@ do
 		       
     do
 	# Train fine-tuned model
-	python training/pytorch/model_finetuning.py --model_file "/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/checkpoint_best.pth.tar" --training_patches_fn "training/data/finetuning/test${TEST_REGION}_train_patches_rand_${num_patches}_${random_seed}.txt" --log_fn "${MODELS_DIR}/rand_${num_patches}_${random_seed}/train_results.csv" --model_output_directory "${MODELS_DIR}/rand_${num_patches}_${random_seed}"
+	python training/pytorch/model_finetuning.py \
+	       --model_file "/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/checkpoint_best.pth.tar" \
+	       --training_patches_fn "training/data/finetuning/sampled/test${TEST_REGION}_train_patches_rand_${num_patches}_${random_seed}.txt" \
+	       --validation_patches_fn "training/data/finetuning/sampled/test${TEST_REGION}_train_patches_rand_${num_patches}_${random_seed}.txt" \
+	       --log_fn "${MODELS_DIR}/rand_${num_patches}_${random_seed}/train_results.csv" \
+	       --model_output_directory "${MODELS_DIR}/rand_${num_patches}_${random_seed}"
     
 	# Test fine-tuned models
 	MODELS=(
