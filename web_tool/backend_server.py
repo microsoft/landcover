@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
+# pylint: disable=E1137,E1136,E0110
 import sys
 import os
 import time
@@ -21,7 +22,7 @@ import rasterio
 
 import DataLoader
 import GeoTools
-import utils
+import Utils
 
 import pickle
 import joblib
@@ -43,7 +44,7 @@ class AugmentationState():
     current_snapshot_idx = 0
     model = None
 
-    current_transform = None
+    current_transform = ()
     current_naip = None
     current_output = None
 
@@ -179,12 +180,12 @@ def record_correction():
     y_pred[tdst_row:bdst_row+1, tdst_col:bdst_col+1, class_idx] = 1
     AugmentationState.current_output = y_pred
     
-    img_soft = np.round(utils.class_prediction_to_img(y_pred, False, color_list)*255,0).astype(np.uint8)
+    img_soft = np.round(Utils.class_prediction_to_img(y_pred, False, color_list)*255,0).astype(np.uint8)
     img_soft = cv2.imencode(".png", cv2.cvtColor(img_soft, cv2.COLOR_RGB2BGR))[1].tostring()
     img_soft = base64.b64encode(img_soft).decode("utf-8")
     data["output_soft"] = img_soft
 
-    img_hard = np.round(utils.class_prediction_to_img(y_pred, True, color_list)*255,0).astype(np.uint8)
+    img_hard = np.round(Utils.class_prediction_to_img(y_pred, True, color_list)*255,0).astype(np.uint8)
     img_hard = cv2.imencode(".png", cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGR))[1].tostring()
     img_hard = base64.b64encode(img_hard).decode("utf-8")
     data["output_hard"] = img_hard
@@ -248,12 +249,12 @@ def pred_patch():
     # Step 4
     #   Convert images to base64 and return  
     # ------------------------------------------------------
-    img_soft = np.round(utils.class_prediction_to_img(output, False, color_list)*255,0).astype(np.uint8)
+    img_soft = np.round(Utils.class_prediction_to_img(output, False, color_list)*255,0).astype(np.uint8)
     img_soft = cv2.imencode(".png", cv2.cvtColor(img_soft, cv2.COLOR_RGB2BGR))[1].tostring()
     img_soft = base64.b64encode(img_soft).decode("utf-8")
     data["output_soft"] = img_soft
 
-    img_hard = np.round(utils.class_prediction_to_img(output, True, color_list)*255,0).astype(np.uint8)
+    img_hard = np.round(Utils.class_prediction_to_img(output, True, color_list)*255,0).astype(np.uint8)
     img_hard = cv2.imencode(".png", cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGR))[1].tostring()
     img_hard = base64.b64encode(img_hard).decode("utf-8")
     data["output_hard"] = img_hard
@@ -298,7 +299,7 @@ def pred_tile():
     #   Convert images to base64 and return  
     # ------------------------------------------------------
     tmp_id = get_random_string(8)
-    img_hard = np.round(utils.class_prediction_to_img(output, True, color_list)*255,0).astype(np.uint8)
+    img_hard = np.round(Utils.class_prediction_to_img(output, True, color_list)*255,0).astype(np.uint8)
     img_hard = cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGR)
     cv2.imwrite(os.path.join(ROOT_DIR, "tmp/%s.png" % (tmp_id)), img_hard)
     data["downloadPNG"] = "tmp/%s.png" % (tmp_id)
