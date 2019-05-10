@@ -1,0 +1,10 @@
+/mnt/blobfuse/cnn-minibatches/summer_2019/active_learning_splits/val2/539.npy
+/mnt/blobfuse/cnn-minibatches/summer_2019/active_learning_splits/val2/1402.npy
+/mnt/blobfuse/cnn-minibatches/summer_2019/active_learning_splits/val2/346.npy
+/mnt/blobfuse/cnn-minibatches/summer_2019/active_learning_splits/val2/1171.npy
+/mnt/blobfuse/cnn-minibatches/summer_2019/active_learning_splits/val2/1287.npy
+/mnt/blobfuse/cnn-minibatches/summer_2019/active_learning_splits/val2/564.npy
+/mnt/blobfuse/cnn-minibatches/summer_2019/active_learning_splits/val2/1482.npy
+/mnt/blobfuse/cnn-minibatches/summer_2019/active_learning_splits/val2/1901.npy
+/mnt/blobfuse/cnn-minibatches/summer_2019/active_learning_splits/val2/974.npy
+/mnt/blobfuse/cnn-minibatches/summer_2019/active_learning_splits/val2/848.npy

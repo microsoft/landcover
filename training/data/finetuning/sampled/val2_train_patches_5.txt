@@ -1,0 +1,5 @@
+/mnt/blobfuse/cnn-minibatches/summer_2019/active_learning_splits/val2/1345.npy
+/mnt/blobfuse/cnn-minibatches/summer_2019/active_learning_splits/val2/1257.npy
+/mnt/blobfuse/cnn-minibatches/summer_2019/active_learning_splits/val2/676.npy
+/mnt/blobfuse/cnn-minibatches/summer_2019/active_learning_splits/val2/1291.npy
+/mnt/blobfuse/cnn-minibatches/summer_2019/active_learning_splits/val2/1916.npy
