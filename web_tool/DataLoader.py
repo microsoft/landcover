@@ -89,15 +89,9 @@ assert all([os.path.exists(fn) for fn in [
 ]])
 TILES = pickle.load(open(ROOT_DIR + "/data/tiles.p", "rb"))
 
-
-with fiona.open("data/yangon.geojson") as f:
+with fiona.open("/mnt/afs/chesapeake/landcover/data/yangon.geojson") as f:
     yangon_outline = next(iter(f))
     yangon_outline = shapely.geometry.shape(yangon_outline["geometry"])
-
-with rasterio.open("data/merged_rgbnir_byte.tif","r") as f:
-    yangon_data = f.read()
-    yangon_data = np.rollaxis(yangon_data, 0, 3)
-
 
 def lookup_tile_by_geom(extent):
     tile_index = rtree.index.Index(ROOT_DIR + "/data/tile_index")
@@ -123,7 +117,7 @@ def lookup_tile_by_geom(extent):
 
         geom = GeoTools.extent_to_transformed_geom(extent, "EPSG:4326")
         if yangon_outline.contains(shapely.geometry.shape(geom)):
-            return "/home/caleb/land-cover-mapping/data/merged_rgbnir_byte.tif"
+            return "/mnt/afs/chesapeake/landcover/data/ermged_rgbnir_byte.tif"
         else:
             raise ValueError("No tile intersections")
 
