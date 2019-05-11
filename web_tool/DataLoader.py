@@ -90,9 +90,20 @@ assert all([os.path.exists(fn) for fn in [
 TILES = pickle.load(open(ROOT_DIR + "/data/tiles.p", "rb"))
 
 
-def lookup_tile_by_geom(geom):
+with fiona.open("data/yangon.geojson") as f:
+    yangon_outline = next(iter(f))
+    yangon_outline = shapely.geometry.shape(yangon_outline["geometry"])
+
+with rasterio.open("data/merged_rgbnir_byte.tif","r") as f:
+    yangon_data = f.read()
+    yangon_data = np.rollaxis(yangon_data, 0, 3)
+
+
+def lookup_tile_by_geom(extent):
     tile_index = rtree.index.Index(ROOT_DIR + "/data/tile_index")
 
+    geom = GeoTools.extent_to_transformed_geom(extent, "EPSG:4269")
+    
     # Add some margin
     #minx, miny, maxx, maxy = shape(geom).buffer(50).bounds
     minx, miny, maxx, maxy = shapely.geometry.shape(geom).bounds
@@ -109,7 +120,12 @@ def lookup_tile_by_geom(geom):
     if len(intersected_indices) > 0:
         raise ValueError("Error, there are overlaps with tile index, but no tile completely contains selection")
     else:
-        raise ValueError("No tile intersections")
+
+        geom = GeoTools.extent_to_transformed_geom(extent, "EPSG:4326")
+        if yangon_outline.contains(shapely.geometry.shape(geom)):
+            return "/home/caleb/land-cover-mapping/data/merged_rgbnir_byte.tif"
+        else:
+            raise ValueError("No tile intersections")
 
 # ------------------------------------------------------------------------------
 

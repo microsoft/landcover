@@ -212,9 +212,8 @@ def pred_patch():
     #   Transform the input extent into a shapely geometry
     #   Find the tile assosciated with the geometry
     # ------------------------------------------------------
-    geom = GeoTools.extent_to_transformed_geom(extent, "EPSG:4269")
     try:
-        naip_file_name = DataLoader.lookup_tile_by_geom(geom)
+        naip_file_name = DataLoader.lookup_tile_by_geom(extent)
     except ValueError as e:
         print(e)
         bottle.response.status = 400
@@ -272,9 +271,8 @@ def pred_tile():
     extent = data["extent"]
     color_list = data["colors"]
    
-    geom = GeoTools.extent_to_transformed_geom(extent, "EPSG:4269")
     try:
-        naip_file_name = DataLoader.lookup_tile_by_geom(geom)
+        naip_file_name = DataLoader.lookup_tile_by_geom(extent)
     except ValueError as e:
         print(e)
         bottle.response.status = 400
@@ -332,9 +330,8 @@ def get_input():
     #   Transform the input extent into a shapely geometry
     #   Find the tile assosciated with the geometry
     # ------------------------------------------------------
-    geom = GeoTools.extent_to_transformed_geom(extent, "EPSG:4269")
     try:
-        naip_file_name = DataLoader.lookup_tile_by_geom(geom)
+        naip_file_name = DataLoader.lookup_tile_by_geom(extent)
     except ValueError as e:
         print(e)
         bottle.response.status = 400
