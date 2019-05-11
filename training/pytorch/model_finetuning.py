@@ -27,6 +27,7 @@ from training.pytorch.utils.experiments_utils import improve_reproducibility
 from training.pytorch.utils.filesystem import ensure_dir
 from training.pytorch.losses import (multiclass_ce, multiclass_dice_loss, multiclass_jaccard_loss, multiclass_tversky_loss, multiclass_ce_points)
 from training.pytorch.data_loader import DataGenerator
+from training.pytorch.utils.data.tile_to_npy import sample
 
 
 parser = argparse.ArgumentParser()
@@ -44,6 +45,7 @@ parser.add_argument('--run_validation', action="store_true", help="Whether to ru
 #parser.add_argument('--validation_patches_fn', type=str, help="Filename with list of validation patch files", default='training/data/finetuning/val2_test_patches_500.txt')
 parser.add_argument('--validation_patches_fn', type=str, help="Filename with list of training patch files", default="training/data/finetuning/val2_train_patches_5.txt")
 parser.add_argument('--training_patches_fn', type=str, help="Filename with list of training patch files", default="training/data/finetuning/val2_train_patches_5.txt")
+parser.add_argument('--training_tile_fn', type=str, help="Filename with list of training tile files", default="training/data/finetuning/test1_train_tiles.txt")
 
 parser.add_argument('--log_fn', type=str, help="Where to store training results", default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/val/val2/10_patches/finetune_results.csv")
 
@@ -92,6 +94,8 @@ def finetune_group_params(path_2_saved_model, loss, gen_loaders, params, hyper_p
     learning_rate = hyper_parameters['learning_rate']
     optimizer_method = hyper_parameters['optimizer_method']
     lr_schedule_step_size = hyper_parameters['lr_schedule_step_size']
+    if 'epochs' in hyper_parameters:
+        n_epochs = hyper_parameters['epochs']
     
     opts = params["model_opts"]
     unet = Unet(opts)
@@ -114,7 +118,7 @@ def finetune_group_params(path_2_saved_model, loss, gen_loaders, params, hyper_p
     # Decay LR by a factor of 0.1 every 7 epochs
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=lr_schedule_step_size, gamma=0.1)
 
-    model_2_finetune = train_model(model_2_finetune, loss, optimizer,
+    model_2_finetune = active_learning(model_2_finetune, loss, optimizer,
                                    exp_lr_scheduler, gen_loaders, hyper_parameters, log_writer, num_epochs=n_epochs)
     return model_2_finetune
 
@@ -123,6 +127,8 @@ def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, hyper_
     optimizer_method = hyper_parameters['optimizer_method']
     lr_schedule_step_size = hyper_parameters['lr_schedule_step_size']
     last_k_layers = hyper_parameters['last_k_layers']
+    if 'epochs' in hyper_parameters:
+        n_epochs = hyper_parameters['epochs']
     
     opts = params["model_opts"]
     unet = Unet(opts)
@@ -149,10 +155,69 @@ def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, hyper_
     # Decay LR by a factor of 0.1 every 7 epochs
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=lr_schedule_step_size, gamma=0.1)
 
-    model_2_finetune = train_model(model_2_finetune, loss, optimizer,
+    model_2_finetune = active_learning(model_2_finetune, loss, optimizer,
                                    exp_lr_scheduler, gen_loaders, hyper_parameters, log_writer, num_epochs=n_epochs)
     return model_2_finetune
 
+
+def active_learning_step_size(num_points):
+    if num_points < 40:
+        return 10
+    if num_points < 400:
+        return 100
+    if num_points < 4000:
+        return 1000
+
+
+def evaluate_model(model, train_tile):
+    pass
+
+
+def prediction_entropy(predictions):
+    # predictions: (channels, height, width)
+    return (predictions * predictions.log()).sum(axis=0)
+
+
+def pixels_to_patches(train_tile, points):
+    # return one 240 x 240 patch per point
+    pass
+
+
+
+def new_train_patches_entropy(model, train_tile, num_new_patches):
+    predictions = evaluate_model(model, train_tile)
+    # (channels, height, width)
+    entropy = prediction_entropy(predictions)
+    # (height, width)
+    rows, columns = entropy.shape
+    possible_indices = [(row, column) for row in range(rows) for column in range(columns)]
+    highest_entropy_points = heapq.nlargest(num_train_points,
+                                            possible_indices,
+                                            key=lambda index: entropy[index])
+    new_train_patches = pixels_to_patches(train_tile, highest_entropy_points)
+
+
+# If needed: implement the below function for generating random patches
+#def new_train_patches_random(model, train_tile, num_new_patches):
+    # sample(train_tile)
+    # new_train_patches = pixels_to_patches(train_tile, highest_entropy_points)
+
+
+
+    
+def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True, step_size_function=active_learning_step_size, new_train_patches_function=new_train_patches_entropy, num_total_points=4000):
+    train_tile = None  # TODO: get this from somewhere
+    old_model = copy.deepcopy(model)
+    training_patches = []
+
+    while len(training_patches) < num_total_points:
+        num_new_patches = step_size_function(len(training_patches))
+        training_patches += new_train_patches_function(model, train_tile, num_new_patches)
+        model = copy.deepcopy(old_model)
+        new_model, fine_tune_result = train_model(model, loss_criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True)
+
+        
+    
 
 def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True):
     global results_writer, results_file
@@ -168,9 +233,12 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
     duration_til_best_epoch = since - since
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-    # Each epoch has a training and validation phase
-    phases = ['train', 'val']
-        
+    # Each epoch can have a training and validation phase
+    phases = data_loaders.keys()
+    for phase in phases:
+        if phase not in ['train', 'val']:
+            print('Warning: epoch phase "%s" not valid. Valid options: ["train", "val"]. Data provided in this phase may be ignored.' % phase)
+    
     for epoch in range(-1, num_epochs):
         #print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         #print('-' * 10)
@@ -456,17 +524,19 @@ def hyper_parameters_fixed(hyper_parameters):
     experiment_configs = []
 
     # Add last-k-layers hypers
-    for last_k_layers, learning_rate in [(1, 0.015), (2, 0.0006), (3, 0.0045)]:
+    for last_k_layers, learning_rate, last_epoch in [(1, 0.015, 1), (2, 0.0006, 8), (3, 0.0045, 0)]:
         new_hyper_parameters = copy.deepcopy(hyper_parameters)
         new_hyper_parameters['method_name'] = 'last_k_layers'
         new_hyper_parameters['last_k_layers'] = last_k_layers
         new_hyper_parameters['learning_rate'] = learning_rate
+        new_hyper_parameters['epochs'] = last_epoch + 1
         experiment_configs += [(new_hyper_parameters['method_name'], finetune_last_k_layers, new_hyper_parameters)]
 
     # Add group-params method
     new_hyper_parameters = copy.deepcopy(hyper_parameters)
     new_hyper_parameters['method_name'] = 'group_params'
     new_hyper_parameters['learning_rate'] = 0.0025
+    new_hyper_parameters['epochs'] = 10 + 1
     experiment_configs += [(new_hyper_parameters['method_name'], finetune_group_params, new_hyper_parameters)]
 
     return experiment_configs
