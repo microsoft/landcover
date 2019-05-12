@@ -90,6 +90,10 @@ class KerasDenseFineTune(BackendModel):
         
 
     def run(self, naip_data, naip_fn, extent, padding):
+
+        if padding > 10:
+            naip_data = naip_data[padding:-padding,padding:-padding,:]
+
         output, output_features = self.run_model_on_tile(naip_data)
         
         if self.augment_model_trained:
