@@ -201,7 +201,8 @@ def new_train_patches_entropy(model, train_tile, predictions, num_new_patches):
                                             possible_indices,
                                             key=lambda index: entropy[index])
     new_train_patches = pixels_to_patches(train_tile, highest_entropy_points)
-
+    return new_train_patches
+    
 
 # If needed: implement the below function for generating random patches
 #def new_train_patches_random(model, train_tile, num_new_patches):
