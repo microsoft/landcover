@@ -281,24 +281,6 @@
             var timerControl = $("<div class='leaflet-control label-area'></div>");
             timerControl.append("<div class='label-text'>Time remaining <span id='timer'>00:00</span></div>");
             $(".leaflet-top.leaflet-left").append(timerControl);
-
-            // Setup privacy link control area
-            // TODO: refactor the above examples to be like this one
-            /*
-            var privacyControl = L.control({
-                position : 'bottomright'
-            });
-            privacyControl.onAdd = function(map) {
-                this._div = L.DomUtil.create('div', 'privacyControl');
-                var a_link = "<div class='privacy'><a href='https://privacy.microsoft.com/en-US/privacystatement' target='_blank'>Privacy Statement</a></div>";
-                this._div.innerHTML = a_link;
-                return this._div;
-
-            }
-            privacyControl.addTo(map);
-            */
-
-
             
             //----------------------------------------------------------------------
             // Custom initialization of the map zoom controls so that we can 

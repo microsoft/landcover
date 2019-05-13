@@ -40,8 +40,8 @@ def get_random_string(length):
 class AugmentationState():
     #BASE_DIR = "output/"
     debug_mode = False
-    BASE_DIR = "/mnt/blobfuse/pred-output/user_study/"
-    current_snapshot_string = "%s_" + get_random_string(8) + "_%d"
+    BASE_DIR = "/mnt/blobfuse/pred-output/user_study/mturk/"
+    current_snapshot_string = get_random_string(8)
     current_snapshot_idx = 0
     model = None
 
@@ -54,17 +54,20 @@ class AugmentationState():
     @staticmethod
     def reset():
         AugmentationState.model.reset() # can't fail, so don't worry about it
-        AugmentationState.current_snapshot_string = "%s_" + get_random_string(8) + "_%d"
+        AugmentationState.current_snapshot_string = get_random_string(8)
+        if not AugmentationState.debug_mode:
+            os.path.makedirs(os.path.join(AugmentationState.BASE_DIR, AugmentationState.current_snapshot_string))
+
         AugmentationState.current_snapshot_idx = 0
         AugmentationState.request_list = []
 
     @staticmethod
     def save(model_name):
-        snapshot_id = AugmentationState.current_snapshot_string % (model_name, AugmentationState.current_snapshot_idx)
+        snapshot_id = "%s_%d" % (model_name, AugmentationState.current_snapshot_idx)
 
         print("Saving state for %s" % (snapshot_id))
-        model_fn = os.path.join(AugmentationState.BASE_DIR, "%s_model.p" % (snapshot_id))
-        request_list_fn = os.path.join(AugmentationState.BASE_DIR, "%s_request_list.p" % (snapshot_id))
+        model_fn = os.path.join(AugmentationState.BASE_DIR, AugmentationState.current_snapshot_string, "%s_model.p" % (snapshot_id))
+        request_list_fn = os.path.join(AugmentationState.BASE_DIR, AugmentationState.current_snapshot_string, "%s_request_list.p" % (snapshot_id))
 
         if not AugmentationState.debug_mode:
             joblib.dump(AugmentationState.model, model_fn, protocol=pickle.HIGHEST_PROTOCOL)
