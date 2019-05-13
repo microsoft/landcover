@@ -13,6 +13,7 @@ import copy
 import json
 import os
 import random
+import heapq
 
 import torch
 import torch.nn as nn
@@ -177,8 +178,16 @@ def prediction_entropy(predictions):
 
 def pixels_to_patches(train_tile, points):
     # return one 240 x 240 patch per point
-    pass
-
+    tile_height, tile_width, num_channel = train_tile.shape
+    patch_height = 240
+    patch_width = 240
+    #Patches dimensions will be (B,C, H, W)
+    patches = np.zeros((len(points), patch_height, patch_width, num_channel))
+    #Fixme: Check for edge cases where points are close to the border. We might not want this zero padding
+    for i, point in enumerate(points):
+        row, col = point
+        patches[i] = train_tile[row-patch_height//2:row+patch_height//2, row-patch_width//2:row+patch_width//2, :]
+    return patches
 
 
 def new_train_patches_entropy(model, train_tile, predictions, num_new_patches):
