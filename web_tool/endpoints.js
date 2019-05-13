@@ -3,7 +3,6 @@ ENDPOINTS = [
 ];
 
 BACKEND_ENDPOINTS = [
-    {"url": "http://msrcalebubuntu.eastus.cloudapp.azure.com:4444/"},
     {"url": "http://userstudy1.eastus.cloudapp.azure.com:4444/"},
     {"url": "http://userstudy1.eastus.cloudapp.azure.com:4445/"},
     {"url": "http://userstudy1.eastus.cloudapp.azure.com:4446/"},
