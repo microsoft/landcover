@@ -25,6 +25,10 @@
 <body>
 
     <div id="map"></div>
+
+    <div id="privacy" class="leaflet-container">
+        <a href="https://privacy.microsoft.com/en-US/privacystatement" target="_blank">Privacy Statement</a>
+    </div>
     
     <div id="sidebar" class="sidebar">
     
@@ -278,6 +282,23 @@
             timerControl.append("<div class='label-text'>Time remaining <span id='timer'>00:00</span></div>");
             $(".leaflet-top.leaflet-left").append(timerControl);
 
+            // Setup privacy link control area
+            // TODO: refactor the above examples to be like this one
+            /*
+            var privacyControl = L.control({
+                position : 'bottomright'
+            });
+            privacyControl.onAdd = function(map) {
+                this._div = L.DomUtil.create('div', 'privacyControl');
+                var a_link = "<div class='privacy'><a href='https://privacy.microsoft.com/en-US/privacystatement' target='_blank'>Privacy Statement</a></div>";
+                this._div.innerHTML = a_link;
+                return this._div;
+
+            }
+            privacyControl.addTo(map);
+            */
+
+
             
             //----------------------------------------------------------------------
             // Custom initialization of the map zoom controls so that we can 
@@ -313,39 +334,6 @@
                 }
             );
             opacitySlider.addTo(map);
-
-              //----------------------------------------------------------------------
-            // Setup the sharpness slider to control which type of image is shown
-            //----------------------------------------------------------------------
-            L.control.slider( // sharpness slider
-                function(value){
-                    soft0_hard1 = value;
-                    for(idx=0; idx<currentPatches.length; idx++){
-                        var tActiveImgIdx = currentPatches[idx]["activeImgIdx"];
-                        var srcs = currentPatches[idx]["patches"][tActiveImgIdx]["srcs"];
-                        currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
-                    }
-                    if(currentPatches.length>0){
-                        var idx = currentPatches.length - 1;
-                        for(var tActiveImgIdx=0; tActiveImgIdx<currentPatches[idx]["patches"].length; tActiveImgIdx++){
-                            var srcs = currentPatches[idx]["patches"][tActiveImgIdx]["srcs"];
-                            $("#exampleImage_"+tActiveImgIdx).attr("src", srcs[soft0_hard1]);
-                        }
-                    }
-                }, {
-                    position: 'bottomleft',
-                    id: 'soft_hard_slider',
-                    orientation: 'horizontal',
-                    collapsed: true,
-                    syncSlider: true,
-                    min: 0,
-                    max: 1,
-                    value: 1,
-                    logo: "Sharpness",
-                    size: "171px"
-                }
-            ).addTo(map);
-
 
             //----------------------------------------------------------------------
             // Setup leaflet-sidebar-v2 and open the "#home" tab 
