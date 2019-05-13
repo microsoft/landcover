@@ -28,6 +28,7 @@ from training.pytorch.utils.filesystem import ensure_dir
 from training.pytorch.losses import (multiclass_ce, multiclass_dice_loss, multiclass_jaccard_loss, multiclass_tversky_loss, multiclass_ce_points)
 from training.pytorch.data_loader import DataGenerator
 from training.pytorch.utils.data.tile_to_npy import sample
+from training.pytorch.test_finetuning import run as run_model
 
 
 parser = argparse.ArgumentParser()
@@ -45,7 +46,7 @@ parser.add_argument('--run_validation', action="store_true", help="Whether to ru
 #parser.add_argument('--validation_patches_fn', type=str, help="Filename with list of validation patch files", default='training/data/finetuning/val2_test_patches_500.txt')
 parser.add_argument('--validation_patches_fn', type=str, help="Filename with list of training patch files", default="training/data/finetuning/val2_train_patches_5.txt")
 parser.add_argument('--training_patches_fn', type=str, help="Filename with list of training patch files", default="training/data/finetuning/val2_train_patches_5.txt")
-parser.add_argument('--training_tile_fn', type=str, help="Filename with list of training tile files", default="training/data/finetuning/test1_train_tiles.txt")
+parser.add_argument('--training_tiles_fn', type=str, help="Filename with list of training tile files", default="training/data/finetuning/test1_train_tiles.txt")
 
 parser.add_argument('--log_fn', type=str, help="Where to store training results", default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/val/val2/10_patches/finetune_results.csv")
 
@@ -169,10 +170,6 @@ def active_learning_step_size(num_points):
         return 1000
 
 
-def evaluate_model(model, train_tile):
-    pass
-
-
 def prediction_entropy(predictions):
     # predictions: (channels, height, width)
     return (predictions * predictions.log()).sum(axis=0)
@@ -184,8 +181,8 @@ def pixels_to_patches(train_tile, points):
 
 
 
-def new_train_patches_entropy(model, train_tile, num_new_patches):
-    predictions = evaluate_model(model, train_tile)
+def new_train_patches_entropy(model, train_tile, predictions, num_new_patches):
+    
     # (channels, height, width)
     entropy = prediction_entropy(predictions)
     # (height, width)
@@ -206,16 +203,21 @@ def new_train_patches_entropy(model, train_tile, num_new_patches):
 
     
 def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True, step_size_function=active_learning_step_size, new_train_patches_function=new_train_patches_entropy, num_total_points=4000):
-    train_tile = None  # TODO: get this from somewhere
+    train_tile_fn = open(args.training_tiles_fn, "r").read().strip().split("\n")[0]
+    train_tile_fn = train_tile_fn.replace('.mrf', '.npy')
+    train_tile = np.load(train_tile_fn)
+    
     old_model = copy.deepcopy(model)
     training_patches = []
 
+    current_predictions = evaluate_model(model, train_tile)
+    
     while len(training_patches) < num_total_points:
         num_new_patches = step_size_function(len(training_patches))
-        training_patches += new_train_patches_function(model, train_tile, num_new_patches)
+        training_patches += new_train_patches_function(model, train_tile, current_predictions, num_new_patches)
         model = copy.deepcopy(old_model)
-        new_model, fine_tune_result = train_model(model, loss_criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True)
-
+        model, fine_tune_result = train_model(model, loss_criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True)
+        current_predictions = run_model(model, train_tile, '')
         
     
 
