@@ -169,7 +169,7 @@
 
         var map = null;
         var animating = false;
-
+       
         var numClicks = 0;
         
         //----------------------------------------------------------------------
@@ -384,7 +384,7 @@
                             curSelPoly = getPolyAround(e.latlng, CORRECTION_SIZE);
                             var idx = currentPatches.length-1;
                             doSendCorrection(curSelPoly, idx);
-
+                            
                             map.dragging.disable();
                             numClicks += 1
                             window.setTimeout(function(){

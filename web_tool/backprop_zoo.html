@@ -160,6 +160,7 @@
         var map = null;
         var animating = false;
 
+        var numClicks = 0;
 
         //----------------------------------------------------------------------
         // User study specific globals
@@ -441,6 +442,16 @@
                             curSelPoly = getPolyAround(e.latlng, CORRECTION_SIZE);
                             var idx = currentPatches.length-1;
                             doSendCorrection(curSelPoly, idx);
+
+                            map.dragging.disable();
+                            numClicks += 1
+                            window.setTimeout(function(){
+                                numClicks -= 1;
+                                if(numClicks == 0){
+                                    map.dragging.enable();
+                                }
+                            }, 500);
+
                         }else{
                             console.debug("Click not in selection");
                         }
