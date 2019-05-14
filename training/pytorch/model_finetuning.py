@@ -92,7 +92,7 @@ class FineTuneResult(object):
     train_duration = attrib(type=timedelta)
     
     
-def finetune_group_params(path_2_saved_model, loss, gen_loaders, params, hyper_parameters, log_writer, n_epochs=25):
+def finetune_group_params(path_2_saved_model, loss, gen_loaders, params, params_train, hyper_parameters, log_writer, n_epochs=25):
     learning_rate = hyper_parameters['learning_rate']
     optimizer_method = hyper_parameters['optimizer_method']
     lr_schedule_step_size = hyper_parameters['lr_schedule_step_size']
@@ -121,10 +121,10 @@ def finetune_group_params(path_2_saved_model, loss, gen_loaders, params, hyper_p
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=lr_schedule_step_size, gamma=0.1)
 
     model_2_finetune = active_learning(model_2_finetune, loss, optimizer,
-                                   exp_lr_scheduler, gen_loaders, hyper_parameters, log_writer, num_epochs=n_epochs)
+                                       exp_lr_scheduler, gen_loaders, params_train, hyper_parameters, log_writer, num_epochs=n_epochs)
     return model_2_finetune
 
-def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, hyper_parameters, log_writer, n_epochs=25):
+def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, params_train, hyper_parameters, log_writer, n_epochs=25):
     learning_rate = hyper_parameters['learning_rate']
     optimizer_method = hyper_parameters['optimizer_method']
     lr_schedule_step_size = hyper_parameters['lr_schedule_step_size']
@@ -158,7 +158,7 @@ def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, hyper_
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=lr_schedule_step_size, gamma=0.1)
 
     model_2_finetune = active_learning(model_2_finetune, loss, optimizer,
-                                   exp_lr_scheduler, gen_loaders, hyper_parameters, log_writer, num_epochs=n_epochs)
+                                       exp_lr_scheduler, gen_loaders, params_train, hyper_parameters, log_writer, num_epochs=n_epochs)
     return model_2_finetune
 
 
@@ -226,6 +226,7 @@ def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, hy
         num_new_patches = step_size_function(len(training_patches))
         training_patches += new_train_patches_function(model, train_tile, current_predictions, num_new_patches)
         model = copy.deepcopy(old_model)
+        dataloaders = None
         model, fine_tune_result = train_model(model, loss_criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True)
         current_predictions = run_model(model, train_tile, '')
         
@@ -461,7 +462,7 @@ def main(finetune_methods, predictions_path, validation_patches_fn=None):
     params_train = {'batch_size': params["loader_opts"]["batch_size"],
                     'shuffle': params["loader_opts"]["shuffle"],
                     'num_workers': params["loader_opts"]["num_workers"]}
-        
+    
     training_set = DataGenerator(
         training_patches, batch_size, patch_size, num_channels, superres=params["train_opts"]["superres"], masking=True
     )
@@ -476,7 +477,7 @@ def main(finetune_methods, predictions_path, validation_patches_fn=None):
     loss = multiclass_ce_points
     path = args.model_file
 
-    dataloaders = {'train': data.DataLoader(training_set, **params_train)}
+    dataloaders = {} # 'train': data.DataLoader(training_set, **params_train)}
     if validation_set:
         dataloaders['val'] = data.DataLoader(validation_set, **params_train)
 
@@ -486,7 +487,7 @@ def main(finetune_methods, predictions_path, validation_patches_fn=None):
         
         # print('Fine-tune hyper-params: %s' % str(hyper_params))
         improve_reproducibility()
-        model, result = finetune_function(path, loss, dataloaders, params, hyper_params, results_writer, n_epochs=hyper_params['n_epochs']) #, predictions_path=str(predictions_path / str(hyper_params)))
+        model, result = finetune_function(path, loss, dataloaders, params, params_train, hyper_params, results_writer, n_epochs=hyper_params['n_epochs']) #, predictions_path=str(predictions_path / str(hyper_params)))
         results[finetune_method_name] = result
         
         savedir = args.model_output_directory
