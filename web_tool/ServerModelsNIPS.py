@@ -105,7 +105,7 @@ class KerasDenseFineTune(BackendModel):
 
         return output
 
-    def retrain(self):
+    def retrain(self, **kwargs):
         x_train = np.concatenate(self.augment_x_train, axis=0)
         y_train = np.concatenate(self.augment_y_train, axis=0)
         
