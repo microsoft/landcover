@@ -261,7 +261,7 @@ class KerasBackPropFineTune(BackendModel):
         
         return output
 
-    def retrain(self, number_of_steps=8, last_k_layers=3, learning_rate=0.015, batch_size = 32, **kwargs):
+    def retrain(self, number_of_steps=8, last_k_layers=3, learning_rate=0.015, batch_size=32, **kwargs):
         
         self.process_correction_labels()
 
@@ -280,9 +280,8 @@ class KerasBackPropFineTune(BackendModel):
 
         x_train = np.array(self.batch_x)
         y_train = np.array(self.batch_y)
-        y_train_labels = y_train.argmax(axis=3)
-
         print("Training set shape: ", x_train.shape, y_train.shape)
+        y_train_labels = y_train.argmax(axis=3)
         print("Label set: ", np.unique(y_train_labels[y_train_labels!=0], return_counts=True))
         print("Starting fine-tuning for %d steps over the last %d layers using %d samples with lr of %f" % 
             (number_of_steps, last_k_layers, len(self.batch_x), learning_rate)
@@ -337,6 +336,7 @@ class KerasBackPropFineTune(BackendModel):
             beginning_loss, end_loss,
             acc
         )
+        message = "Fit accessory model with %d samples" % (x_train.shape[0])
         
         return success, message
 

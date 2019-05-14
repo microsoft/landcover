@@ -189,17 +189,11 @@
         //----------------------------------------------------------------------
         $(document).ready(function(){
 
+            doReset(false);
+
             //----------------------------------------------------------------------
             // Remove the default behavior of the shift key
             //----------------------------------------------------------------------
-            document.onselectstart = function() {
-                return false;
-            }
-
-            document.onselectstart = function() {
-                return false;
-            }
-
             document.onselectstart = function() {
                 return false;
             }
@@ -496,9 +490,6 @@
                 currentPatches[idx]["activeImgIdx"] = activeImgIdx;
                 $(this).attr("src", srcs[soft0_hard1]);
             });
-
-
-            doReset(false);
 
         });
 
