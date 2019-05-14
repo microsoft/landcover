@@ -209,7 +209,6 @@
                 trainingSetID = parseInt(trainingSetID);
             }
             if(userID === null) userID = "test";
-            if(modelID === null) modelID = "test";
             if(maxTime === null){
                 maxTime = 15*60;
             } else{
@@ -219,6 +218,10 @@
                 backendID = 0;
             } else{
                 backendID = parseInt(backendID);
+            }
+            if(modelID === null){
+                if(backendID >= 1 && backendID <= 8){ modelID = "1"}
+                if(backendID >= 9 && backendID <= 16){ modelID = "2"}
             }
             runUserStudyTimer(maxTime);
             EXP_NAME = userID + "_" + modelID + "_" + trainingSetID;
