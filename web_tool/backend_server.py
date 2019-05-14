@@ -56,7 +56,7 @@ class AugmentationState():
         AugmentationState.model.reset() # can't fail, so don't worry about it
         AugmentationState.current_snapshot_string = get_random_string(8)
         if not AugmentationState.debug_mode:
-            os.path.makedirs(os.path.join(AugmentationState.BASE_DIR, AugmentationState.current_snapshot_string))
+            os.makedirs(os.path.join(AugmentationState.BASE_DIR, AugmentationState.current_snapshot_string))
 
         AugmentationState.current_snapshot_idx = 0
         AugmentationState.request_list = []
