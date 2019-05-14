@@ -75,9 +75,6 @@
                         <div style="text-align: center; margin-top:10px;">
                             <button id="btnRetrain">Retrain (<span id="label-retrains">0</span> times)</button>
                         </div>
-                        <div style="text-align: center; margin-top:10px;">
-                            <button id="btnReset">Reset</button>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -189,8 +186,6 @@
         // Runtime entrance
         //----------------------------------------------------------------------
         $(document).ready(function(){
-
-            doReset(false);
 
             //----------------------------------------------------------------------
             // Remove the default behavior of the shift key
@@ -465,7 +460,7 @@
             });
 
             $("#btnRetrain").click(doRetrain);
-            $("#btnReset").click(doReset);
+            //$("#btnReset").click(doReset);
     
             //----------------------------------------------------------------------
             // Setup radio button change detection
@@ -501,6 +496,8 @@
                 currentPatches[idx]["activeImgIdx"] = activeImgIdx;
                 $(this).attr("src", srcs[soft0_hard1]);
             });
+
+            doReset(false);
 
         });
 
