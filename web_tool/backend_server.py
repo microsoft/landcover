@@ -434,6 +434,7 @@ def main():
 
     AugmentationState.model = model
     AugmentationState.debug_mode = args.debug
+    AugmentationState.reset()
 
     # Setup the bottle server 
     app = bottle.Bottle()
