@@ -30,6 +30,7 @@ from training.pytorch.losses import (multiclass_ce, multiclass_dice_loss, multic
 from training.pytorch.data_loader import DataGenerator
 from training.pytorch.utils.data.tile_to_npy import sample
 from training.pytorch.test_finetuning import run as run_model
+from training.pytorch.test_finetuning import main as test_model
 
 
 parser = argparse.ArgumentParser()
@@ -37,25 +38,31 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--config_file', type=str, default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/params.json", help="json file containing the configuration")
 
 parser.add_argument('--model_file', type=str,
-                    help="Checkpoint saved model",
-                    default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/checkpoint_best.pth.tar")
+                   help="Checkpoint saved model",
+                   default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/checkpoint_best.pth.tar")
 
 #parser.add_argument('--data_path', type=str, help="Path to data", default="/mnt/blobfuse/cnn-minibatches/summer_2019/active_learning_splits/")
 # parser.add_argument('--data_sub_dirs', type=str, nargs='+', help="Sub-directories of `data_path` to get data from", default=['val1',]) # 'test1', 'test2', 'test3', 'test4'])
 
 parser.add_argument('--run_validation', action="store_true", help="Whether to run validation")
-#parser.add_argument('--validation_patches_fn', type=str, help="Filename with list of validation patch files", default='training/data/finetuning/val2_test_patches_500.txt')
-parser.add_argument('--validation_patches_fn', type=str, help="Filename with list of training patch files", default="training/data/finetuning/val2_train_patches_5.txt")
-parser.add_argument('--training_patches_fn', type=str, help="Filename with list of training patch files", default="training/data/finetuning/val2_train_patches_5.txt")
-parser.add_argument('--training_tiles_fn', type=str, help="Filename with list of training tile files", default="training/data/finetuning/test1_train_tiles.txt")
+
+# parser.add_argument('--validation_patches_fn', type=str, help="Filename with list of training patch files", default="training/data/finetuning/val2_train_patches_5.txt")
+# parser.add_argument('--training_patches_fn', type=str, help="Filename with list of training patch files", default="training/data/finetuning/val2_train_patches_5.txt")
+
+parser.add_argument('--area', type=str, help="Name of area being tested in: test1, test2, test3, test4, or val1", default="test1")
+parser.add_argument('--train_tiles_list_filename', type=str, help="Filename with list of training tile files", default="training/data/finetuning/test1_train_tiles.txt")
+parser.add_argument('--test_tiles_list_filename', type=str, help="Filename with list of training tile files", default="training/data/finetuning/test1_test_tiles.txt")
 
 parser.add_argument('--log_fn', type=str, help="Where to store training results", default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/val/val2/10_patches/finetune_results.csv")
 
-parser.add_argument('--model_output_directory', help='Where to store fine-tuned model', default='/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/val/val2_fix/')
 
+parser.add_argument('--model_output_directory', type='str', help='Where to store fine-tuned model', default='/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/val/val2_fix/')
 
+print('In model_finetuning.py')
 
 args = parser.parse_args()
+#print('unknown args:')
+#print(unknown)
 
 class GroupParams(nn.Module):
 
@@ -212,8 +219,10 @@ def new_train_patches_entropy(model, train_tile, predictions, num_new_patches):
 
 
     
-def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True, step_size_function=active_learning_step_size, new_train_patches_function=new_train_patches_entropy, num_total_points=4000):
-    train_tile_fn = open(args.training_tiles_fn, "r").read().strip().split("\n")[0]
+def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, params_train, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True, step_size_function=active_learning_step_size, new_train_patches_function=new_train_patches_entropy, num_total_points=4000):
+    pdb.set_trace()
+
+    train_tile_fn = open(args.train_tiles_list_file_name, "r").read().strip().split("\n")[0]
     train_tile_fn = train_tile_fn.replace('.mrf', '.npy')
     train_tile = np.load(train_tile_fn)
     
@@ -226,9 +235,16 @@ def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, hy
         num_new_patches = step_size_function(len(training_patches))
         training_patches += new_train_patches_function(model, train_tile, current_predictions, num_new_patches)
         model = copy.deepcopy(old_model)
-        dataloaders = None
-        model, fine_tune_result = train_model(model, loss_criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True)
-        current_predictions = run_model(model, train_tile, '')
+
+        training_set = DataGenerator(
+            training_patches, batch_size, patch_size, num_channels, superres=params["train_opts"]["superres"], masking=True
+        )
+        dataloaders['train'] = data.DataLoader(training_set, **params_train)
+        hyper_parameters['query_method'] = 'entropy' if (new_train_patches_function == new_train_patches_entropy) else 'random'
+        hyper_parameters['num_points'] = len(training_patches)
+        
+        model, fine_tune_result = train_model(model, loss_criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=num_epochs, superres=False, masking=True)
+        # current_predictions = run_model(model, train_tile, '')
         
     
 
@@ -251,7 +267,9 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
     for phase in phases:
         if phase not in ['train', 'val']:
             print('Warning: epoch phase "%s" not valid. Valid options: ["train", "val"]. Data provided in this phase may be ignored.' % phase)
-    
+
+    pdb.set_trace()
+            
     for epoch in range(-1, num_epochs):
         #print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         #print('-' * 10)
@@ -412,6 +430,10 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
 
     duration = datetime.now() - since
     seconds_elapsed = duration.total_seconds()
+
+    # for area, tile_file_names in zip(args.test_areas, args.test_tile_list_file_names):
+    test_model(finetuned_fn, args.config_file, args.area, args.train_tile_list_file_names, 'train')
+    test_model(finetuned_fn, args.config_file, args.area, args.test_tile_list_file_names, 'test')
     
     ## print('Training complete in {:.0f}m {:.0f}s'.format(
     #    seconds_elapsed // 60, seconds_elapsed % 60))
@@ -435,6 +457,8 @@ def hyper_parameters_str(hyper_parameters):
 
 def main(finetune_methods, predictions_path, validation_patches_fn=None):
     global results_writer, results_file
+
+    print('In main')
     
     os.makedirs(str(Path(args.log_fn).parent), exist_ok=True)
     results_file = open(args.log_fn, 'w+')

@@ -11,6 +11,7 @@ import torch
 import torch.nn as nn
 from training.pytorch.models.unet import Unet
 from training.pytorch.utils.eval_segm import mean_IoU, pixel_accuracy
+from training.pytorch.utils.data.load_tile import load_tile
 from training.pytorch.data_loader import DataGenerator
 from torch.utils import data
 from torch.autograd import Variable
@@ -120,13 +121,13 @@ def load_model(path_2_saved_model, model_opts, outer_class=None):
     return model
 
 
-def main(model_file, config_file):
+def main(model_file, config_file, area, tile_list_file_name, tile_type):
     params = json.load(open(config_file, "r"))
     is_group_params = ('group_params' in model_file)
     
     model = load_model(model_file, params['model_opts'], outer_class=(GroupParams if is_group_params else None))
     
-    f = open(args.test_tile_fn, "r")
+    f = open(tile_list_file_name, "r")
     test_tiles_files = f.read().strip().split("\n")
     f.close()
     
@@ -138,31 +139,25 @@ def main(model_file, config_file):
     running_pixel_accuracy = 0
 
     for i, test_tile in enumerate(test_tiles_files):
-        tile = np.load(test_tile.replace('.mrf', '.npy'))
+        tile = load_tile(test_tile.replace('.mrf', '.npy'))
         # (batch, channel, height, width)
         prediction_file_path = model_file.replace('.tar', '_predictions/%s_%d_%s.npy' % (args.tile_type, i, Path(test_tile).name))
         os.makedirs(str(Path(prediction_file_path).parent), exist_ok=True)
         result = run(model, tile, prediction_file_path)
         # (height, width)
-        
+
         y_train_hr = tile[0, 4, :, :]
         height, width = y_train_hr.shape
-        # (height, width)
         
-        # Collapse larger class space down to 4+1 primary classes {unknown, water, forest, field, built}
-        y_train_hr[y_train_hr == 15] = 0
-        y_train_hr[y_train_hr == 5] = 4
-        y_train_hr[y_train_hr == 6] = 4
-
         margin = model.border_margin_px
         tile_mean_IoU = mean_IoU(result[margin:height-margin, margin:width-margin], y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
         tile_pixel_accuracy = pixel_accuracy(result[margin:height-margin, margin:width-margin], y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
 
 
-        print('%s, %s, %s, %d, %f, %f, %s, %s,' % (Path(model_file).name, args.area, args.tile_type, i, tile_mean_IoU, tile_pixel_accuracy, test_tile, prediction_file_path))
+        print('%s, %s, %s, %d, %f, %f, %s, %s,' % (Path(model_file).name, area, tile_type, i, tile_mean_IoU, tile_pixel_accuracy, test_tile, prediction_file_path))
         
     
 
 if __name__ == '__main__':
-    main(args.model_file, args.config_file)
+    main(args.model_file, args.config_file, args.area, args.test_tile_fn, args.tile_type)
 
