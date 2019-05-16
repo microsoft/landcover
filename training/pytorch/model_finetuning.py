@@ -336,6 +336,10 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
         if phase not in ['train', 'val']:
             print('Warning: epoch phase "%s" not valid. Valid options: ["train", "val"]. Data provided in this phase may be ignored.' % phase)
 
+    delta_loss = 1000000000.
+    loss_previous_epoch = 1000000000.
+    loss_stopping_th = 0.0005
+
     for epoch in range(-1, num_epochs):
         #print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         #print('-' * 10)
@@ -353,7 +357,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
         # print(epoch_statistics)
 
         hyper_parameters['epoch'] = epoch
-        
+
         for phase in phases:
             if phase == 'train':
                 scheduler.step()
@@ -363,7 +367,6 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
                     model.eval()   # Set model to evaluate mode
                 else:
                     continue
-                
             epoch_statistics[phase]['loss'] = 0.0
             epoch_statistics[phase]['mean_IoU'] = 0.0
             epoch_statistics[phase]['accuracy'] = 0.0
@@ -464,8 +467,12 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
             # Normalize statistics per training iteration in epoch
             for key in epoch_statistics[phase]:
                 epoch_statistics[phase][key] /= n_iter  # divide by how many batches were processed in this epoch
+
             # print('number of batches in epoch', len(dataloaders[phase]))
             # print('n_iter', n_iter)
+            if phase == "train":
+                delta_loss = np.abs(epoch_statistics[phase]['loss'] - loss_previous_epoch)
+                loss_previous_epoch = epoch_statistics[phase]['loss']
                 
         result_row = {
             'run_id': hyper_parameters['run_id'],
@@ -483,10 +490,15 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
         results_writer.writerow(result_row)
         results_file.flush()
 
-        # model_file_name_suffix = hyper_parameters_str(hyper_parameters)
+        model_file_name_suffix = hyper_parameters_str(hyper_parameters)
+        
+        finetuned_fn = str(Path(args.model_output_directory) / ("finetuned_unet_gn.pth_%s.tar" % model_file_name_suffix))
 
-        # finetuned_fn = str(Path(args.model_output_directory) / ("finetuned_unet_gn.pth_%s.tar" % model_file_name_suffix))
-        # torch.save(model.state_dict(), finetuned_fn)
+        if (delta_loss > loss_stopping_th):
+            torch.save(model.state_dict(), finetuned_fn)
+        else:
+            duration = datetime.now() - since
+            return model, FineTuneResult(best_mean_IoU=best_mean_IoU, train_duration=duration)
         
             # deep copy the model
             #if phase == 'val' and epoch_mean_IoU > best_mean_IoU:
@@ -495,10 +507,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
             #    best_epoch = epoch
             #    duration_til_best_epoch = datetime.now() - since
         # print()
-
-    duration = datetime.now() - since
-    seconds_elapsed = duration.total_seconds()
-
+        
     # for area, tile_file_names in zip(args.test_areas, args.test_tile_list_file_names):
     # test_model(finetuned_fn, args.config_file, args.area, args.train_tile_list_file_names, 'train')
     # test_model(finetuned_fn, args.config_file, args.area, args.test_tile_list_file_names, 'test')
@@ -609,7 +618,7 @@ def hyper_parameters_fixed(hyper_parameters):
     experiment_configs = []
 
     # Add last-k-layers hypers
-    for last_k_layers, learning_rate, last_epoch in [(1, 0.0005, 12)]:  # , (2, 0.0005, 20), (3, 0.0001, 30)]:
+    for last_k_layers, learning_rate in [(1, 0.01), (2, 0.005), (3, 0.001)]:
         new_hyper_parameters = copy.deepcopy(hyper_parameters)
         new_hyper_parameters['method_name'] = 'last_k_layers'
         new_hyper_parameters['last_k_layers'] = last_k_layers
@@ -642,8 +651,8 @@ if __name__ == "__main__":
         'optimizer_method': torch.optim.Adam, #, torch.optim.SGD],
         'learning_rate': 0.004, # [0.001, 0.002, 0.003, 0.004, 0.01, 0.03],
         'lr_schedule_step_size': 1000,  # [5],
-        'mask_id': 5, #  [0, 4, 7, 11] # range(12) # [4], # mask-id 5 --> 10 px / patch
-        'n_epochs': 30,
+        'mask_id': 4, #  [0, 4, 7, 11] # range(12) # [4], # mask-id 5 --> 10 px / patch
+        'n_epochs': 50,
     }
 
     if args.run_validation:

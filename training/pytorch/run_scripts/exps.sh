@@ -20,9 +20,8 @@ export PYTHONPATH=.
 
 
 
-
-# NUMS_PATCHES=(2 4 6 8 10 40 100 200 400 1000 2000)
-
+#NUMS_PATCHES=(10 40 100 200 400 1000 2000)
+NUMS_PATCHES=(400)
 
 # Test original model
 #python training/pytorch/test_finetuning.py --area test${TEST_REGION} --model_file "/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/baseline_models/baseline_unet_group_params_isotropic_nn9.pth.tar" --test_tile_fn training/data/finetuning/test${TEST_REGION}_train_tiles.txt --tile_type train
@@ -30,7 +29,7 @@ export PYTHONPATH=.
 
 query_method="entropy"
 
-for random_seed in {1..2}
+for random_seed in {1..5}
 do
     MODELS_DIR="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/test/test${TEST_REGION}/${num_patches}_patches"
 
@@ -43,4 +42,3 @@ do
     
     
 done
-
