@@ -148,8 +148,6 @@ def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, params
     unet.load_state_dict(checkpoint['model'])
     unet.eval()
 
-    # pdb.set_trace()
-    
     for layer in list(unet.children())[:-last_k_layers]:
         for param in layer.parameters():
             param.requires_grad = False
@@ -190,7 +188,6 @@ def prediction_entropy(predictions):
 def pixels_to_patches(train_tile, points):
     # train_tile: (batch, channels, height, width)
     # return one 240 x 240 patch per point
-    pdb.set_trace()
     _, num_channel, tile_height, tile_width = train_tile.shape
     patch_height = 240
     patch_width = 240
@@ -255,7 +252,9 @@ def run_model(model, naip_data, output_file_path=None):
 
 
     
-def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, params_train, params, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True, step_size_function=active_learning_step_size, new_train_patches_function=new_train_patches_entropy, num_total_points=4000):
+def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, params, params_train, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True, step_size_function=active_learning_step_size, new_train_patches_function=new_train_patches_entropy, num_total_points=4000):
+    pdb.set_trace()
+
     train_tile_fn = open(args.train_tiles_list_file_name, "r").read().strip().split("\n")[0]
     train_tile_fn = train_tile_fn.replace('.mrf', '.npy')
     train_tile = load_tile(train_tile_fn)
@@ -266,23 +265,23 @@ def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, pa
     
     old_model = copy.deepcopy(model)
     training_patches = []
-
+    
     current_predictions, _ = run_model(model, train_tile_inputs)
     
-    while len(training_patches) < num_total_points:
+    while len(training_patches) < num_total_points:    
         num_new_patches = step_size_function(len(training_patches))
-        pdb.set_trace()
         training_patches += new_train_patches_function(model, train_tile, current_predictions, num_new_patches)
         model = copy.deepcopy(old_model)
 
+        patch_size = training_patches[0].shape
         training_set = DataGenerator(
-            training_patches, params_train["batch_size"], patch_size, num_channels, superres=params["train_opts"]["superres"], masking=True
-        )
+            training_patches, params_train["batch_size"], params["patch_size"], params["loader_opts"]["num_channels"], superres=superres, masking=True
+        ) # superres=params["train_opts"]["superres"]
         dataloaders['train'] = data.DataLoader(training_set, **params_train)
         hyper_parameters['query_method'] = 'entropy' if (new_train_patches_function == new_train_patches_entropy) else 'random'
         hyper_parameters['num_points'] = len(training_patches)
         
-        model, fine_tune_result = train_model(model, loss_criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=num_epochs, superres=False, masking=True)
+        model, fine_tune_result = train_model(model, loss_criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=num_epochs, superres=superres, masking=True)
         current_predictions = run_model(model, train_tile_inputs)
         
     
@@ -302,13 +301,11 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     # Each epoch can have a training and validation phase
-    phases = data_loaders.keys()
+    phases = dataloaders.keys()
     for phase in phases:
         if phase not in ['train', 'val']:
             print('Warning: epoch phase "%s" not valid. Valid options: ["train", "val"]. Data provided in this phase may be ignored.' % phase)
 
-    # pdb.set_trace()
-            
     for epoch in range(-1, num_epochs):
         #print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         #print('-' * 10)
@@ -624,6 +621,5 @@ if __name__ == "__main__":
     
     
     predictions_path = Path(args.model_output_directory) / "predictions"
-    # pdb.set_trace()
     main(experiment_configs, predictions_path)
 

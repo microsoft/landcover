@@ -41,7 +41,6 @@ def predict_entire_image_unet_fine(model, x):
     # x: (height, width, channel)
     if torch.cuda.is_available():
         model.cuda()
-    pdb.set_trace()
     norm_image = x
     norm_image = rearrange(norm_image, 'height width channel -> channel height width')
     c, h, w = norm_image.shape
