@@ -18,17 +18,19 @@ import rasterio.mask
 import shapely
 import shapely.geometry
 
-parser = argparse.ArgumentParser()
 
-parser.add_argument('--tiles_file_name', type=str, help="Filename with tile file names in npy format", default="training/data/finetuning/val2.txt")
-parser.add_argument('--sample', action="store_true", help="Whether to take random samples from this tile or not")
-parser.add_argument('--patch_dimension', type=int, help="Size of patches to create", default=240)
-parser.add_argument('--num_patches', type=int, help="How many patches to sample", default=2000)
-parser.add_argument('--patches_output_directory', default='/mnt/blobfuse/cnn-minibatches/summer_2019/active_learning_splits/val2/')
-parser.add_argument('--patches_output_file_name', default='training/data/finetuning/val2_train_patches.txt')
-
-
-args = parser.parse_args()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    
+    parser.add_argument('--tiles_file_name', type=str, help="Filename with tile file names in npy format", default="training/data/finetuning/val2.txt")
+    parser.add_argument('--sample', action="store_true", help="Whether to take random samples from this tile or not")
+    parser.add_argument('--patch_dimension', type=int, help="Size of patches to create", default=240)
+    parser.add_argument('--num_patches', type=int, help="How many patches to sample", default=2000)
+    parser.add_argument('--patches_output_directory', default='/mnt/blobfuse/cnn-minibatches/summer_2019/active_learning_splits/val2/')
+    parser.add_argument('--patches_output_file_name', default='training/data/finetuning/val2_train_patches.txt')
+    
+    
+    args = parser.parse_args()
 
 
 NLCD_CLASSES = [

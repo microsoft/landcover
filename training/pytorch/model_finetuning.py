@@ -29,40 +29,43 @@ from training.pytorch.utils.filesystem import ensure_dir
 from training.pytorch.losses import (multiclass_ce, multiclass_dice_loss, multiclass_jaccard_loss, multiclass_tversky_loss, multiclass_ce_points)
 from training.pytorch.data_loader import DataGenerator
 from training.pytorch.utils.data.tile_to_npy import sample
-from training.pytorch.test_finetuning import run as run_model
-from training.pytorch.test_finetuning import main as test_model
+from training.pytorch.utils.data.load_tile import load_tile, labels, features
+from training.pytorch.test_finetuning import predict_entire_image_unet_fine
+
+from web_tool.ServerModelsNIPSGroupNorm import softmax
 
 
-parser = argparse.ArgumentParser()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
 
-parser.add_argument('--config_file', type=str, default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/params.json", help="json file containing the configuration")
+    parser.add_argument('--config_file', type=str, default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/params.json", help="json file containing the configuration")
 
-parser.add_argument('--model_file', type=str,
+    parser.add_argument('--model_file', type=str,
                    help="Checkpoint saved model",
                    default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/checkpoint_best.pth.tar")
 
-#parser.add_argument('--data_path', type=str, help="Path to data", default="/mnt/blobfuse/cnn-minibatches/summer_2019/active_learning_splits/")
-# parser.add_argument('--data_sub_dirs', type=str, nargs='+', help="Sub-directories of `data_path` to get data from", default=['val1',]) # 'test1', 'test2', 'test3', 'test4'])
+    #parser.add_argument('--data_path', type=str, help="Path to data", default="/mnt/blobfuse/cnn-minibatches/summer_2019/active_learning_splits/")
+    # parser.add_argument('--data_sub_dirs', type=str, nargs='+', help="Sub-directories of `data_path` to get data from", default=['val1',]) # 'test1', 'test2', 'test3', 'test4'])
 
-parser.add_argument('--run_validation', action="store_true", help="Whether to run validation")
+    parser.add_argument('--run_validation', action="store_true", help="Whether to run validation")
 
-# parser.add_argument('--validation_patches_fn', type=str, help="Filename with list of training patch files", default="training/data/finetuning/val2_train_patches_5.txt")
-# parser.add_argument('--training_patches_fn', type=str, help="Filename with list of training patch files", default="training/data/finetuning/val2_train_patches_5.txt")
+    # parser.add_argument('--validation_patches_fn', type=str, help="Filename with list of training patch files", default="training/data/finetuning/val2_train_patches_5.txt")
+    # parser.add_argument('--training_patches_fn', type=str, help="Filename with list of training patch files", default="training/data/finetuning/val2_train_patches_5.txt")
 
-parser.add_argument('--area', type=str, help="Name of area being tested in: test1, test2, test3, test4, or val1", default="test1")
-parser.add_argument('--train_tiles_list_filename', type=str, help="Filename with list of training tile files", default="training/data/finetuning/test1_train_tiles.txt")
-parser.add_argument('--test_tiles_list_filename', type=str, help="Filename with list of training tile files", default="training/data/finetuning/test1_test_tiles.txt")
+    parser.add_argument('--area', type=str, help="Name of area being tested in: test1, test2, test3, test4, or val1", default="test1")
+    parser.add_argument('--train_tiles_list_file_name', type=str, help="Filename with list of training tile files", default="training/data/finetuning/test1_train_tiles.txt")
+    parser.add_argument('--test_tiles_list_file_name', type=str, help="Filename with list of training tile files", default="training/data/finetuning/test1_test_tiles.txt")
 
-parser.add_argument('--log_fn', type=str, help="Where to store training results", default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/val/val2/10_patches/finetune_results.csv")
+    parser.add_argument('--log_fn', type=str, help="Where to store training results", default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/val/val2/10_patches/finetune_results.csv")
 
 
-parser.add_argument('--model_output_directory', type='str', help='Where to store fine-tuned model', default='/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/val/val2_fix/')
+    parser.add_argument('--model_output_directory', type=str, help='Where to store fine-tuned model', default='/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/val/val2_fix/')
 
-print('In model_finetuning.py')
+    print('In model_finetuning.py')
 
-args = parser.parse_args()
-#print('unknown args:')
-#print(unknown)
+    args = parser.parse_args()
+    #print('unknown args:')
+    #print(unknown)
 
 class GroupParams(nn.Module):
 
@@ -128,7 +131,7 @@ def finetune_group_params(path_2_saved_model, loss, gen_loaders, params, params_
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=lr_schedule_step_size, gamma=0.1)
 
     model_2_finetune = active_learning(model_2_finetune, loss, optimizer,
-                                       exp_lr_scheduler, gen_loaders, params_train, hyper_parameters, log_writer, num_epochs=n_epochs)
+                                       exp_lr_scheduler, gen_loaders, params, params_train, hyper_parameters, log_writer, num_epochs=n_epochs)
     return model_2_finetune
 
 def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, params_train, hyper_parameters, log_writer, n_epochs=25):
@@ -165,7 +168,7 @@ def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, params
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=lr_schedule_step_size, gamma=0.1)
 
     model_2_finetune = active_learning(model_2_finetune, loss, optimizer,
-                                       exp_lr_scheduler, gen_loaders, params_train, hyper_parameters, log_writer, num_epochs=n_epochs)
+                                       exp_lr_scheduler, gen_loaders, params, params_train, hyper_parameters, log_writer, num_epochs=n_epochs)
     return model_2_finetune
 
 
@@ -179,34 +182,45 @@ def active_learning_step_size(num_points):
 
 
 def prediction_entropy(predictions):
-    # predictions: (channels, height, width)
-    return (predictions * predictions.log()).sum(axis=0)
+    # predictions: (height, width, channels)
+    predictions = softmax(predictions)
+    return (predictions * np.log(predictions)).sum(axis=-1)
 
 
 def pixels_to_patches(train_tile, points):
+    # train_tile: (batch, channels, height, width)
     # return one 240 x 240 patch per point
-    tile_height, tile_width, num_channel = train_tile.shape
+    pdb.set_trace()
+    _, num_channel, tile_height, tile_width = train_tile.shape
     patch_height = 240
     patch_width = 240
-    #Patches dimensions will be (B,C, H, W)
-    patches = np.zeros((len(points), patch_height, patch_width, num_channel))
+    # Patches dimensions will be (B, C, H, W)
+    patches = []
     #Fixme: Check for edge cases where points are close to the border. We might not want this zero padding
     for i, point in enumerate(points):
         row, col = point
-        patches[i] = train_tile[row-patch_height//2:row+patch_height//2, row-patch_width//2:row+patch_width//2, :]
+        patches.append(train_tile[0, :, row-patch_height//2:row+patch_height//2, row-patch_width//2:row+patch_width//2])
     return patches
 
 
 def new_train_patches_entropy(model, train_tile, predictions, num_new_patches):
-    
     # (channels, height, width)
     entropy = prediction_entropy(predictions)
     # (height, width)
     rows, columns = entropy.shape
     possible_indices = [(row, column) for row in range(rows) for column in range(columns)]
-    highest_entropy_points = heapq.nlargest(num_train_points,
+    highest_entropy_points = heapq.nlargest(num_new_patches,
                                             possible_indices,
                                             key=lambda index: entropy[index])
+    for row, column in highest_entropy_points:
+        try:
+            margin = model.border_margin_px
+        except:
+            margin = 0
+        if not( (margin < row < rows - margin) and
+                (margin < column < columns - margin) ):
+            raise Exception('Invalid point (%d, %d): falls in border of %d px, where a prediction is not possible' % (row, column, margin))
+
     new_train_patches = pixels_to_patches(train_tile, highest_entropy_points)
     return new_train_patches
     
@@ -217,34 +231,59 @@ def new_train_patches_entropy(model, train_tile, predictions, num_new_patches):
     # new_train_patches = pixels_to_patches(train_tile, highest_entropy_points)
 
 
+def run_model(model, naip_data, output_file_path=None):
+    # apply padding to the output_features
+    # naip_data: (batch, channel, height, width)
+    x = np.squeeze(naip_data, 0)
+    # (channel, height, width)
+    x = np.swapaxes(x, 0, 2)
+    # (width, height, channel)
+    x = np.swapaxes(x, 0, 1)
+    # (height, width, channel)
+
+    x = x[:, :, :4]
+    naip_data = x
+    # (height, width, channel)
+
+    y_hat = predict_entire_image_unet_fine(model, naip_data)
+    # (h, w, c)
+    if output_file_path:
+        np.save(output_file_path, y_hat)
+    class_predictions = np.argmax(y_hat, axis=-1)    
+
+    return y_hat, class_predictions
+
 
     
-def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, params_train, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True, step_size_function=active_learning_step_size, new_train_patches_function=new_train_patches_entropy, num_total_points=4000):
-    pdb.set_trace()
-
+def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, params_train, params, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True, step_size_function=active_learning_step_size, new_train_patches_function=new_train_patches_entropy, num_total_points=4000):
     train_tile_fn = open(args.train_tiles_list_file_name, "r").read().strip().split("\n")[0]
     train_tile_fn = train_tile_fn.replace('.mrf', '.npy')
-    train_tile = np.load(train_tile_fn)
+    train_tile = load_tile(train_tile_fn)
+    # train_tile: (batch, channels, row, col)
+
+    train_tile_inputs = features(train_tile)
+    train_tile_labels = labels(train_tile)
     
     old_model = copy.deepcopy(model)
     training_patches = []
 
-    current_predictions = evaluate_model(model, train_tile)
+    current_predictions, _ = run_model(model, train_tile_inputs)
     
     while len(training_patches) < num_total_points:
         num_new_patches = step_size_function(len(training_patches))
+        pdb.set_trace()
         training_patches += new_train_patches_function(model, train_tile, current_predictions, num_new_patches)
         model = copy.deepcopy(old_model)
 
         training_set = DataGenerator(
-            training_patches, batch_size, patch_size, num_channels, superres=params["train_opts"]["superres"], masking=True
+            training_patches, params_train["batch_size"], patch_size, num_channels, superres=params["train_opts"]["superres"], masking=True
         )
         dataloaders['train'] = data.DataLoader(training_set, **params_train)
         hyper_parameters['query_method'] = 'entropy' if (new_train_patches_function == new_train_patches_entropy) else 'random'
         hyper_parameters['num_points'] = len(training_patches)
         
         model, fine_tune_result = train_model(model, loss_criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=num_epochs, superres=False, masking=True)
-        # current_predictions = run_model(model, train_tile, '')
+        current_predictions = run_model(model, train_tile_inputs)
         
     
 
@@ -268,7 +307,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
         if phase not in ['train', 'val']:
             print('Warning: epoch phase "%s" not valid. Valid options: ["train", "val"]. Data provided in this phase may be ignored.' % phase)
 
-    pdb.set_trace()
+    # pdb.set_trace()
             
     for epoch in range(-1, num_epochs):
         #print('Epoch {}/{}'.format(epoch, num_epochs - 1))
@@ -372,7 +411,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
                     y_hat = outputs.cpu().numpy()
                 y_hat = np.argmax(y_hat, axis=1)
 
-                        
+                
                 # statistics
                 n_iter += 1
 
@@ -467,15 +506,7 @@ def main(finetune_methods, predictions_path, validation_patches_fn=None):
     
     params = json.load(open(args.config_file, "r"))
     
-    f = open(args.training_patches_fn, "r")
-    training_patches = f.read().strip().split("\n")
-    f.close()
-
     validation_patches = None
-    if args.validation_patches_fn:
-        f = open(args.validation_patches_fn, "r")
-        validation_patches = f.read().strip().split("\n")
-        f.close()
 
     # f = open(training_points_sample_fn, "r")
     # training_points = [ for line in f.read().stip().split("\n")]
@@ -487,23 +518,11 @@ def main(finetune_methods, predictions_path, validation_patches_fn=None):
                     'shuffle': params["loader_opts"]["shuffle"],
                     'num_workers': params["loader_opts"]["num_workers"]}
     
-    training_set = DataGenerator(
-        training_patches, batch_size, patch_size, num_channels, superres=params["train_opts"]["superres"], masking=True
-    )
-
-    validation_set = None
-    if validation_patches:
-        validation_set = DataGenerator(
-            validation_patches, batch_size, patch_size, num_channels, superres=params["train_opts"]["superres"], masking=True
-        )
-
     model_opts = params["model_opts"]
     loss = multiclass_ce_points
     path = args.model_file
 
-    dataloaders = {} # 'train': data.DataLoader(training_set, **params_train)}
-    if validation_set:
-        dataloaders['val'] = data.DataLoader(validation_set, **params_train)
+    dataloaders = {}
 
     results = {}
     for run_id, (finetune_method_name, finetune_function, hyper_params) in enumerate(finetune_methods):

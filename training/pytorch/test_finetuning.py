@@ -21,17 +21,19 @@ from web_tool.ServerModelsNIPSGroupNorm import GroupParams
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--config_file', type=str, default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/params.json", help="json file containing the configuration")
 
-parser.add_argument('--model_file', type=str,
+if __name__ == '__main__':
+    parser.add_argument('--config_file', type=str, default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/params.json", help="json file containing the configuration")
+
+    parser.add_argument('--model_file', type=str,
                     help="Checkpoint saved model",
                     default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/checkpoint_best.pth.tar")
-parser.add_argument('--test_tile_fn', type=str, help="Filename with tile file names in npy format", default="training/data/finetuning/test1_test_tiles.txt")  #   training/data/finetuning/val1_test_patches.txt
-parser.add_argument('--tile_type', type=str, help="Filename with tile file names in npy format", default="test")
-parser.add_argument('--area', type=str, help="Name of area being tested in: test1, test2, test3, test4, or val1", default="test1")
+    parser.add_argument('--test_tile_fn', type=str, help="Filename with tile file names in npy format", default="training/data/finetuning/test1_test_tiles.txt")  #   training/data/finetuning/val1_test_patches.txt
+    parser.add_argument('--tile_type', type=str, help="Filename with tile file names in npy format", default="test")
+    parser.add_argument('--area', type=str, help="Name of area being tested in: test1, test2, test3, test4, or val1", default="test1")
 
 
-args = parser.parse_args()
+    args = parser.parse_args()
 
 
 
@@ -39,6 +41,7 @@ def predict_entire_image_unet_fine(model, x):
     # x: (height, width, channel)
     if torch.cuda.is_available():
         model.cuda()
+    pdb.set_trace()
     norm_image = x
     norm_image = rearrange(norm_image, 'height width channel -> channel height width')
     c, h, w = norm_image.shape
@@ -51,7 +54,7 @@ def predict_entire_image_unet_fine(model, x):
     out = np.zeros((5, h, w))
     # (channel, height, width)
 
-    patch_dimension = 892
+    patch_dimension = 1500
 
     stride = patch_dimension - 2 * margin
 
@@ -83,17 +86,18 @@ def predict_entire_image_unet_fine(model, x):
     return pred
 
 
-def run_model_on_tile(model, naip_tile, output_file_path, batch_size=32):
+def run_model_on_tile(model, naip_tile, output_file_path=None, batch_size=32):
     # (height, width, channel)
     y_hat = predict_entire_image_unet_fine(model, naip_tile)
     # (h, w, c)
-    np.save(output_file_path, y_hat)
+    if output_file_path:
+        np.save(output_file_path, y_hat)
     return np.argmax(y_hat, axis=-1)
     # (h, w)
 
 
 
-def run(model, naip_data, output_file_path):
+def run(model, naip_data, output_file_path=None):
     # apply padding to the output_features
     # naip_data: (batch, channel, height, width)
     x = np.squeeze(naip_data, 0)
@@ -106,7 +110,7 @@ def run(model, naip_data, output_file_path):
     x = x[:, :, :4]
     naip_data = x
     # (height, width, channel)
-    output = run_model_on_tile(model, naip_data, output_file_path)
+    output = run_model_on_tile(model, naip_data, output_file_path=output_file_path)
     # (height, width)
     return output
 
