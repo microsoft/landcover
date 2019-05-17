@@ -217,6 +217,7 @@ def new_train_patches_entropy(model, train_tile, predictions, num_new_patches):
     margin = max(margin, 240//2)
 
     all_indices = list(zip(*train_tile[0, 4, margin:rows-margin, margin:columns-margin].nonzero()))
+    all_indices = [(row + margin, column + margin) for (row, column) in all_indices]
     # Un-comment below for faster debugging
     # num_possible_points = 10000
     # possible_indices = [
@@ -226,11 +227,9 @@ def new_train_patches_entropy(model, train_tile, predictions, num_new_patches):
     # ]
     possible_indices = all_indices
 
-    # [(row, column) for row in range(rows) for column in range(columns) if train_tile[0, 4, row, column] != 0]
     highest_entropy_points = heapq.nlargest(num_new_patches,
                                             possible_indices,
                                             key=lambda index: entropy[index])
-    highest_entropy_points = [(row + margin, column + margin) for (row, column) in highest_entropy_points]
 
     for row, column in highest_entropy_points:
         if not( (margin <= row < rows - margin) and
