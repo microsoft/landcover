@@ -302,7 +302,7 @@ def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, pa
         logits, class_predictions = run_model(model, train_tile_inputs)
         tile_mean_IoU = mean_IoU(class_predictions[margin:height-margin, margin:width-margin], y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
         tile_pixel_accuracy = pixel_accuracy(class_predictions[margin:height-margin, margin:width-margin], y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
-        print('%d, %s, %f, %f, %s' % (len(training_patches), args.area, tile_mean_IoU, tile_pixel_accuracy, train_tile_fn))
+        print('%d, %s, %d, %f, %f, %s' % (len(training_patches), args.area, args.random_seed, tile_mean_IoU, tile_pixel_accuracy, train_tile_fn))
 
         # Select new points 
         num_new_patches = step_size_function(len(training_patches))
@@ -545,7 +545,7 @@ def main(finetune_methods, predictions_path, validation_patches_fn=None):
     results_writer = csv.DictWriter(results_file, ['run_id', 'hyper_parameters', 'epoch', 'train_loss', 'train_accuracy', 'train_mean_IoU', 'val_loss', 'val_accuracy', 'val_mean_IoU', 'total_time'])
     results_writer.writeheader()
 
-    print("num_points, area, mean_IoU, pixel_accuracy, tile_path")
+    print("num_points, area, random_seed, mean_IoU, pixel_accuracy, tile_path")
     
     params = json.load(open(args.config_file, "r"))
     
