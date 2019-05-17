@@ -36,15 +36,9 @@ class DataGenerator(data.Dataset):
 
     def __getitem__(self, index):
         'Generate one sample of data'
-        #indices = self.indices[index * self.batch_size:(index + 1) * self.batch_size]
 
-        #fns = [self.patches[i] for i in indices]
-
-        fn_parts = self.patches[index].split("/")
-
-        data = np.load(self.patches[index]).squeeze()
+        data = self.patches[index].squeeze()
         data = np.rollaxis(data, 0, 3)
-
         
         if self.masking:
             masks = np.load(self.patches[index].replace('.npy', '-mask.npy'))

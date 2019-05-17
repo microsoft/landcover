@@ -61,11 +61,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--model_output_directory', type=str, help='Where to store fine-tuned model', default='/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/val/val2_fix/')
 
-    print('In model_finetuning.py')
-
     args = parser.parse_args()
-    #print('unknown args:')
-    #print(unknown)
 
 class GroupParams(nn.Module):
 
@@ -193,10 +189,16 @@ def pixels_to_patches(train_tile, points):
     patch_width = 240
     # Patches dimensions will be (B, C, H, W)
     patches = []
+    mask = np.zeros((patch_height, patch_width))
+    mask[patch_height // 2][patch_width // 2] = 1
     #Fixme: Check for edge cases where points are close to the border. We might not want this zero padding
     for i, point in enumerate(points):
         row, col = point
-        patches.append(train_tile[0, :, row-patch_height//2:row+patch_height//2, row-patch_width//2:row+patch_width//2])
+        patch = train_tile[0, :, row-patch_height//2:row+patch_height//2, row-patch_width//2:row+patch_width//2]
+        patch[4] *= mask
+        patch[5] *= mask
+        # Only provide labels available at the point selected
+        patches.append(patch)
     return patches
 
 
@@ -253,12 +255,15 @@ def run_model(model, naip_data, output_file_path=None):
 
     
 def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, params, params_train, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True, step_size_function=active_learning_step_size, new_train_patches_function=new_train_patches_entropy, num_total_points=4000):
-    pdb.set_trace()
 
     train_tile_fn = open(args.train_tiles_list_file_name, "r").read().strip().split("\n")[0]
     train_tile_fn = train_tile_fn.replace('.mrf', '.npy')
     train_tile = load_tile(train_tile_fn)
     # train_tile: (batch, channels, row, col)
+    batch_size, channels, height, width = train_tile.shape
+    
+    y_train_hr = train_tile[0, 4, :, :]
+
 
     train_tile_inputs = features(train_tile)
     train_tile_labels = labels(train_tile)
@@ -275,18 +280,25 @@ def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, pa
 
         patch_size = training_patches[0].shape
         training_set = DataGenerator(
-            training_patches, params_train["batch_size"], params["patch_size"], params["loader_opts"]["num_channels"], superres=superres, masking=True
-        ) # superres=params["train_opts"]["superres"]
+            training_patches, params_train["batch_size"], params["patch_size"], params["loader_opts"]["num_channels"], superres=superres)  # superres=params["train_opts"]["superres"]
         dataloaders['train'] = data.DataLoader(training_set, **params_train)
         hyper_parameters['query_method'] = 'entropy' if (new_train_patches_function == new_train_patches_entropy) else 'random'
         hyper_parameters['num_points'] = len(training_patches)
         
-        model, fine_tune_result = train_model(model, loss_criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=num_epochs, superres=superres, masking=True)
-        current_predictions = run_model(model, train_tile_inputs)
-        
-    
+        model, fine_tune_result = train_model(model, loss_criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=num_epochs, superres=superres, masking=False)
+        logits, class_predictions = run_model(model, train_tile_inputs)
 
-def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True):
+        try:
+            margin = model.border_margin_px
+        except:
+            margin = 0
+        tile_mean_IoU = mean_IoU(class_predictions[margin:height-margin, margin:width-margin], y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
+        tile_pixel_accuracy = pixel_accuracy(class_predictions[margin:height-margin, margin:width-margin], y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
+
+        print('%d, %s, %f, %f, %s' % (len(training_patches), args.area, tile_mean_IoU, tile_pixel_accuracy, train_tile_fn))
+            
+
+def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=False):
     global results_writer, results_file
     
     # mask_id indices (points per patch): [1, 2, 3, 4, 5, 10, 15, 20, 40, 60, 80, 100]
@@ -403,7 +415,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
                 batch_size, _, _ = y_hr.shape
                 # TODO: do we need this check below?
                 if phase == 'train':
-                    y_hat = outputs.cpu().detach().numpy() * mask.cpu().detach().numpy()
+                    y_hat = outputs.cpu().detach().numpy() # * mask.cpu().detach().numpy()
                 else:
                     y_hat = outputs.cpu().numpy()
                 y_hat = np.argmax(y_hat, axis=1)
@@ -442,19 +454,19 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
             'train_loss': epoch_statistics['train']['loss'],
             'train_accuracy': epoch_statistics['train']['accuracy'],
             'train_mean_IoU': epoch_statistics['train']['mean_IoU'],
-            'val_loss': epoch_statistics['val']['loss'],
-            'val_accuracy': epoch_statistics['val']['accuracy'],
-            'val_mean_IoU': epoch_statistics['val']['mean_IoU'],
+            'val_loss': epoch_statistics['val']['loss'] if 'val' in epoch_statistics else None,
+            'val_accuracy': epoch_statistics['val']['accuracy'] if 'val' in epoch_statistics else None,
+            'val_mean_IoU': epoch_statistics['val']['mean_IoU'] if 'val' in epoch_statistics else None,
             'total_time': datetime.now() - since
         }
         # pprint(result_row)
         results_writer.writerow(result_row)
         results_file.flush()
 
-        model_file_name_suffix = hyper_parameters_str(hyper_parameters)
-        
-        finetuned_fn = str(Path(args.model_output_directory) / ("finetuned_unet_gn.pth_%s.tar" % model_file_name_suffix))
-        torch.save(model.state_dict(), finetuned_fn)
+        # model_file_name_suffix = hyper_parameters_str(hyper_parameters)
+
+        # finetuned_fn = str(Path(args.model_output_directory) / ("finetuned_unet_gn.pth_%s.tar" % model_file_name_suffix))
+        # torch.save(model.state_dict(), finetuned_fn)
         
             # deep copy the model
             #if phase == 'val' and epoch_mean_IoU > best_mean_IoU:
@@ -468,8 +480,8 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
     seconds_elapsed = duration.total_seconds()
 
     # for area, tile_file_names in zip(args.test_areas, args.test_tile_list_file_names):
-    test_model(finetuned_fn, args.config_file, args.area, args.train_tile_list_file_names, 'train')
-    test_model(finetuned_fn, args.config_file, args.area, args.test_tile_list_file_names, 'test')
+    # test_model(finetuned_fn, args.config_file, args.area, args.train_tile_list_file_names, 'train')
+    # test_model(finetuned_fn, args.config_file, args.area, args.test_tile_list_file_names, 'test')
     
     ## print('Training complete in {:.0f}m {:.0f}s'.format(
     #    seconds_elapsed // 60, seconds_elapsed % 60))
@@ -494,12 +506,12 @@ def hyper_parameters_str(hyper_parameters):
 def main(finetune_methods, predictions_path, validation_patches_fn=None):
     global results_writer, results_file
 
-    print('In main')
-    
     os.makedirs(str(Path(args.log_fn).parent), exist_ok=True)
     results_file = open(args.log_fn, 'w+')
     results_writer = csv.DictWriter(results_file, ['run_id', 'hyper_parameters', 'epoch', 'train_loss', 'train_accuracy', 'train_mean_IoU', 'val_loss', 'val_accuracy', 'val_mean_IoU', 'total_time'])
     results_writer.writeheader()
+
+    print("num_points, area, mean_IoU, pixel_accuracy, tile_path")
     
     params = json.load(open(args.config_file, "r"))
     

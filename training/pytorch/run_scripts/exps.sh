@@ -19,7 +19,7 @@ shift $((OPTIND -1))
 export PYTHONPATH=.
 
 
-echo "model, area, tile_type, tile_index, mean_IoU, pixel_accuracy, tile_path, predictions_path"
+
 
 # NUMS_PATCHES=(2 4 6 8 10 40 100 200 400 1000 2000)
 
