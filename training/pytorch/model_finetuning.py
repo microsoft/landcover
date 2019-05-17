@@ -167,8 +167,8 @@ def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, params
 
 
 def active_learning_step_size(num_points):
-    if num_points < 40:
-        return 10
+#    if num_points < 40:
+#        return 10
     if num_points < 400:
         return 100
     if num_points < 4000:
@@ -178,7 +178,7 @@ def active_learning_step_size(num_points):
 def prediction_entropy(predictions):
     # predictions: (height, width, channels)
     predictions = softmax(predictions)
-    return (predictions * np.log(predictions)).sum(axis=-1)
+    return -(predictions * np.log(predictions)).sum(axis=-1)
 
 
 def pixels_to_patches(train_tile, points):
@@ -194,7 +194,8 @@ def pixels_to_patches(train_tile, points):
     #Fixme: Check for edge cases where points are close to the border. We might not want this zero padding
     for i, point in enumerate(points):
         row, col = point
-        patch = train_tile[0, :, row-patch_height//2:row+patch_height//2, row-patch_width//2:row+patch_width//2]
+        patch = train_tile[0, :, row-patch_height//2:row+patch_height//2, col-patch_width//2:col+patch_width//2]
+        # pdb.set_trace()
         patch[4] *= mask
         patch[5] *= mask
         # Only provide labels available at the point selected
@@ -203,22 +204,38 @@ def pixels_to_patches(train_tile, points):
 
 
 def new_train_patches_entropy(model, train_tile, predictions, num_new_patches):
-    # (channels, height, width)
+    # (batch, channels, height, width)
     entropy = prediction_entropy(predictions)
     # (height, width)
     rows, columns = entropy.shape
-    possible_indices = [(row, column) for row in range(rows) for column in range(columns)]
+
+    try:
+        margin = model.border_margin_px
+    except:
+        margin = 0
+
+    margin = max(margin, 240//2)
+
+    all_indices = list(zip(*train_tile[0, 4, margin:rows-margin, margin:columns-margin].nonzero()))
+    num_possible_points = 10000
+    possible_indices = [
+        (random.randint(0, rows - 2 * margin - 1),
+         random.randint(0, columns - 2 * margin - 1))
+        for n in range(num_possible_points)
+    ]
+
+    # [(row, column) for row in range(rows) for column in range(columns) if train_tile[0, 4, row, column] != 0]
     highest_entropy_points = heapq.nlargest(num_new_patches,
                                             possible_indices,
                                             key=lambda index: entropy[index])
+    highest_entropy_points = [(row + margin, column + margin) for (row, column) in highest_entropy_points]
+
     for row, column in highest_entropy_points:
-        try:
-            margin = model.border_margin_px
-        except:
-            margin = 0
-        if not( (margin < row < rows - margin) and
-                (margin < column < columns - margin) ):
-            raise Exception('Invalid point (%d, %d): falls in border of %d px, where a prediction is not possible' % (row, column, margin))
+        if not( (margin <= row < rows - margin) and
+                (margin <= column < columns - margin) ):
+            raise Exception('Invalid point (%d, %d): falls in border of %d px, where a prediction is not possible' % (row, column, margin))      
+
+    # print(highest_entropy_points)
 
     new_train_patches = pixels_to_patches(train_tile, highest_entropy_points)
     return new_train_patches
@@ -272,8 +289,13 @@ def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, pa
     training_patches = []
     
     current_predictions, _ = run_model(model, train_tile_inputs)
+
+    try:
+        margin = model.border_margin_px
+    except:
+        margin = 0
     
-    while len(training_patches) < num_total_points:    
+    while len(training_patches) < num_total_points:
         num_new_patches = step_size_function(len(training_patches))
         training_patches += new_train_patches_function(model, train_tile, current_predictions, num_new_patches)
         model = copy.deepcopy(old_model)
@@ -288,10 +310,6 @@ def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, pa
         model, fine_tune_result = train_model(model, loss_criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=num_epochs, superres=superres, masking=False)
         logits, class_predictions = run_model(model, train_tile_inputs)
 
-        try:
-            margin = model.border_margin_px
-        except:
-            margin = 0
         tile_mean_IoU = mean_IoU(class_predictions[margin:height-margin, margin:width-margin], y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
         tile_pixel_accuracy = pixel_accuracy(class_predictions[margin:height-margin, margin:width-margin], y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
 
@@ -398,11 +416,13 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
                     # print('Save to path: %s' % path)
                     # save_visualize(inputs, outputs, ground_truth, path)
 
+                    # pdb.set_trace() # print(outputs.shape, ground_truth.shape)
                     loss = criterion(ground_truth, outputs)
 
                     # backward + optimize only if in training phase
                     if phase == 'train' and epoch > -1:
                         loss.backward()
+                        # print(loss.item())
                         optimizer.step()
 
                 # Store ground truth
@@ -589,7 +609,7 @@ def hyper_parameters_fixed(hyper_parameters):
     experiment_configs = []
 
     # Add last-k-layers hypers
-    for last_k_layers, learning_rate, last_epoch in [(1, 0.015, 1), (2, 0.0006, 8), (3, 0.0045, 0)]:
+    for last_k_layers, learning_rate, last_epoch in [(1, 0.0005, 12)]:  # , (2, 0.0005, 20), (3, 0.0001, 30)]:
         new_hyper_parameters = copy.deepcopy(hyper_parameters)
         new_hyper_parameters['method_name'] = 'last_k_layers'
         new_hyper_parameters['last_k_layers'] = last_k_layers
@@ -601,7 +621,7 @@ def hyper_parameters_fixed(hyper_parameters):
     new_hyper_parameters = copy.deepcopy(hyper_parameters)
     new_hyper_parameters['method_name'] = 'group_params'
     new_hyper_parameters['learning_rate'] = 0.0025
-    new_hyper_parameters['epochs'] = 10 + 1
+    new_hyper_parameters['epochs'] = 12
     experiment_configs += [(new_hyper_parameters['method_name'], finetune_group_params, new_hyper_parameters)]
 
     return experiment_configs
