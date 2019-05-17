@@ -165,14 +165,14 @@ def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, params
 
 
 def active_learning_step_size(num_points):
-#    if num_points < 40:
-#        return 10
-    if num_points < 500:
+    if num_points < 50:
+        return 10
+    if num_points < 200:
+        return 50
+    if num_points < 1000:
         return 100
-    if num_points < 5000:
+    if num_points < 10000:
         return 1000
-    if num_points < 11000:
-        return 2000
 
 
 def prediction_entropy(predictions):
