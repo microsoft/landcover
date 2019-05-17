@@ -511,6 +511,9 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
     # for area, tile_file_names in zip(args.test_areas, args.test_tile_list_file_names):
     # test_model(finetuned_fn, args.config_file, args.area, args.train_tile_list_file_names, 'train')
     # test_model(finetuned_fn, args.config_file, args.area, args.test_tile_list_file_names, 'test')
+
+    duration = datetime.now() - since
+    seconds_elapsed = duration.total_seconds()
     
     ## print('Training complete in {:.0f}m {:.0f}s'.format(
     #    seconds_elapsed // 60, seconds_elapsed % 60))
