@@ -217,12 +217,14 @@ def new_train_patches_entropy(model, train_tile, predictions, num_new_patches):
     margin = max(margin, 240//2)
 
     all_indices = list(zip(*train_tile[0, 4, margin:rows-margin, margin:columns-margin].nonzero()))
-    num_possible_points = 10000
-    possible_indices = [
-        (random.randint(0, rows - 2 * margin - 1),
-         random.randint(0, columns - 2 * margin - 1))
-        for n in range(num_possible_points)
-    ]
+    # Un-comment below for faster debugging
+    # num_possible_points = 10000
+    # possible_indices = [
+    #    (random.randint(0, rows - 2 * margin - 1),
+    #     random.randint(0, columns - 2 * margin - 1))
+    #     for n in range(num_possible_points)
+    # ]
+    possible_indices = all_indices
 
     # [(row, column) for row in range(rows) for column in range(columns) if train_tile[0, 4, row, column] != 0]
     highest_entropy_points = heapq.nlargest(num_new_patches,
