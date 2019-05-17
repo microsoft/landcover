@@ -55,12 +55,10 @@ if __name__ == '__main__':
     parser.add_argument('--area', type=str, help="Name of area being tested in: test1, test2, test3, test4, or val1", default="test1")
     parser.add_argument('--train_tiles_list_file_name', type=str, help="Filename with list of training tile files", default="training/data/finetuning/test1_train_tiles.txt")
     parser.add_argument('--test_tiles_list_file_name', type=str, help="Filename with list of training tile files", default="training/data/finetuning/test1_test_tiles.txt")
-
     parser.add_argument('--log_fn', type=str, help="Where to store training results", default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/val/val2/10_patches/finetune_results.csv")
-
-
     parser.add_argument('--model_output_directory', type=str, help='Where to store fine-tuned model', default='/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/val/val2_fix/')
-
+    parser.add_argument('--random_seed', type=int, help="Random seed for reproducibility", default=0)
+    
     args = parser.parse_args()
 
 class GroupParams(nn.Module):
@@ -169,10 +167,12 @@ def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, params
 def active_learning_step_size(num_points):
 #    if num_points < 40:
 #        return 10
-    if num_points < 400:
+    if num_points < 500:
         return 100
-    if num_points < 4000:
+    if num_points < 5000:
         return 1000
+    if num_points < 11000:
+        return 2000
 
 
 def prediction_entropy(predictions):
@@ -271,7 +271,7 @@ def run_model(model, naip_data, output_file_path=None):
 
 
     
-def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, params, params_train, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True, step_size_function=active_learning_step_size, new_train_patches_function=new_train_patches_entropy, num_total_points=4000):
+def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, params, params_train, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True, step_size_function=active_learning_step_size, new_train_patches_function=new_train_patches_entropy, num_total_points=12000):
 
     train_tile_fn = open(args.train_tiles_list_file_name, "r").read().strip().split("\n")[0]
     train_tile_fn = train_tile_fn.replace('.mrf', '.npy')
@@ -296,24 +296,24 @@ def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, pa
         margin = 0
     
     while len(training_patches) < num_total_points:
+        # Evaluate current model
+        logits, class_predictions = run_model(model, train_tile_inputs)
+        tile_mean_IoU = mean_IoU(class_predictions[margin:height-margin, margin:width-margin], y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
+        tile_pixel_accuracy = pixel_accuracy(class_predictions[margin:height-margin, margin:width-margin], y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
+        print('%d, %s, %f, %f, %s' % (len(training_patches), args.area, tile_mean_IoU, tile_pixel_accuracy, train_tile_fn))
+
+        # Select new points 
         num_new_patches = step_size_function(len(training_patches))
         training_patches += new_train_patches_function(model, train_tile, current_predictions, num_new_patches)
-        model = copy.deepcopy(old_model)
-
-        patch_size = training_patches[0].shape
         training_set = DataGenerator(
             training_patches, params_train["batch_size"], params["patch_size"], params["loader_opts"]["num_channels"], superres=superres)  # superres=params["train_opts"]["superres"]
         dataloaders['train'] = data.DataLoader(training_set, **params_train)
+
+        # Train new model
+        model = copy.deepcopy(old_model)
         hyper_parameters['query_method'] = 'entropy' if (new_train_patches_function == new_train_patches_entropy) else 'random'
         hyper_parameters['num_points'] = len(training_patches)
-        
         model, fine_tune_result = train_model(model, loss_criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=num_epochs, superres=superres, masking=False)
-        logits, class_predictions = run_model(model, train_tile_inputs)
-
-        tile_mean_IoU = mean_IoU(class_predictions[margin:height-margin, margin:width-margin], y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
-        tile_pixel_accuracy = pixel_accuracy(class_predictions[margin:height-margin, margin:width-margin], y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
-
-        print('%d, %s, %f, %f, %s' % (len(training_patches), args.area, tile_mean_IoU, tile_pixel_accuracy, train_tile_fn))
             
 
 def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=False):
@@ -558,7 +558,7 @@ def main(finetune_methods, predictions_path, validation_patches_fn=None):
         hyper_params['run_id'] = run_id
         
         # print('Fine-tune hyper-params: %s' % str(hyper_params))
-        improve_reproducibility()
+        improve_reproducibility(args.random_seed)
         model, result = finetune_function(path, loss, dataloaders, params, params_train, hyper_params, results_writer, n_epochs=hyper_params['n_epochs']) #, predictions_path=str(predictions_path / str(hyper_params)))
         results[finetune_method_name] = result
         
