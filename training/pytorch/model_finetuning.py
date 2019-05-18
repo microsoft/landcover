@@ -194,7 +194,7 @@ def pixels_to_patches(train_tile, points):
     #Fixme: Check for edge cases where points are close to the border. We might not want this zero padding
     for i, point in enumerate(points):
         row, col = point
-        patch = train_tile[0, :, row-patch_height//2:row+patch_height//2, col-patch_width//2:col+patch_width//2]
+        patch = copy.deepcopy(train_tile[0, :, row-patch_height//2:row+patch_height//2, col-patch_width//2:col+patch_width//2])
         # pdb.set_trace()
         patch[4] *= mask
         patch[5] *= mask
