@@ -91,6 +91,10 @@ def run_model_on_tile(model, naip_tile, output_file_path=None, batch_size=32):
     # (h, w, c)
     if output_file_path:
         np.save(output_file_path, y_hat)
+    out =np.argmax(y_hat, axis=-1)
+    pdb.set_trace()
+    import scipy.misc
+    scipy.misc.imsave('pred.jpg', image_array)
     return np.argmax(y_hat, axis=-1)
     # (h, w)
 
