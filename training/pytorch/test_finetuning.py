@@ -53,7 +53,7 @@ def predict_entire_image_unet_fine(model, x):
     out = np.zeros((5, h, w))
     # (channel, height, width)
 
-    patch_dimension = 1500
+    patch_dimension = 892
 
     stride = patch_dimension - 2 * margin
 
@@ -78,9 +78,47 @@ def predict_entire_image_unet_fine(model, x):
             out[:, y + margin:y + patch_dimension - margin, x + margin : x + patch_dimension - margin] = y_hat1 # [:, y + margin:y + patch_dimension - margin, x + margin : x + patch_dimension - margin]
             max_x = x + patch_dimension - margin
             max_y = y + patch_dimension - margin
-            
+    
+    for i in range(0,h, stride):
+        patch = norm_image[:4, i:i+patch_dimension, w-patch_dimension:w]
+        c, h1, w1 = patch.shape
+        if not (h1 == patch_dimension and w1 == patch_dimension):
+            #    pdb.set_trace()
+            continue
+        patch_tensor = torch.from_numpy(patch).float().to(device)
+        y_pred1 = model.forward(patch_tensor.unsqueeze(0))
+        _, c_y, h_y, w_y = y_pred1.shape
+        if not (h_y == stride):
+            #    pdb.set_trace()
+            continue
+        y_hat1 = (Variable(y_pred1).data).cpu().numpy()
+        y_hat1 = y_hat1.squeeze(0)
+        out[:, i + margin:i + patch_dimension - margin, w-patch_dimension + margin : w - margin] = y_hat1 # [:, y + margin:y + patch_dimension - margin, x + margin : x + patch_dimension - margin]
+
+    for j in range(0,w, stride):
+        patch = norm_image[:4, h-patch_dimension:h, j:j+patch_dimension]
+        c, h1, w1 = patch.shape
+        if not (h1 == patch_dimension and w1 == patch_dimension):
+            #    pdb.set_trace()
+            continue
+        patch_tensor = torch.from_numpy(patch).float().to(device)
+        y_pred1 = model.forward(patch_tensor.unsqueeze(0))
+        _, c_y, h_y, w_y = y_pred1.shape
+        if not (h_y == stride):
+            #    pdb.set_trace()
+            continue
+        y_hat1 = (Variable(y_pred1).data).cpu().numpy()
+        y_hat1 = y_hat1.squeeze(0)
+        out[:, h-patch_dimension + margin:h - margin, j + margin : j + patch_dimension - margin] = y_hat1     
     #pred = np.rollaxis(out, 0, 3)   # (w, h, c)
     #pred = np.moveaxis(pred, 0, 1)  # (h, w, c)
+    patch = norm_image[:4, h-patch_dimension:h, w-patch_dimension:w]
+    c, h1, w1 = patch.shape
+    patch_tensor = torch.from_numpy(patch).float().to(device)
+    y_pred1 = model.forward(patch_tensor.unsqueeze(0))
+    y_hat1 = (Variable(y_pred1).data).cpu().numpy()
+    y_hat1 = y_hat1.squeeze(0)
+    out[:, h-patch_dimension + margin:h - margin, w-patch_dimension + margin:w - margin] = y_hat1
     pred = rearrange(out, 'channel height width -> height width channel')
     return pred
 
