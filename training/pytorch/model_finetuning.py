@@ -246,7 +246,8 @@ def new_train_patches_entropy(model, train_tile, predictions, num_new_patches):
 
 def new_train_patches_random(model, train_tile, predictions, num_new_patches):
     # train_tile: (batch, channels, height, width)
-
+    _, _, rows, columns = train_tile.shape
+    
     try:
         margin = model.border_margin_px
     except:
@@ -272,12 +273,6 @@ def new_train_patches_random(model, train_tile, predictions, num_new_patches):
     new_train_patches = pixels_to_patches(train_tile, selected_points)
     return new_train_patches
 
-
-
-# If needed: implement the below function for generating random patches
-#def new_train_patches_random(model, train_tile, num_new_patches):
-    # sample(train_tile)
-    # new_train_patches = pixels_to_patches(train_tile, highest_entropy_points)
 
 
 def run_model(model, naip_data, output_file_path=None):
