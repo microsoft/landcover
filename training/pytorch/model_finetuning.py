@@ -248,9 +248,6 @@ def new_train_patches_entropy(model, train_tile, predictions, num_new_patches):
                 (margin <= column < columns - margin) ):
             raise Exception('Invalid point (%d, %d): falls in border of %d px, where a prediction is not possible' % (row, column, margin))      
 
-    print('highest_entropy_points')
-    print(highest_entropy_points)
-
     new_train_patches = pixels_to_patches(train_tile, highest_entropy_points)
     return new_train_patches
 
@@ -278,12 +275,8 @@ def new_train_patches_random(model, train_tile, predictions, num_new_patches):
                 (margin <= column < columns - margin) ):
             raise Exception('Invalid point (%d, %d): falls in border of %d px, where a prediction is not possible' % (row, column, margin))      
 
-    print('random selected_points')
-    print(selected_points)
-
     new_train_patches = pixels_to_patches(train_tile, selected_points)
     return new_train_patches
-
 
 
 def run_model(model, naip_data, output_file_path=None):
@@ -361,6 +354,7 @@ def active_learning(load_model, loss_criterion, optimizer, scheduler, dataloader
 
         num_steps += 1
 
+
 def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=False):
     global results_writer, results_file
     
@@ -381,12 +375,6 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
         if phase not in ['train', 'val']:
             print('Warning: epoch phase "%s" not valid. Valid options: ["train", "val"]. Data provided in this phase may be ignored.' % phase)
 
-    delta_loss = 1000000000.
-    loss_previous_epoch = 1000000000.
-    loss_stopping_th = 0.00005
-
-    num_epochs = 10
-    
     for epoch in range(-1, num_epochs):
         #print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         #print('-' * 10)
@@ -533,21 +521,17 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
             'val_mean_IoU': epoch_statistics['val']['mean_IoU'] if 'val' in epoch_statistics else None,
             'total_time': datetime.now() - since
         }
-        print(result_row)
-        #results_writer.writerow(result_row)
-        #results_file.flush()
+        #print(result_row)
+        results_writer.writerow(result_row)
+        results_file.flush()
 
         model_file_name_suffix = hyper_parameters_str(hyper_parameters)
         
         finetuned_fn = str(Path(args.model_output_directory) / ("finetuned_unet_gn.pth_%s.tar" % model_file_name_suffix))
 
-        if (delta_loss > loss_stopping_th):
-            torch.save(model.state_dict(), finetuned_fn)
-        else:
-            duration = datetime.now() - since
-            return model, FineTuneResult(best_mean_IoU=best_mean_IoU, train_duration=duration)
+        torch.save(model.state_dict(), finetuned_fn)
         
-            # deep copy the model
+        # deep copy the model
             #if phase == 'val' and epoch_mean_IoU > best_mean_IoU:
             #    best_mean_IoU = epoch_mean_IoU
             #    best_model_wts = copy.deepcopy(model.state_dict())
