@@ -514,9 +514,9 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
             'val_mean_IoU': epoch_statistics['val']['mean_IoU'] if 'val' in epoch_statistics else None,
             'total_time': datetime.now() - since
         }
-        # pprint(result_row)
-        results_writer.writerow(result_row)
-        results_file.flush()
+        print(result_row)
+        #results_writer.writerow(result_row)
+        #results_file.flush()
 
         model_file_name_suffix = hyper_parameters_str(hyper_parameters)
         
@@ -649,7 +649,7 @@ def hyper_parameters_fixed(hyper_parameters):
     experiment_configs = []
 
     # Add last-k-layers hypers
-    for last_k_layers, learning_rate in [(1, 0.01), (2, 0.005), (3, 0.001)]:
+    for last_k_layers, learning_rate in [ (2, 0.0005), (3, 0.001)]: # 0.01, 0.001, 0.0001 -- tried all of these, same result   # (1, 0.0000005),
         new_hyper_parameters = copy.deepcopy(hyper_parameters)
         new_hyper_parameters['method_name'] = 'last_k_layers'
         new_hyper_parameters['last_k_layers'] = last_k_layers
