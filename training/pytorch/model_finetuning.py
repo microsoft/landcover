@@ -102,29 +102,34 @@ def finetune_group_params(path_2_saved_model, loss, gen_loaders, params, params_
     lr_schedule_step_size = hyper_parameters['lr_schedule_step_size']
     if 'epochs' in hyper_parameters:
         n_epochs = hyper_parameters['epochs']
-    
-    opts = params["model_opts"]
-    unet = Unet(opts)
-    checkpoint = torch.load(path_2_saved_model)
-    unet.load_state_dict(checkpoint['model'])
-    unet.eval()
-    for param in unet.parameters():
-        param.requires_grad = False
 
-    # Parameters of newly constructed modules have requires_grad=True by default
-    model_2_finetune = GroupParams(unet)
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    model_2_finetune = model_2_finetune.to(device)
-    loss = loss().to(device)
+    def load_model():
+        opts = params["model_opts"]
+        unet = Unet(opts)
+        checkpoint = torch.load(path_2_saved_model)
+        unet.load_state_dict(checkpoint['model'])
+        unet.eval()
+        for param in unet.parameters():
+            param.requires_grad = False
 
-    optimizer = torch.optim.SGD(model_2_finetune.parameters(), lr=learning_rate, momentum=0.9)
-    if optimizer_method == torch.optim.Adam:
-        optimizer = torch.optim.Adam(model_2_finetune.parameters(), lr=learning_rate, eps=1e-5)
+        # Parameters of newly constructed modules have requires_grad=True by default
+        model_2_finetune = GroupParams(unet)
+        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        model_2_finetune = model_2_finetune.to(device)
+        loss_fun = loss().to(device)
+
+        optimizer = torch.optim.SGD(model_2_finetune.parameters(), lr=learning_rate, momentum=0.9)
+        if optimizer_method == torch.optim.Adam:
+            optimizer = torch.optim.Adam(model_2_finetune.parameters(), lr=learning_rate, eps=1e-5)
+
+        return model_2_finetune, loss_fun, optimizer
+
+    model_2_finetune, loss_fun, optimizer = load_model()
     
     # Decay LR by a factor of 0.1 every 7 epochs
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=lr_schedule_step_size, gamma=0.1)
 
-    model_2_finetune = active_learning(model_2_finetune, loss, optimizer,
+    model_2_finetune = active_learning(load_model, loss_fun, optimizer,
                                        exp_lr_scheduler, gen_loaders, params, params_train, hyper_parameters, log_writer, num_epochs=n_epochs)
     return model_2_finetune
 
@@ -161,12 +166,11 @@ def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, params
         return model_2_finetune, loss_fun, optimizer
 
     model_2_finetune, loss_fun, optimizer = load_model()
-    
         
     # Decay LR by a factor of 0.1 every 7 epochs
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=lr_schedule_step_size, gamma=0.1)
 
-    model_2_finetune = active_learning(load_model, loss, optimizer,
+    model_2_finetune = active_learning(load_model, loss_fun, optimizer,
                                        exp_lr_scheduler, gen_loaders, params, params_train, hyper_parameters, log_writer, num_epochs=n_epochs)
     return model_2_finetune
 
@@ -664,7 +668,7 @@ def hyper_parameters_fixed(hyper_parameters):
     experiment_configs = []
 
     # Add last-k-layers hypers
-    for last_k_layers, learning_rate in [ (2, 0.0005), (3, 0.001)]: # 0.01, 0.001, 0.0001 -- tried all of these, same result   # (1, 0.0000005),
+    for last_k_layers, learning_rate in [(1, 0.01), (2, 0.005), (3, 0.001)]:
         new_hyper_parameters = copy.deepcopy(hyper_parameters)
         new_hyper_parameters['method_name'] = 'last_k_layers'
         new_hyper_parameters['last_k_layers'] = last_k_layers
@@ -696,7 +700,7 @@ if __name__ == "__main__":
         'learning_rate': 0.004, # [0.001, 0.002, 0.003, 0.004, 0.01, 0.03],
         'lr_schedule_step_size': 1000,  # [5],
         'mask_id': 4, #  [0, 4, 7, 11] # range(12) # [4], # mask-id 5 --> 10 px / patch
-        'n_epochs': 50,
+        'n_epochs': 10,
     }
 
     if args.run_validation:
