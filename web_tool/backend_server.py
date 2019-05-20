@@ -136,6 +136,7 @@ def retrain_model():
         bottle.response.status = 200
         AugmentationState.save(data["experiment"])
     else:
+        data["error"] = message
         bottle.response.status = 500
 
     data["message"] = message

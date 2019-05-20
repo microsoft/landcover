@@ -342,7 +342,7 @@ class KerasBackPropFineTune(BackendModel):
             
             return success, message
         else:
-            return False, "Need to add labels"
+            return False, "Need to add labels before you can retrain"
 
     def add_sample(self, tdst_row, bdst_row, tdst_col, bdst_col, class_idx):
         
