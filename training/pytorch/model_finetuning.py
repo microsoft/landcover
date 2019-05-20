@@ -135,31 +135,38 @@ def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, params
     last_k_layers = hyper_parameters['last_k_layers']
     if 'epochs' in hyper_parameters:
         n_epochs = hyper_parameters['epochs']
-    
-    opts = params["model_opts"]
-    unet = Unet(opts)
-    checkpoint = torch.load(path_2_saved_model)
-    unet.load_state_dict(checkpoint['model'])
-    unet.eval()
 
-    for layer in list(unet.children())[:-last_k_layers]:
-        for param in layer.parameters():
-            param.requires_grad = False
+    def load_model():
+        opts = params["model_opts"]
+        unet = Unet(opts)
+        checkpoint = torch.load(path_2_saved_model)
+        unet.load_state_dict(checkpoint['model'])
+        unet.eval()
+        
+        for layer in list(unet.children())[:-last_k_layers]:
+            for param in layer.parameters():
+                param.requires_grad = False
     
-    # Parameters of newly constructed modules have requires_grad=True by default
-    model_2_finetune = unet
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    model_2_finetune = model_2_finetune.to(device)
-    loss = loss().to(device)
+        # Parameters of newly constructed modules have requires_grad=True by default
+        model_2_finetune = unet
+        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        model_2_finetune = model_2_finetune.to(device)
 
-    optimizer = torch.optim.SGD(model_2_finetune.parameters(), lr=learning_rate, momentum=0.9)
-    if optimizer_method == torch.optim.Adam:
-        optimizer = torch.optim.Adam(model_2_finetune.parameters(), lr=learning_rate, eps=1e-5)
+        loss_fun = loss().to(device)
+
+        optimizer = torch.optim.SGD(model_2_finetune.parameters(), lr=learning_rate, momentum=0.9)
+        if optimizer_method == torch.optim.Adam:
+            optimizer = torch.optim.Adam(model_2_finetune.parameters(), lr=learning_rate, eps=1e-5)
+        
+        return model_2_finetune, loss_fun, optimizer
+
+    model_2_finetune, loss_fun, optimizer = load_model()
+    
         
     # Decay LR by a factor of 0.1 every 7 epochs
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=lr_schedule_step_size, gamma=0.1)
 
-    model_2_finetune = active_learning(model_2_finetune, loss, optimizer,
+    model_2_finetune = active_learning(load_model, loss, optimizer,
                                        exp_lr_scheduler, gen_loaders, params, params_train, hyper_parameters, log_writer, num_epochs=n_epochs)
     return model_2_finetune
 
@@ -298,9 +305,17 @@ def run_model(model, naip_data, output_file_path=None):
     return y_hat, class_predictions
 
 
-    
-def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, params, params_train, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True, step_size_function=active_learning_step_size, new_train_patches_function=new_train_patches_entropy, num_total_points=12000):
+class ModelState:
+    def __init__(self, model, loss, optimizer):
+        self.model = model
+        self.loss = loss
+        self.optimizer = optimizer
 
+    
+def active_learning(load_model, loss_criterion, optimizer, scheduler, dataloaders, params, params_train, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True, step_size_function=active_learning_step_size, new_train_patches_function=new_train_patches_entropy, num_total_points=12000):
+
+    model_state = ModelState(*load_model())
+    
     train_tile_fn = open(args.train_tiles_list_file_name, "r").read().strip().split("\n")[0]
     train_tile_fn = train_tile_fn.replace('.mrf', '.npy')
     train_tile = load_tile(train_tile_fn)
@@ -309,11 +324,9 @@ def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, pa
     
     y_train_hr = train_tile[0, 4, :, :]
 
-
     train_tile_inputs = features(train_tile)
     train_tile_labels = labels(train_tile)
     
-    old_model = copy.deepcopy(model)
     training_patches = []
     
     try:
@@ -324,23 +337,23 @@ def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, pa
     num_steps = 0
     while len(training_patches) < num_total_points:
         # Evaluate current model
-        logits, class_predictions = run_model(model, train_tile_inputs)
+        logits, class_predictions = run_model(model_state.model, train_tile_inputs)
         tile_mean_IoU = mean_IoU(class_predictions[margin:height-margin, margin:width-margin], y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
         tile_pixel_accuracy = pixel_accuracy(class_predictions[margin:height-margin, margin:width-margin], y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
         print('%d, %s, %d, %f, %f, %s' % (len(training_patches), args.area, args.random_seed, tile_mean_IoU, tile_pixel_accuracy, train_tile_fn))
 
         # Select new points 
         num_new_patches = step_size_function(num_steps)
-        training_patches += new_train_patches_function(model, train_tile, logits, num_new_patches)
+        training_patches += new_train_patches_function(model_state.model, train_tile, logits, num_new_patches)
         training_set = DataGenerator(
             training_patches, params_train["batch_size"], params["patch_size"], params["loader_opts"]["num_channels"], superres=superres)  # superres=params["train_opts"]["superres"]
         dataloaders['train'] = data.DataLoader(training_set, **params_train)
 
         # Train new model
-        model = copy.deepcopy(old_model)
+        model_state.__init__(*load_model())
         hyper_parameters['query_method'] = 'entropy' if (new_train_patches_function == new_train_patches_entropy) else 'random'
         hyper_parameters['num_points'] = len(training_patches)
-        model, fine_tune_result = train_model(model, loss_criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=num_epochs, superres=superres, masking=False)
+        model_state.model, fine_tune_result = train_model(model_state.model, model_state.loss, model_state.optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=num_epochs, superres=superres, masking=False)
 
         num_steps += 1
 
@@ -367,6 +380,8 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
     delta_loss = 1000000000.
     loss_previous_epoch = 1000000000.
     loss_stopping_th = 0.00005
+
+    num_epochs = 10
     
     for epoch in range(-1, num_epochs):
         #print('Epoch {}/{}'.format(epoch, num_epochs - 1))
