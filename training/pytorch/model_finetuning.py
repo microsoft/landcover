@@ -176,7 +176,9 @@ def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, params
 
 
 def active_learning_step_size(step_num):
-    step_sizes = range(50, 2000, 100)
+    step_sizes = [10, 30, 60, 100, 200, 600, 1000]
+    # number of points will be 0, 10, 40, 100, 200, 400, 1000, 2000
+
     return step_sizes[step_num]
     
     #if num_points < 200:
@@ -310,7 +312,7 @@ class ModelState:
         self.optimizer = optimizer
 
     
-def active_learning(load_model, loss_criterion, optimizer, scheduler, dataloaders, params, params_train, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True, step_size_function=active_learning_step_size, new_train_patches_function=new_train_patches_entropy, num_total_points=12000):
+def active_learning(load_model, loss_criterion, optimizer, scheduler, dataloaders, params, params_train, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True, step_size_function=active_learning_step_size, new_train_patches_function=new_train_patches_entropy, num_total_points=2000):
 
     model_state = ModelState(*load_model())
     
@@ -354,6 +356,12 @@ def active_learning(load_model, loss_criterion, optimizer, scheduler, dataloader
         model_state.model, fine_tune_result = train_model(model_state.model, model_state.loss, model_state.optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=num_epochs, superres=superres, masking=False)
 
         num_steps += 1
+
+    # Evaluate model after final epoch
+    logits, class_predictions = run_model(model_state.model, train_tile_inputs)
+    tile_mean_IoU = mean_IoU(class_predictions[margin:height-margin, margin:width-margin], y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
+    tile_pixel_accuracy = pixel_accuracy(class_predictions[margin:height-margin, margin:width-margin], y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
+    print('%d, %s, %d, %f, %f, %s' % (len(training_patches), args.area, args.random_seed, tile_mean_IoU, tile_pixel_accuracy, train_tile_fn))
 
 
 def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=False):
