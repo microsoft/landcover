@@ -164,15 +164,16 @@ def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, params
     return model_2_finetune
 
 
-def active_learning_step_size(num_points):
-    if num_points < 50:
-        return 10
-    if num_points < 200:
-        return 50
-    if num_points < 1000:
-        return 100
-    if num_points < 10000:
-        return 1000
+def active_learning_step_size(step_num):
+    step_sizes = range(50, 2000, 100)
+    return step_sizes[step_num]
+    
+    #if num_points < 200:
+    #    return 50
+    #if num_points < 1000:
+    #    return 100
+    #if num_points < 10000:
+    #    return 1000
 
 
 def prediction_entropy(predictions):
@@ -236,8 +237,11 @@ def new_train_patches_entropy(model, train_tile, predictions, num_new_patches):
                 (margin <= column < columns - margin) ):
             raise Exception('Invalid point (%d, %d): falls in border of %d px, where a prediction is not possible' % (row, column, margin))      
 
-    # print(highest_entropy_points)
+    print('highest_entropy_points')
+    print(highest_entropy_points)
 
+    pdb.set_trace()
+    
     new_train_patches = pixels_to_patches(train_tile, highest_entropy_points)
     return new_train_patches
     
@@ -289,13 +293,12 @@ def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, pa
     old_model = copy.deepcopy(model)
     training_patches = []
     
-    current_predictions, _ = run_model(model, train_tile_inputs)
-
     try:
         margin = model.border_margin_px
     except:
         margin = 0
-    
+
+    num_steps = 0
     while len(training_patches) < num_total_points:
         # Evaluate current model
         logits, class_predictions = run_model(model, train_tile_inputs)
@@ -304,8 +307,8 @@ def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, pa
         print('%d, %s, %d, %f, %f, %s' % (len(training_patches), args.area, args.random_seed, tile_mean_IoU, tile_pixel_accuracy, train_tile_fn))
 
         # Select new points 
-        num_new_patches = step_size_function(len(training_patches))
-        training_patches += new_train_patches_function(model, train_tile, current_predictions, num_new_patches)
+        num_new_patches = step_size_function(num_steps)
+        training_patches += new_train_patches_function(model, train_tile, logits, num_new_patches)
         training_set = DataGenerator(
             training_patches, params_train["batch_size"], params["patch_size"], params["loader_opts"]["num_channels"], superres=superres)  # superres=params["train_opts"]["superres"]
         dataloaders['train'] = data.DataLoader(training_set, **params_train)
@@ -315,7 +318,8 @@ def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, pa
         hyper_parameters['query_method'] = 'entropy' if (new_train_patches_function == new_train_patches_entropy) else 'random'
         hyper_parameters['num_points'] = len(training_patches)
         model, fine_tune_result = train_model(model, loss_criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=num_epochs, superres=superres, masking=False)
-            
+
+        num_steps += 1
 
 def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=False):
     global results_writer, results_file
@@ -339,8 +343,10 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
 
     delta_loss = 1000000000.
     loss_previous_epoch = 1000000000.
-    loss_stopping_th = 0.0005
+    loss_stopping_th = 0.00005
 
+    pdb.set_trace()
+    
     for epoch in range(-1, num_epochs):
         #print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         #print('-' * 10)
