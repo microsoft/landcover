@@ -278,7 +278,7 @@ class KerasBackPropFineTune(BackendModel):
         self.model.compile(optimizers.Adam(lr=learning_rate, amsgrad=True), "categorical_crossentropy")
         self.model.summary()
 
-        if len(self.batch_x) > 1:
+        if len(self.batch_x) > 0:
 
             x_train = np.array(self.batch_x)
             y_train = np.array(self.batch_y)
