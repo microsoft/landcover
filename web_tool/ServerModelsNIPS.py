@@ -278,67 +278,71 @@ class KerasBackPropFineTune(BackendModel):
         self.model.compile(optimizers.Adam(lr=learning_rate, amsgrad=True), "categorical_crossentropy")
         self.model.summary()
 
-        x_train = np.array(self.batch_x)
-        y_train = np.array(self.batch_y)
-        print("Training set shape: ", x_train.shape, y_train.shape)
-        y_train_labels = y_train.argmax(axis=3)
-        print("Label set: ", np.unique(y_train_labels[y_train_labels!=0], return_counts=True))
-        print("Starting fine-tuning for %d steps over the last %d layers using %d samples with lr of %f" % 
-            (number_of_steps, last_k_layers, len(self.batch_x), learning_rate)
-        )
+        if len(self.batch_x) > 1:
 
-        '''
-        history = self.model.fit(
-            x_train, y_train,
-            batch_size=batch_size,
-            epochs=number_of_steps
-        )
-        '''
-        
-        history = []
-        for i in range(number_of_steps):
-            idxs = np.arange(x_train.shape[0])
-            np.random.shuffle(idxs)
-            x_train = x_train[idxs]
-            y_train = y_train[idxs]
+            x_train = np.array(self.batch_x)
+            y_train = np.array(self.batch_y)
+            print("Training set shape: ", x_train.shape, y_train.shape)
+            y_train_labels = y_train.argmax(axis=3)
+            print("Label set: ", np.unique(y_train_labels[y_train_labels!=0], return_counts=True))
+            print("Starting fine-tuning for %d steps over the last %d layers using %d samples with lr of %f" % 
+                (number_of_steps, last_k_layers, len(self.batch_x), learning_rate)
+            )
+
+            '''
+            history = self.model.fit(
+                x_train, y_train,
+                batch_size=batch_size,
+                epochs=number_of_steps
+            )
+            '''
             
-            training_losses = []
-            for j in range(0, x_train.shape[0], batch_size):
-                batch_x = x_train[j:j+batch_size]
-                batch_y = y_train[j:j+batch_size]
+            history = []
+            for i in range(number_of_steps):
+                idxs = np.arange(x_train.shape[0])
+                np.random.shuffle(idxs)
+                x_train = x_train[idxs]
+                y_train = y_train[idxs]
+                
+                training_losses = []
+                for j in range(0, x_train.shape[0], batch_size):
+                    batch_x = x_train[j:j+batch_size]
+                    batch_y = y_train[j:j+batch_size]
 
-                actual_batch_size = batch_x.shape[0]
+                    actual_batch_size = batch_x.shape[0]
 
-                training_loss = self.model.train_on_batch(batch_x, batch_y)
-                training_losses.append(training_loss)
-            print(i, np.mean(training_losses))
-            history.append(np.mean(training_losses))
-        
-        '''
-        beginning_loss = history.history["loss"][0]
-        end_loss = history.history["loss"][-1]
-        '''
-        beginning_loss = history[0]
-        end_loss = history[-1]
-        
-        
-        y_pred = self.model.predict(x_train)        
-        y_pred_labels = y_pred.argmax(axis=3)
-        mask = y_train_labels != 0
-        acc = np.sum(y_train_labels[mask] == y_pred_labels[mask]) / np.sum(mask)
-        print("training acc", acc)
-        print("training loss", beginning_loss, end_loss)
-        
-        
-        success = True
-        message = "Re-trained model with %d samples<br>Starting loss:%f<br>Ending loss:%f<br>Training acc: %f." % (
-            x_train.shape[0],
-            beginning_loss, end_loss,
-            acc
-        )
-        message = "Fit accessory model with %d samples" % (x_train.shape[0])
-        
-        return success, message
+                    training_loss = self.model.train_on_batch(batch_x, batch_y)
+                    training_losses.append(training_loss)
+                print(i, np.mean(training_losses))
+                history.append(np.mean(training_losses))
+            
+            '''
+            beginning_loss = history.history["loss"][0]
+            end_loss = history.history["loss"][-1]
+            '''
+            beginning_loss = history[0]
+            end_loss = history[-1]
+            
+            
+            y_pred = self.model.predict(x_train)        
+            y_pred_labels = y_pred.argmax(axis=3)
+            mask = y_train_labels != 0
+            acc = np.sum(y_train_labels[mask] == y_pred_labels[mask]) / np.sum(mask)
+            print("training acc", acc)
+            print("training loss", beginning_loss, end_loss)
+            
+            
+            success = True
+            message = "Re-trained model with %d samples<br>Starting loss:%f<br>Ending loss:%f<br>Training acc: %f." % (
+                x_train.shape[0],
+                beginning_loss, end_loss,
+                acc
+            )
+            message = "Fit accessory model with %d samples" % (x_train.shape[0])
+            
+            return success, message
+        else:
+            return False, "Need to add labels"
 
     def add_sample(self, tdst_row, bdst_row, tdst_col, bdst_col, class_idx):
         
