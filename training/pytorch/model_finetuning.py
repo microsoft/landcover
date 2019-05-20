@@ -240,8 +240,6 @@ def new_train_patches_entropy(model, train_tile, predictions, num_new_patches):
     print('highest_entropy_points')
     print(highest_entropy_points)
 
-    pdb.set_trace()
-    
     new_train_patches = pixels_to_patches(train_tile, highest_entropy_points)
     return new_train_patches
     
@@ -344,8 +342,6 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
     delta_loss = 1000000000.
     loss_previous_epoch = 1000000000.
     loss_stopping_th = 0.00005
-
-    pdb.set_trace()
     
     for epoch in range(-1, num_epochs):
         #print('Epoch {}/{}'.format(epoch, num_epochs - 1))
