@@ -217,16 +217,16 @@ def new_train_patches_entropy(model, train_tile, predictions, num_new_patches):
 
     margin = max(margin, 240//2)
 
-    all_indices = list(zip(*train_tile[0, 4, margin:rows-margin, margin:columns-margin].nonzero()))
-    all_indices = [(row + margin, column + margin) for (row, column) in all_indices]
+    #all_indices = list(zip(*train_tile[0, 4, margin:rows-margin, margin:columns-margin].nonzero()))
+    #all_indices = [(row + margin, column + margin) for (row, column) in all_indices]
     # Un-comment below for faster debugging
-    # num_possible_points = 10000
-    # possible_indices = [
-    #    (random.randint(0, rows - 2 * margin - 1),
-    #     random.randint(0, columns - 2 * margin - 1))
-    #     for n in range(num_possible_points)
-    # ]
-    possible_indices = all_indices
+    num_possible_points = 10000
+    possible_indices = [
+       (random.randint(margin, rows - margin - 1),
+        random.randint(margin, columns - margin - 1))
+        for n in range(num_possible_points)
+    ]
+    #possible_indices = all_indices
 
     highest_entropy_points = heapq.nlargest(num_new_patches,
                                             possible_indices,
@@ -299,7 +299,7 @@ def run_model(model, naip_data, output_file_path=None):
 
 
     
-def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, params, params_train, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True, step_size_function=active_learning_step_size, new_train_patches_function=new_train_patches_random, num_total_points=12000):
+def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, params, params_train, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True, step_size_function=active_learning_step_size, new_train_patches_function=new_train_patches_entropy, num_total_points=12000):
 
     train_tile_fn = open(args.train_tiles_list_file_name, "r").read().strip().split("\n")[0]
     train_tile_fn = train_tile_fn.replace('.mrf', '.npy')

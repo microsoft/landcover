@@ -27,7 +27,7 @@ NUMS_PATCHES=(400)
 #python training/pytorch/test_finetuning.py --area test${TEST_REGION} --model_file "/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/baseline_models/baseline_unet_group_params_isotropic_nn9.pth.tar" --test_tile_fn training/data/finetuning/test${TEST_REGION}_train_tiles.txt --tile_type train
 #python training/pytorch/test_finetuning.py --area test${TEST_REGION} --model_file "/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/baseline_models/baseline_unet_group_params_isotropic_nn9.pth.tar" --test_tile_fn training/data/finetuning/test${TEST_REGION}_test_tiles.txt
 
-query_method="random_debug_new_framework"
+query_method="entropy_10000_rand_candidates"
 
 for random_seed in {1..5}
 do
