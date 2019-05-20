@@ -242,7 +242,37 @@ def new_train_patches_entropy(model, train_tile, predictions, num_new_patches):
 
     new_train_patches = pixels_to_patches(train_tile, highest_entropy_points)
     return new_train_patches
+
+
+def new_train_patches_random(model, train_tile, predictions, num_new_patches):
+    # train_tile: (batch, channels, height, width)
+
+    try:
+        margin = model.border_margin_px
+    except:
+        margin = 0
+
+    margin = max(margin, 240//2)
+
+    selected_points = []
+
+    for i in range(num_new_patches):
+        row = random.randint(margin, rows - margin - 1)
+        column = random.randint(margin, columns - margin - 1)
+        selected_points.append((row, column))
     
+    for row, column in selected_points:
+        if not( (margin <= row < rows - margin) and
+                (margin <= column < columns - margin) ):
+            raise Exception('Invalid point (%d, %d): falls in border of %d px, where a prediction is not possible' % (row, column, margin))      
+
+    print('random selected_points')
+    print(selected_points)
+
+    new_train_patches = pixels_to_patches(train_tile, selected_points)
+    return new_train_patches
+
+
 
 # If needed: implement the below function for generating random patches
 #def new_train_patches_random(model, train_tile, num_new_patches):
@@ -274,7 +304,7 @@ def run_model(model, naip_data, output_file_path=None):
 
 
     
-def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, params, params_train, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True, step_size_function=active_learning_step_size, new_train_patches_function=new_train_patches_entropy, num_total_points=12000):
+def active_learning(model, loss_criterion, optimizer, scheduler, dataloaders, params, params_train, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True, step_size_function=active_learning_step_size, new_train_patches_function=new_train_patches_random, num_total_points=12000):
 
     train_tile_fn = open(args.train_tiles_list_file_name, "r").read().strip().split("\n")[0]
     train_tile_fn = train_tile_fn.replace('.mrf', '.npy')
