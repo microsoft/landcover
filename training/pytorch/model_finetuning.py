@@ -69,6 +69,10 @@ class GroupParams(nn.Module):
         self.gammas = nn.Parameter(torch.ones((1, 32, 1, 1)))
         self.betas = nn.Parameter(torch.zeros((1, 32, 1, 1)))
         self.model = model
+        try:
+            self.border_margin_px = model.border_margin_px
+        except:
+            self.border_margin_px = 0
 
     def forward(self, x):
         x, conv1_out, conv1_dim = self.model.down_1(x)
