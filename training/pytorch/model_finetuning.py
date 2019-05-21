@@ -240,8 +240,8 @@ def entropy_selection(predictions, possible_indices, num_new_patches):
 def margin_selection(predictions, possible_indices, num_new_patches):
     # predictions: (height, width, channels)
     predictions = softmax(predictions) # logits to probabilities
-    sorted_predictions, _ = torch.sort(predictions, dim=-1, descending=True) # sort probabilities, largest to smallest
-    margin = sorted_predictions[:, :, 0] - sorted_predictions[:, :, 1]
+    sorted_predictions = np.sort(predictions, axis=-1) # sort probabilities, smallest to largest
+    margin = sorted_predictions[:, :, -1] - sorted_predictions[:, :, -2]  # (largest prob) - (2nd largest prob)
     
     lowest_margin_points = heapq.nsmallest(num_new_patches,
                                            possible_indices,
