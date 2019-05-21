@@ -237,6 +237,19 @@ def entropy_selection(predictions, possible_indices, num_new_patches):
     return highest_entropy_points # new_train_patches
 
 
+def margin_selection(predictions, possible_indices, num_new_patches):
+    # predictions: (height, width, channels)
+    predictions = softmax(predictions) # logits to probabilities
+    sorted_predictions, _ = torch.sort(predictions, dim=-1, descending=True) # sort probabilities, largest to smallest
+    margin = sorted_predictions[:, :, 0] - sorted_predictions[:, :, 1]
+    
+    lowest_margin_points = heapq.nsmallest(num_new_patches,
+                                           possible_indices,
+                                           key=lambda index: margin[index])
+
+    return lowest_margin_points
+
+
 def random_selection(predictions, possible_indices, num_new_patches):
     # predictions: (height, width, channels)
     try:
@@ -316,6 +329,8 @@ def active_learning(load_model, loss_criterion, optimizer, scheduler, dataloader
         query_strategy = random_selection
     if args.active_learning_strategy == 'entropy':
         query_strategy = entropy_selection
+    if args.active_learning_strategy == 'margin':
+        query_strategy = margin_selection
         
     train_tile_fn = open(args.train_tiles_list_file_name, "r").read().strip().split("\n")[0]
     train_tile_fn = train_tile_fn.replace('.mrf', '.npy')
