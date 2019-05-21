@@ -29,12 +29,16 @@ NUMS_PATCHES=(400)
 
 query_method="entropy"
 
+MODELS_DIR="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/test/test${TEST_REGION}"
+
+RESULTS_FILE="${MODELS_DIR}/${query_method}/fine_tune_test_results.csv"
+
+touch $RESULTS_FILE
+
 for random_seed in {1..5}
 do
-    MODELS_DIR="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/test/test${TEST_REGION}/${num_patches}_patches"
-
     # Train fine-tuned model
-    python training/pytorch/model_finetuning.py --model_file "/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/checkpoint_best.pth.tar" --log_fn "${MODELS_DIR}/${query_method}_${random_seed}/train_results.csv" --model_output_directory "${MODELS_DIR}/${query_method}_${random_seed}" --area test${TEST_REGION} --train_tiles_list_file_name "training/data/finetuning/test${TEST_REGION}_train_tiles.txt" --test_tiles_list_file_name "training/data/finetuning/test${TEST_REGION}_test_tiles.txt" --random_seed ${random_seed}
+    python training/pytorch/model_finetuning.py --model_file "/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/training/checkpoint_best.pth.tar" --log_fn "${MODELS_DIR}/${query_method}_${random_seed}/train_results.csv" --model_output_directory "${MODELS_DIR}/${query_method}_${random_seed}" --area test${TEST_REGION} --train_tiles_list_file_name "training/data/finetuning/test${TEST_REGION}_train_tiles.txt" --test_tiles_list_file_name "training/data/finetuning/test${TEST_REGION}_test_tiles.txt" --random_seed ${random_seed} >> ${RESULTS_FILE}
 
     # --training_patches_fn "training/data/finetuning/sampled/test${TEST_REGION}_train_patches_rand_${num_patches}_${random_seed}.txt" \
 #	   --validation_patches_fn "training/data/finetuning/sampled/test${TEST_REGION}_train_patches_rand_${num_patches}_${random_seed}.txt" \
