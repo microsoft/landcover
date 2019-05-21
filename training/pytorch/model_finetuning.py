@@ -59,6 +59,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_output_directory', type=str, help='Where to store fine-tuned model', default='/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/val/val2_fix/')
     parser.add_argument('--random_seed', type=int, help="Random seed for reproducibility", default=0)
     parser.add_argument('--active_learning_strategy', type=str, help="Which point selection strategy to use for active learning query method", default='random')
+    parser.add_argument('--active_learning_batch_size', type=int, help="How many points to select for each active learning query. If -1 (default), use progressive steps: [10, 30, 60, 100, 200, 600, 1000]", default=-1)
     
     args = parser.parse_args()
 
@@ -181,10 +182,12 @@ def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, params
 
 
 def active_learning_step_size(step_num):
-    step_sizes = [10, 30, 60, 100, 200, 600, 1000]
-    # number of points will be 0, 10, 40, 100, 200, 400, 1000, 2000
-
-    return step_sizes[step_num]
+    if args.active_learning_batch_size > 0:
+        return args.active_learning_batch_size
+    else:
+        step_sizes = [10, 30, 60, 100, 200, 600, 1000]
+        # number of points will be 0, 10, 40, 100, 200, 400, 1000, 2000
+        return step_sizes[step_num]
     
     #if num_points < 200:
     #    return 50
