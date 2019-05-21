@@ -24,7 +24,7 @@ shift $((OPTIND -1))
 
 export PYTHONPATH=.
 
-query_method_dir="${ACTIVE_LEARNING_STRATEGY}"
+query_method_dir="${ACTIVE_LEARNING_STRATEGY}_step_${ACTIVE_LEARNING_BATCH_SIZE}"
 
 MODELS_DIR="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/test/test${TEST_REGION}/${query_method_dir}"
 mkdir "${MODELS_DIR}"
