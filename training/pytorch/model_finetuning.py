@@ -617,8 +617,8 @@ def main(finetune_methods, predictions_path, validation_patches_fn=None):
         
         # print('Fine-tune hyper-params: %s' % str(hyper_params))
         improve_reproducibility(args.random_seed)
-        model, result = finetune_function(path, loss, dataloaders, params, params_train, hyper_params, results_writer, n_epochs=hyper_params['n_epochs']) #, predictions_path=str(predictions_path / str(hyper_params)))
-        results[finetune_method_name] = result
+        model = finetune_function(path, loss, dataloaders, params, params_train, hyper_params, results_writer, n_epochs=hyper_params['n_epochs']) #, predictions_path=str(predictions_path / str(hyper_params)))
+        # results[finetune_method_name] = result
         
         savedir = args.model_output_directory
         if not os.path.exists(savedir):
@@ -630,7 +630,7 @@ def main(finetune_methods, predictions_path, validation_patches_fn=None):
 #            torch.save(model.state_dict(), finetuned_fn)
 
     # pprint(results)
-    results_file.close()
+    # results_file.close()
 
 
 def hyper_parameters_search(hyper_parameters):
