@@ -354,7 +354,7 @@ def active_learning(load_model, loss_criterion, optimizer, scheduler, dataloader
 
         # Train new model
         model_state.__init__(*load_model())
-        hyper_parameters['query_method'] = 'entropy' if (new_train_patches_function == new_train_patches_entropy) else 'random'
+        hyper_parameters['query_method'] = args.active_learning_strategy
         hyper_parameters['num_points'] = len(training_patches)
         model_state.model, fine_tune_result = train_model(model_state.model, model_state.loss, model_state.optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=num_epochs, superres=superres, masking=False)
 
