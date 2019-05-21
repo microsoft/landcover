@@ -514,9 +514,6 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
 
             # print('number of batches in epoch', len(dataloaders[phase]))
             # print('n_iter', n_iter)
-            if phase == "train":
-                delta_loss = np.abs(epoch_statistics[phase]['loss'] - loss_previous_epoch)
-                loss_previous_epoch = epoch_statistics[phase]['loss']
                 
         result_row = {
             'run_id': hyper_parameters['run_id'],
