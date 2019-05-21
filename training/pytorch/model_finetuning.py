@@ -58,6 +58,7 @@ if __name__ == '__main__':
     parser.add_argument('--log_fn', type=str, help="Where to store training results", default="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/val/val2/10_patches/finetune_results.csv")
     parser.add_argument('--model_output_directory', type=str, help='Where to store fine-tuned model', default='/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/val/val2_fix/')
     parser.add_argument('--random_seed', type=int, help="Random seed for reproducibility", default=0)
+    parser.add_argument('--active_learning_strategy', type=str, help="Which point selection strategy to use for active learning query method", default='random')
     
     args = parser.parse_args()
 
@@ -312,9 +313,14 @@ class ModelState:
         self.optimizer = optimizer
 
     
-def active_learning(load_model, loss_criterion, optimizer, scheduler, dataloaders, params, params_train, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True, step_size_function=active_learning_step_size, new_train_patches_function=new_train_patches_entropy, num_total_points=2000):
+def active_learning(load_model, loss_criterion, optimizer, scheduler, dataloaders, params, params_train, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True, step_size_function=active_learning_step_size, num_total_points=2000):
 
     model_state = ModelState(*load_model())
+
+    if args.active_learning_strategy == 'random':
+        new_train_patches_function = new_train_patches_random
+    if args.active_learning_strategy == 'entropy':
+        new_train_patches_function = new_train_patches_entropy
     
     train_tile_fn = open(args.train_tiles_list_file_name, "r").read().strip().split("\n")[0]
     train_tile_fn = train_tile_fn.replace('.mrf', '.npy')
@@ -334,13 +340,15 @@ def active_learning(load_model, loss_criterion, optimizer, scheduler, dataloader
     except:
         margin = 0
 
+    method_and_hypers_str = hyper_parameters_str(hyper_parameters)
+
     num_steps = 0
     while len(training_patches) < num_total_points:
         # Evaluate current model
         logits, class_predictions = run_model(model_state.model, train_tile_inputs)
         tile_mean_IoU = mean_IoU(class_predictions[margin:height-margin, margin:width-margin], y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
         tile_pixel_accuracy = pixel_accuracy(class_predictions[margin:height-margin, margin:width-margin], y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
-        print('%d, %s, %d, %f, %f, %s' % (len(training_patches), args.area, args.random_seed, tile_mean_IoU, tile_pixel_accuracy, train_tile_fn))
+        print('%s, %d, %s, %d, %f, %f, %s' % (method_and_hypers_str, len(training_patches), args.area, args.random_seed, tile_mean_IoU, tile_pixel_accuracy, train_tile_fn))
 
         # Select new points 
         num_new_patches = step_size_function(num_steps)
@@ -361,7 +369,7 @@ def active_learning(load_model, loss_criterion, optimizer, scheduler, dataloader
     logits, class_predictions = run_model(model_state.model, train_tile_inputs)
     tile_mean_IoU = mean_IoU(class_predictions[margin:height-margin, margin:width-margin], y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
     tile_pixel_accuracy = pixel_accuracy(class_predictions[margin:height-margin, margin:width-margin], y_train_hr[margin:height-margin, margin:width-margin], ignored_classes={0})
-    print('%d, %s, %d, %f, %f, %s' % (len(training_patches), args.area, args.random_seed, tile_mean_IoU, tile_pixel_accuracy, train_tile_fn))
+    print('%s, %d, %s, %d, %f, %f, %s' % (method_and_hypers_str, len(training_patches), args.area, args.random_seed, tile_mean_IoU, tile_pixel_accuracy, train_tile_fn))
 
 
 def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=False):
@@ -563,13 +571,14 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, hyper_param
 
 def hyper_parameters_str(hyper_parameters):
     # hyper_parameters_str = sorted(hyper_parameters.items())
-    hyper_parameters_str = "%s_lr_%f_epoch_%d" % (
+    hyper_parameters_str = "%s_lr_%f" % (
         hyper_parameters['method_name'],
         hyper_parameters['learning_rate'],
-        hyper_parameters['epoch'],
     )
     if 'last_k_layers' in hyper_parameters:
         hyper_parameters_str += ("_last_k_" + str(hyper_parameters['last_k_layers']))
+    if 'epoch' in hyper_parameters:
+        hyper_parameters_str += ("_epoch_" + str(hyper_parameters['epoch']))
     return hyper_parameters_str
 
 def main(finetune_methods, predictions_path, validation_patches_fn=None):
@@ -580,7 +589,7 @@ def main(finetune_methods, predictions_path, validation_patches_fn=None):
     results_writer = csv.DictWriter(results_file, ['run_id', 'hyper_parameters', 'epoch', 'train_loss', 'train_accuracy', 'train_mean_IoU', 'val_loss', 'val_accuracy', 'val_mean_IoU', 'total_time'])
     results_writer.writeheader()
 
-    print("num_points, area, random_seed, mean_IoU, pixel_accuracy, tile_path")
+    print("method, num_points, area, random_seed, mean_IoU, pixel_accuracy, tile_path")
     
     params = json.load(open(args.config_file, "r"))
     
