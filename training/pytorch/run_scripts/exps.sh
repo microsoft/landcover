@@ -1,4 +1,4 @@
-while getopts ":t:g:s:" opt; do
+while getopts ":t:g:s:b:" opt; do
     case ${opt} in
 	g )
 	    export CUDA_VISIBLE_DEVICES=$OPTARG
@@ -8,6 +8,9 @@ while getopts ":t:g:s:" opt; do
 	    ;;
 	s )
 	    ACTIVE_LEARNING_STRATEGY=$OPTARG
+	    ;;
+	b )
+	    ACTIVE_LEARNING_BATCH_SIZE=$OPTARG
 	    ;;
 	\? )
 	    echo "Invalid option: $OPTARG" 1>&2
@@ -21,7 +24,7 @@ shift $((OPTIND -1))
 
 export PYTHONPATH=.
 
-query_method_dir="${ACTIVE_LEARNING_STRATEGY}"
+query_method_dir="${ACTIVE_LEARNING_STRATEGY}_step_${ACTIVE_LEARNING_BATCH_SIZE}"
 
 MODELS_DIR="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/test/test${TEST_REGION}/${query_method_dir}"
 mkdir "${MODELS_DIR}"
@@ -41,7 +44,9 @@ do
 	   --train_tiles_list_file_name "training/data/finetuning/test${TEST_REGION}_train_tiles.txt" \
 	   --test_tiles_list_file_name "training/data/finetuning/test${TEST_REGION}_test_tiles.txt" \
 	   --random_seed ${random_seed} \
-	   --active_learning_strategy ${ACTIVE_LEARNING_STRATEGY} >> ${RESULTS_FILE}
+	   --active_learning_strategy ${ACTIVE_LEARNING_STRATEGY} \
+	   --active_learning_batch_size ${ACTIVE_LEARNING_BATCH_SIZE} >> ${RESULTS_FILE}
+    
 
     # --training_patches_fn "training/data/finetuning/sampled/test${TEST_REGION}_train_patches_rand_${num_patches}_${random_seed}.txt" \
 #	   --validation_patches_fn "training/data/finetuning/sampled/test${TEST_REGION}_train_patches_rand_${num_patches}_${random_seed}.txt" \

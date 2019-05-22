@@ -59,6 +59,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_output_directory', type=str, help='Where to store fine-tuned model', default='/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/val/val2_fix/')
     parser.add_argument('--random_seed', type=int, help="Random seed for reproducibility", default=0)
     parser.add_argument('--active_learning_strategy', type=str, help="Which point selection strategy to use for active learning query method", default='random')
+    parser.add_argument('--active_learning_batch_size', type=int, help="How many points to select for each active learning query. If -1 (default), use progressive steps: [10, 30, 60, 100, 200, 600, 1000]", default=-1)
     
     args = parser.parse_args()
 
@@ -181,10 +182,12 @@ def finetune_last_k_layers(path_2_saved_model, loss, gen_loaders, params, params
 
 
 def active_learning_step_size(step_num):
-    step_sizes = [10, 30, 60, 100, 200, 600, 1000]
-    # number of points will be 0, 10, 40, 100, 200, 400, 1000, 2000
-
-    return step_sizes[step_num]
+    if args.active_learning_batch_size > 0:
+        return args.active_learning_batch_size
+    else:
+        step_sizes = [10, 30, 60, 100, 200, 600, 1000]
+        # number of points will be 0, 10, 40, 100, 200, 400, 1000, 2000
+        return step_sizes[step_num]
     
     #if num_points < 200:
     #    return 50
@@ -222,11 +225,41 @@ def pixels_to_patches(train_tile, points):
     return patches
 
 
-def new_train_patches_entropy(model, train_tile, predictions, num_new_patches):
-    # (batch, channels, height, width)
+def entropy_selection(predictions, possible_indices, num_new_patches):
+    # predictions: (height, width, channels)
     entropy = prediction_entropy(predictions)
-    # (height, width)
-    rows, columns = entropy.shape
+    # entropy: (height, width)
+
+    highest_entropy_points = heapq.nlargest(num_new_patches,
+                                            possible_indices,
+                                            key=lambda index: entropy[index])
+
+    return highest_entropy_points # new_train_patches
+
+
+def margin_selection(predictions, possible_indices, num_new_patches):
+    # predictions: (height, width, channels)
+    predictions = softmax(predictions) # logits to probabilities
+    sorted_predictions = np.sort(predictions, axis=-1) # sort probabilities, smallest to largest
+    margin = sorted_predictions[:, :, -1] - sorted_predictions[:, :, -2]  # (largest prob) - (2nd largest prob)
+    
+    lowest_margin_points = heapq.nsmallest(num_new_patches,
+                                           possible_indices,
+                                           key=lambda index: margin[index])
+
+    return lowest_margin_points
+
+
+def random_selection(predictions, possible_indices, num_new_patches):
+    # predictions: (height, width, channels)
+    try:
+        return random.sample(possible_indices, num_new_patches)
+    except:
+        return possible_indices
+
+
+def new_train_patches(model, train_tile, predictions, num_new_patches, query_strategy=random_selection): # query strategy: random_selection, entropy_selection
+    _, _, rows, columns = train_tile.shape
 
     try:
         margin = model.border_margin_px
@@ -247,43 +280,14 @@ def new_train_patches_entropy(model, train_tile, predictions, num_new_patches):
     #    for n in range(num_possible_points)
     #]
 
-    highest_entropy_points = heapq.nlargest(num_new_patches,
-                                            possible_indices,
-                                            key=lambda index: entropy[index])
-
-    for row, column in highest_entropy_points:
+    for row, column in possible_indices:
         if not( (margin <= row < rows - margin) and
                 (margin <= column < columns - margin) ):
             raise Exception('Invalid point (%d, %d): falls in border of %d px, where a prediction is not possible' % (row, column, margin))      
 
-    new_train_patches = pixels_to_patches(train_tile, highest_entropy_points)
-    return new_train_patches
-
-
-def new_train_patches_random(model, train_tile, predictions, num_new_patches):
-    # train_tile: (batch, channels, height, width)
-    _, _, rows, columns = train_tile.shape
-    
-    try:
-        margin = model.border_margin_px
-    except:
-        margin = 0
-
-    margin = max(margin, 240//2)
-
-    selected_points = []
-
-    for i in range(num_new_patches):
-        row = random.randint(margin, rows - margin - 1)
-        column = random.randint(margin, columns - margin - 1)
-        selected_points.append((row, column))
-    
-    for row, column in selected_points:
-        if not( (margin <= row < rows - margin) and
-                (margin <= column < columns - margin) ):
-            raise Exception('Invalid point (%d, %d): falls in border of %d px, where a prediction is not possible' % (row, column, margin))      
-
+    selected_points = query_strategy(predictions, possible_indices, num_new_patches)
     new_train_patches = pixels_to_patches(train_tile, selected_points)
+
     return new_train_patches
 
 
@@ -322,10 +326,12 @@ def active_learning(load_model, loss_criterion, optimizer, scheduler, dataloader
     model_state = ModelState(*load_model())
 
     if args.active_learning_strategy == 'random':
-        new_train_patches_function = new_train_patches_random
+        query_strategy = random_selection
     if args.active_learning_strategy == 'entropy':
-        new_train_patches_function = new_train_patches_entropy
-    
+        query_strategy = entropy_selection
+    if args.active_learning_strategy == 'margin':
+        query_strategy = margin_selection
+        
     train_tile_fn = open(args.train_tiles_list_file_name, "r").read().strip().split("\n")[0]
     train_tile_fn = train_tile_fn.replace('.mrf', '.npy')
     train_tile = load_tile(train_tile_fn)
@@ -356,14 +362,14 @@ def active_learning(load_model, loss_criterion, optimizer, scheduler, dataloader
 
         # Select new points 
         num_new_patches = step_size_function(num_steps)
-        training_patches += new_train_patches_function(model_state.model, train_tile, logits, num_new_patches)
+        training_patches += new_train_patches(model_state.model, train_tile, logits, num_new_patches, query_strategy=query_strategy)
         training_set = DataGenerator(
             training_patches, params_train["batch_size"], params["patch_size"], params["loader_opts"]["num_channels"], superres=superres)  # superres=params["train_opts"]["superres"]
         dataloaders['train'] = data.DataLoader(training_set, **params_train)
 
         # Train new model
         model_state.__init__(*load_model())
-        hyper_parameters['query_method'] = 'entropy' if (new_train_patches_function == new_train_patches_entropy) else 'random'
+        hyper_parameters['query_method'] = args.active_learning_strategy
         hyper_parameters['num_points'] = len(training_patches)
         model_state.model, fine_tune_result = train_model(model_state.model, model_state.loss, model_state.optimizer, scheduler, dataloaders, hyper_parameters, log_writer, num_epochs=num_epochs, superres=superres, masking=False)
 
