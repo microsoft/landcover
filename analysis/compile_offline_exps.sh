@@ -2,6 +2,7 @@ TEST_AREAS=(1 2 3 4)
 
 results_dir="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/test"
 analysis_dir="/mnt/blobfuse/train-output/offline-active-learning"
+results_dir_dropout='/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/test/'
 
 mkdir -p ${analysis_dir}
 
@@ -15,7 +16,8 @@ do
     mkdir -p ${dir}
     file=${dir}/fine_tune_test_results.csv
     cat ${results_dir}/test${area}/entropy/fine_tune_test_results.csv > ${file}
-    cat ${results_dir}/test${area}/entropy/fine_tune_test_results_group_params.csv >> ${file}
+    cat ${results_dir}/test${area}/entropy/fine_tune_test_results_group_params.csv >> ${file}    
+    cat ${results_dir_dropout}/test${area}/entropy_step_-1/fine_tune_test_results_dropout.csv | grep -v { | grep -v .csv >> ${file}
 done
 
 
@@ -27,6 +29,7 @@ do
     mkdir -p ${dir}
     file=${dir}/fine_tune_test_results.csv
     cat ${results_dir}/test${area}/random_step_-1/fine_tune_test_results.csv > ${file}
+    cat ${results_dir_dropout}/test${area}/random_step_-1/fine_tune_test_results_dropout.csv | grep -v { | grep -v .csv >> ${file}
 done
 
 
@@ -38,5 +41,6 @@ do
     mkdir -p ${dir}
     file=${dir}/fine_tune_test_results.csv
     cat ${results_dir}/test${area}/margin_step_-1/fine_tune_test_results.csv > ${file}
+    cat ${results_dir_dropout}/test${area}/margin_step_-1/fine_tune_test_results_dropout.csv | grep -v { | grep -v .csv >> ${file}
 done
 
