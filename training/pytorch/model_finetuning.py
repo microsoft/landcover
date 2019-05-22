@@ -650,7 +650,20 @@ def pixels_to_patches(train_tile, points):
     return patches
 
 
-def entropy_selection(predictions, possible_indices, num_new_patches):
+####################################################
+####### Active Learning Query Strategies ###########
+####################################################
+
+
+def random_sample(points, num):
+    # Return `num` elements from `points` at random; return the whole set if not enough
+    try:
+        return random.sample(points, num)
+    except:
+        return points
+
+
+def entropy_selection(train_tile, predictions, possible_indices, num_new_patches):
     # predictions: (height, width, channels)
     entropy = prediction_entropy(predictions)
     # entropy: (height, width)
@@ -662,7 +675,7 @@ def entropy_selection(predictions, possible_indices, num_new_patches):
     return highest_entropy_points # new_train_patches
 
 
-def margin_selection(predictions, possible_indices, num_new_patches):
+def margin_selection(train_tile, predictions, possible_indices, num_new_patches):
     # predictions: (height, width, channels)
     predictions = softmax(predictions) # logits to probabilities
     sorted_predictions = np.sort(predictions, axis=-1) # sort probabilities, smallest to largest
@@ -675,14 +688,35 @@ def margin_selection(predictions, possible_indices, num_new_patches):
     return lowest_margin_points
 
 
-def random_selection(predictions, possible_indices, num_new_patches):
+def random_selection(train_tile, predictions, possible_indices, num_new_patches):
+    return random_sample(possible_indices, num_new_patches)
+
+    
+def filter_mistakes(train_tile, predictions, possible_indices, find_mistakes=True):
+    predicted_classes = np.argmax(predictions, axis=-1)
+    # (height, width)
+    true_classes = train_tile[0, 4]
+    
+    mistakes = (predicted_classes != true_classes)
+    selectable_points = [point for point in possible_indices if mistakes[possible_indices] == find_mistakes]
+    return selectable_points
+
+
+def mistake_selection(train_tile, predictions, possible_indices, num_new_patches):
     # predictions: (height, width, channels)
-    try:
-        return random.sample(possible_indices, num_new_patches)
-    except:
-        return possible_indices
+    selectable_mistakes = find_mistakes(train_tile, predictions, possible_indices)
+    return random_sample(selectable_mistakes, num_new_patches)
+        
 
+def half_mistake_selection(train_tile, predictions, possible_indices, num_new_patches):
+    # predictions: (height, width, channels)
+    selectable_mistakes = filter_mistakes(train_tile, predictions, possible_indices, find_mistakes=True)
+    selectable_non_mistakes = filter_mistakes(train_tile, predictions, possible_indices, find_mistakes=False)
 
+    return random_sample(selectable_mistakes, num_new_patches // 2) + \
+           random_sample(selectable_non_mistakes, num_new_patches // 2)
+
+    
 def new_train_patches(model, train_tile, predictions, num_new_patches, query_strategy=random_selection): # query strategy: random_selection, entropy_selection
     _, _, rows, columns = train_tile.shape
 
@@ -710,7 +744,7 @@ def new_train_patches(model, train_tile, predictions, num_new_patches, query_str
                 (margin <= column < columns - margin) ):
             raise Exception('Invalid point (%d, %d): falls in border of %d px, where a prediction is not possible' % (row, column, margin))      
 
-    selected_points = query_strategy(predictions, possible_indices, num_new_patches)
+    selected_points = query_strategy(train_tile, predictions, possible_indices, num_new_patches)
     new_train_patches = pixels_to_patches(train_tile, selected_points)
 
     return new_train_patches
@@ -755,6 +789,10 @@ def active_learning_dropout(load_model, loss_criterion, dataloaders, params, par
         query_strategy = entropy_selection
     if args.active_learning_strategy == 'margin':
         query_strategy = margin_selection
+    if args.active_learning_strategy == 'mistake':
+        query_strategy = mistake_selection
+    if args.active_learning_strategy == 'half_mistake':
+        query_strategy = half_mistake_selection
         
     train_tile_fn = open(args.train_tiles_list_file_name, "r").read().strip().split("\n")[0]
     train_tile_fn = train_tile_fn.replace('.mrf', '.npy')
