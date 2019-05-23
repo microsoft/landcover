@@ -725,17 +725,17 @@ def filter_mistakes(train_tile, predictions, possible_indices, find_mistakes=Tru
 
 def mistake_random_selection(train_tile, predictions, possible_indices, num_new_patches):
     # predictions: (height, width, channels)
-    selectable_mistakes = find_mistakes(train_tile, predictions, possible_indices)
+    selectable_mistakes = filter_mistakes(train_tile, predictions, possible_indices)
     return random_selection(train_tile, predictions, selectable_mistakes, num_new_patches)
 
 def mistake_entropy_selection(train_tile, predictions, possible_indices, num_new_patches):
     # predictions: (height, width, channels)
-    selectable_mistakes = find_mistakes(train_tile, predictions, possible_indices)
+    selectable_mistakes = filter_mistakes(train_tile, predictions, possible_indices)
     return entropy_selection(train_tile, predictions, selectable_mistakes, num_new_patches)
 
 def mistake_margin_selection(train_tile, predictions, possible_indices, num_new_patches):
     # predictions: (height, width, channels)
-    selectable_mistakes = find_mistakes(train_tile, predictions, possible_indices)
+    selectable_mistakes = filter_mistakes(train_tile, predictions, possible_indices)
     return entropy_selection(train_tile, predictions, selectable_mistakes, num_new_patches)
 
 
