@@ -671,6 +671,8 @@ def get_query_strategy(active_learning_strategy_str):
         query_strategy = mistake_margin_selection
     if active_learning_strategy_str == 'half_mistake':
         query_strategy = half_mistake_selection
+    if active_learning_strategy_str == 'least_correct':
+        query_strategy = least_correct_selection
     if query_strategy == None:
         query_strategy = random_selection
         print('No query_strategy specified: using random_selection')
@@ -712,13 +714,14 @@ def margin_selection(train_tile, predictions, possible_indices, num_new_patches)
 def random_selection(train_tile, predictions, possible_indices, num_new_patches):
     return random_sample(possible_indices, num_new_patches)
 
+def true_classes(train_tile):
+    return train_tile[0, 4]
     
 def filter_mistakes(train_tile, predictions, possible_indices, find_mistakes=True):
     predicted_classes = np.argmax(predictions, axis=-1)
     # (height, width)
-    true_classes = train_tile[0, 4]
     
-    mistakes = (predicted_classes != true_classes)
+    mistakes = (predicted_classes != true_classes(train_tile))
     selectable_points = [point for point in possible_indices if mistakes[point] == find_mistakes]
     return selectable_points
 
@@ -738,7 +741,6 @@ def mistake_margin_selection(train_tile, predictions, possible_indices, num_new_
     selectable_mistakes = filter_mistakes(train_tile, predictions, possible_indices)
     return entropy_selection(train_tile, predictions, selectable_mistakes, num_new_patches)
 
-
 def half_mistake_selection(train_tile, predictions, possible_indices, num_new_patches):
     # predictions: (height, width, channels)
     selectable_mistakes = filter_mistakes(train_tile, predictions, possible_indices, find_mistakes=True)
@@ -747,6 +749,18 @@ def half_mistake_selection(train_tile, predictions, possible_indices, num_new_pa
     return random_selection(train_tile, predictions, selectable_mistakes, num_new_patches // 2) + \
            random_selection(train_tile, predictions, selectable_non_mistakes, num_new_patches // 2)
 
+def least_correct_selection(train_tile, predictions, possible_indices, num_new_patches):
+    # predictions: (height, width, channels)
+    pdb.set_trace()
+    
+    labels = true_classes(train_tile)
+    prob_correct_prediction = np.take_along_axis(predictions, labels, axis=-1)
+
+    lowest_margin_points = heapq.nsmallest(num_new_patches,
+                                           possible_indices,
+                                           key=lambda index: prob_correct_prediction[index])
+    
+    return _selection(train_tile, predictions, selectable_mistakes, num_new_patches)
     
 def new_train_patches(model, train_tile, predictions, num_new_patches, query_strategy=random_selection): # query strategy: random_selection, entropy_selection
     _, _, rows, columns = train_tile.shape
