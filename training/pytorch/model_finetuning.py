@@ -1216,8 +1216,38 @@ def hyper_parameters_search(hyper_parameters):
 def hyper_parameters_fixed(hyper_parameters):
     experiment_configs = []
 
-    experiment_configs = [ ('dropout', finetune_dropout, hyper_parameters) ]
+    hyper_parameters_grad_init = {
+        'optimizer_method': torch.optim.Adam, #, torch.optim.SGD],
+        'learning_rate': 0.004, # [0.001, 0.002, 0.003, 0.004, 0.01, 0.03],
+        'lr_schedule_step_size': 1000,  # [5],
+        'mask_id': 4, #  [0, 4, 7, 11] # range(12) # [4], # mask-id 5 --> 10 px / patch  # Not currently used
+        'n_epochs': 10,
+    }
+    
+    # Add last-k-layers hypers
+    for last_k_layers, learning_rate in [(1, 0.01), (2, 0.005), (3, 0.001)]:
+        new_hyper_parameters = copy.deepcopy(hyper_parameters_grad_init)
+        new_hyper_parameters['method_name'] = 'last_k_layers'
+        new_hyper_parameters['last_k_layers'] = last_k_layers
+        new_hyper_parameters['learning_rate'] = learning_rate
+        experiment_configs += [(new_hyper_parameters['method_name'], finetune_last_k_layers, new_hyper_parameters)]
 
+    # Add group-params method
+    new_hyper_parameters = copy.deepcopy(hyper_parameters_grad_init)
+    new_hyper_parameters['method_name'] = 'group_params'
+    new_hyper_parameters['learning_rate'] = 0.0025
+    experiment_configs += [(new_hyper_parameters['method_name'], finetune_group_params, new_hyper_parameters)]
+
+    hyper_parameters_dropout = {
+        'mask_id': 0,
+	'method_name': 'dropout',
+	'n_epochs': 64,
+        'last_k_layers': 5,
+        'dropout_rate' : 0.2
+    }
+    
+    experiment_configs += [ ('dropout', finetune_dropout, hyper_parameters_dropout) ]
+    
     return experiment_configs
 
     
@@ -1231,18 +1261,18 @@ def product_dict(**kwargs):
 if __name__ == "__main__":
     # mask_id indices (points per patch): [1, 2, 3, 4, 5, 10, 15, 20, 40, 60, 80, 100]
 
-    hyper_parameters_init = {
-        'mask_id': 0,
-	    'method_name': 'dropout',
-	    'n_epochs': 64,
-        'last_k_layers': 5,
-        'dropout_rate' : 0.2
+    hyper_parameters_grad_init = {
+        'optimizer_method': torch.optim.Adam, #, torch.optim.SGD],
+        'learning_rate': 0.004, # [0.001, 0.002, 0.003, 0.004, 0.01, 0.03],
+        'lr_schedule_step_size': 1000,  # [5],
+        'mask_id': 4, #  [0, 4, 7, 11] # range(12) # [4], # mask-id 5 --> 10 px / patch  # Not currently used
+        'n_epochs': 10,
     }
-
+    
     if args.run_validation:
-        experiment_configs = hyper_parameters_search(hyper_parameters_init)
+        experiment_configs = hyper_parameters_search(hyper_parameters_grad_init)
     else:
-        experiment_configs = hyper_parameters_fixed(hyper_parameters_init)
+        experiment_configs = hyper_parameters_fixed(hyper_parameters_grad_init)
     
     
     predictions_path = Path(args.model_output_directory) / "predictions"
