@@ -1,6 +1,6 @@
 analysis_dir="/mnt/blobfuse/train-output/offline-active-learning"
 
-STRATEGIES=("random" "entropy" "margin")
+STRATEGIES=("random" "entropy" "margin" "mistake_random")
 TEST_AREAS=(1 2 3 4)
 
 header_grep_query="method, num_points"
