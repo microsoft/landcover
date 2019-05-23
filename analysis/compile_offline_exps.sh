@@ -44,3 +44,14 @@ do
     cat ${results_dir_dropout}/test${area}/margin_step_-1/fine_tune_test_results_dropout.csv | grep -v { | grep -v .csv >> ${file}
 done
 
+# Mistake
+# /mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/test/test4/mistake_step_-1/fine_tune_test_results.csv
+for area in ${TEST_AREAS[@]}
+do
+    dir=${analysis_dir}/test${area}/mistake_random
+    mkdir -p ${dir}
+    file=${dir}/fine_tune_test_results.csv
+    cat ${results_dir}/test${area}/mistake_random_step_-1/fine_tune_test_results.csv | grep -v { | grep -v .csv > ${file}
+    # cat ${results_dir_dropout}/test${area}/mistake_random_step_-1/fine_tune_test_results_dropout.csv | grep -v { | grep -v .csv >> ${file}
+done
+
