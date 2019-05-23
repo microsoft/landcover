@@ -655,6 +655,27 @@ def pixels_to_patches(train_tile, points):
 ####################################################
 
 
+def get_query_strategy(active_learning_strategy_str):
+    query_strategy = None
+    if active_learning_strategy_str == 'random':
+        query_strategy = random_selection
+    if active_learning_strategy_str == 'entropy':
+        query_strategy = entropy_selection
+    if active_learning_strategy_str == 'margin':
+        query_strategy = margin_selection
+    if active_learning_strategy_str == 'mistake_random':
+        query_strategy = mistake_random_selection
+    if active_learning_strategy_str == 'mistake_entropy':
+        query_strategy = mistake_entropy_selection
+    if active_learning_strategy_str == 'mistake_margin':
+        query_strategy = mistake_margin_selection
+    if active_learning_strategy_str == 'half_mistake':
+        query_strategy = half_mistake_selection
+    if query_strategy == None:
+        query_strategy = random_selection
+        print('No query_strategy specified: using random_selection')
+
+
 def random_sample(points, num):
     # Return `num` elements from `points` at random; return the whole set if not enough
     try:
@@ -789,24 +810,12 @@ class ModelState:
         self.loss = loss
         if optimizer: self.optimizer = optimizer
 
+
+        
 def active_learning_dropout(load_model, loss_criterion, dataloaders, params, params_train, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True, step_size_function=active_learning_step_size, num_total_points=2000):
 
     model_state = ModelState(*load_model())
-
-    if args.active_learning_strategy == 'random':
-        query_strategy = random_selection
-    if args.active_learning_strategy == 'entropy':
-        query_strategy = entropy_selection
-    if args.active_learning_strategy == 'margin':
-        query_strategy = margin_selection
-    if args.active_learning_strategy == 'mistake_random':
-        query_strategy = mistake_random_selection
-    if args.active_learning_strategy == 'mistake_entropy':
-        query_strategy = mistake_entropy_selection
-    if args.active_learning_strategy == 'mistake_margin':
-        query_strategy = mistake_margin_selection
-    if args.active_learning_strategy == 'half_mistake':
-        query_strategy = half_mistake_selection
+    query_strategy = get_query_strategy(args.active_learning_strategy)
         
     train_tile_fn = open(args.train_tiles_list_file_name, "r").read().strip().split("\n")[0]
     train_tile_fn = train_tile_fn.replace('.mrf', '.npy')
@@ -863,13 +872,7 @@ def active_learning_dropout(load_model, loss_criterion, dataloaders, params, par
 def active_learning(load_model, loss_criterion, optimizer, scheduler, dataloaders, params, params_train, hyper_parameters, log_writer, num_epochs=20, superres=False, masking=True, step_size_function=active_learning_step_size, num_total_points=2000):
 
     model_state = ModelState(*load_model())
-
-    if args.active_learning_strategy == 'random':
-        query_strategy = random_selection
-    if args.active_learning_strategy == 'entropy':
-        query_strategy = entropy_selection
-    if args.active_learning_strategy == 'margin':
-        query_strategy = margin_selection
+    query_strategy = get_query_strategy(args.active_learning_strategy)
         
     train_tile_fn = open(args.train_tiles_list_file_name, "r").read().strip().split("\n")[0]
     train_tile_fn = train_tile_fn.replace('.mrf', '.npy')

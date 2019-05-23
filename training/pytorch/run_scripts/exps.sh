@@ -28,7 +28,7 @@ query_method_dir="${ACTIVE_LEARNING_STRATEGY}_step_${ACTIVE_LEARNING_BATCH_SIZE}
 
 MODELS_DIR="/mnt/blobfuse/train-output/conditioning/models/backup_unet_gn_isotropic_nn9/finetuning/test/test${TEST_REGION}/${query_method_dir}"
 mkdir "${MODELS_DIR}"
-RESULTS_FILE="${MODELS_DIR}/fine_tune_test_results_dropout.csv"
+RESULTS_FILE="${MODELS_DIR}/fine_tune_test_results.csv"
 rm ${RESULTS_FILE}
 
 touch $RESULTS_FILE
