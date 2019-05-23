@@ -719,7 +719,7 @@ def filter_mistakes(train_tile, predictions, possible_indices, find_mistakes=Tru
     true_classes = train_tile[0, 4]
     
     mistakes = (predicted_classes != true_classes)
-    selectable_points = [point for point in possible_indices if mistakes[possible_indices] == find_mistakes]
+    selectable_points = [point for point in possible_indices if mistakes[point] == find_mistakes]
     return selectable_points
 
 
