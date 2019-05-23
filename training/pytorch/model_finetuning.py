@@ -674,7 +674,7 @@ def get_query_strategy(active_learning_strategy_str):
     if query_strategy == None:
         query_strategy = random_selection
         print('No query_strategy specified: using random_selection')
-
+    return query_strategy
 
 def random_sample(points, num):
     # Return `num` elements from `points` at random; return the whole set if not enough
