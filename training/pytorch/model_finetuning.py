@@ -702,19 +702,29 @@ def filter_mistakes(train_tile, predictions, possible_indices, find_mistakes=Tru
     return selectable_points
 
 
-def mistake_selection(train_tile, predictions, possible_indices, num_new_patches):
+def mistake_random_selection(train_tile, predictions, possible_indices, num_new_patches):
     # predictions: (height, width, channels)
     selectable_mistakes = find_mistakes(train_tile, predictions, possible_indices)
-    return random_sample(selectable_mistakes, num_new_patches)
-        
+    return random_selection(train_tile, predictions, selectable_mistakes, num_new_patches)
+
+def mistake_entropy_selection(train_tile, predictions, possible_indices, num_new_patches):
+    # predictions: (height, width, channels)
+    selectable_mistakes = find_mistakes(train_tile, predictions, possible_indices)
+    return entropy_selection(train_tile, predictions, selectable_mistakes, num_new_patches)
+
+def mistake_margin_selection(train_tile, predictions, possible_indices, num_new_patches):
+    # predictions: (height, width, channels)
+    selectable_mistakes = find_mistakes(train_tile, predictions, possible_indices)
+    return entropy_selection(train_tile, predictions, selectable_mistakes, num_new_patches)
+
 
 def half_mistake_selection(train_tile, predictions, possible_indices, num_new_patches):
     # predictions: (height, width, channels)
     selectable_mistakes = filter_mistakes(train_tile, predictions, possible_indices, find_mistakes=True)
     selectable_non_mistakes = filter_mistakes(train_tile, predictions, possible_indices, find_mistakes=False)
 
-    return random_sample(selectable_mistakes, num_new_patches // 2) + \
-           random_sample(selectable_non_mistakes, num_new_patches // 2)
+    return random_selection(train_tile, predictions, selectable_mistakes, num_new_patches // 2) + \
+           random_selection(train_tile, predictions, selectable_non_mistakes, num_new_patches // 2)
 
     
 def new_train_patches(model, train_tile, predictions, num_new_patches, query_strategy=random_selection): # query strategy: random_selection, entropy_selection
@@ -789,8 +799,12 @@ def active_learning_dropout(load_model, loss_criterion, dataloaders, params, par
         query_strategy = entropy_selection
     if args.active_learning_strategy == 'margin':
         query_strategy = margin_selection
-    if args.active_learning_strategy == 'mistake':
-        query_strategy = mistake_selection
+    if args.active_learning_strategy == 'mistake_random':
+        query_strategy = mistake_random_selection
+    if args.active_learning_strategy == 'mistake_entropy':
+        query_strategy = mistake_entropy_selection
+    if args.active_learning_strategy == 'mistake_margin':
+        query_strategy = mistake_margin_selection
     if args.active_learning_strategy == 'half_mistake':
         query_strategy = half_mistake_selection
         
