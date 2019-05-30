@@ -92,6 +92,12 @@ def mean_IoU(pred_segm, gt_segm, ignored_classes={}):
     _mean_IoU = np.sum(IoU) / num_ground_truth_classes
     return _mean_IoU
 
+def mean_IoU_multi(pred_segms, gt_segms, ignored_classes={}):
+    return mean_IoU(np.concatenate(pred_segms),
+                    np.concatenate(gt_segms),
+                    ignored_classes=ignored_classes)
+
+
 def IoU(pred_segm, gt_segm):
     # Calculates pixel-wise binary IoU only
     # (invalid for > 2 classes)
