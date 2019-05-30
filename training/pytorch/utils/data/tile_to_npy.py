@@ -52,7 +52,7 @@ def main(tile_fn, save_npy=False):
     test_tiles_files = f.read().strip().split("\n")
     f.close()
 
-    results = []
+    # results = []
     for count, naip_fn in enumerate(test_tiles_files):
         naip_fn = naip_fn.split(',')[0] # get first column if multi-column format
 
@@ -98,11 +98,10 @@ def main(tile_fn, save_npy=False):
 
         output_fn = naip_fn.replace('.mrf', '.npy')
         result = merged[np.newaxis].data
-        results.append(result)
         if save_npy:
             np.save(output_fn, result)
             print(output_fn)
-    return results
+    # return result
 
 
 def sample(tile, patch_fns_fn, patches_output_directory, patch_dimension, num_patches):
