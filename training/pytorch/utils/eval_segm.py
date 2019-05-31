@@ -93,8 +93,8 @@ def mean_IoU(pred_segm, gt_segm, ignored_classes={}):
     return _mean_IoU
 
 def mean_IoU_multi(pred_segms, gt_segms, ignored_classes={}):
-    return mean_IoU(np.concatenate(pred_segms),
-                    np.concatenate(gt_segms),
+    return mean_IoU(np.concatenate([pred.flatten() for pred in pred_segms]),
+                    np.concatenate([gt.flatten() for gt in gt_segms]),
                     ignored_classes=ignored_classes)
 
 
