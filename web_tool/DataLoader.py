@@ -117,7 +117,7 @@ def lookup_tile_by_geom(extent):
 
         geom = GeoTools.extent_to_transformed_geom(extent, "EPSG:4326")
         if yangon_outline.contains(shapely.geometry.shape(geom)):
-            return "/mnt/afs/chesapeake/landcover/data/ermged_rgbnir_byte.tif"
+            return "/mnt/afs/chesapeake/landcover/data/merged_rgbnir_byte.tif"
         else:
             raise ValueError("No tile intersections")
 
@@ -151,7 +151,7 @@ def get_data_by_extent(naip_fn, extent, geo_data_type, return_transforms=False):
     # img, _ = rasterio.mask.mask(f, [geomb], crop=True)
     # _, r, _ = img.shape
 
-    pad_rad = 369 #TODO: this might need to be changed for much larger inputs
+    pad_rad = 20 #TODO: this might need to be changed for much larger inputs
     # pad_rad = int((890 - r) / 2)  #
     buffed_geom = shapely.geometry.shape(geom).buffer(pad_rad)
     minx, miny, maxx, maxy = buffed_geom.bounds

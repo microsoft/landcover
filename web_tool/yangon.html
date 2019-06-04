@@ -170,6 +170,7 @@
         var map = null;
         var animating = false;
        
+        var numClicks = 0;
         
         //----------------------------------------------------------------------
         // Runtime entrance
@@ -189,10 +190,16 @@
             var url = new URL(window.location.href);
             var userID = url.searchParams.get("userID");
             var modelID = url.searchParams.get("modelID");
+            var backendID = url.searchParams.get("backendID");
             if(userID === null) userID = "test";
             if(modelID === null) modelID = "test";
+            if(backendID === null){
+                backendID = 0;
+            } else{
+                backendID = parseInt(backendID);
+            }
             EXP_NAME = userID + "_" + modelID
-            BACKEND_URL = ENDPOINTS[0]["url"];
+            BACKEND_URL = BACKEND_ENDPOINTS[backendID]["url"];
 
 
             //----------------------------------------------------------------------
@@ -391,6 +398,15 @@
                             curSelPoly = getPolyAround(e.latlng, CORRECTION_SIZE);
                             var idx = currentPatches.length-1;
                             doSendCorrection(curSelPoly, idx);
+
+                            map.dragging.disable();
+                            numClicks += 1
+                            window.setTimeout(function(){
+                                numClicks -= 1;
+                                if(numClicks == 0){
+                                    map.dragging.enable();
+                                }
+                            }, 700);
                         }else{
                             console.debug("Click not in selection");
                         }
