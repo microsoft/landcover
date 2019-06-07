@@ -36,7 +36,7 @@
             <!-- Start of "home" tab -->
             <div class="sidebar-pane" id="home">
                 <div style="text-align: center; margin-bottom:10px;" id="inputImages">
-                    <h3>Satellite Input</h3>
+                    <h3>NAIP Input</h3>
                     <img id="inputNAIP">
                 </div>
 
@@ -169,7 +169,7 @@
 
         var map = null;
         var animating = false;
-       
+        
         var numClicks = 0;
         
         //----------------------------------------------------------------------
@@ -190,33 +190,22 @@
             var url = new URL(window.location.href);
             var userID = url.searchParams.get("userID");
             var modelID = url.searchParams.get("modelID");
-            var backendID = url.searchParams.get("backendID");
             if(userID === null) userID = "test";
             if(modelID === null) modelID = "test";
-            if(backendID === null){
-                backendID = 0;
-            } else{
-                backendID = parseInt(backendID);
-            }
             EXP_NAME = userID + "_" + modelID
-            BACKEND_URL = BACKEND_ENDPOINTS[backendID]["url"];
+            BACKEND_URL = ENDPOINTS[0]["url"];
 
 
             //----------------------------------------------------------------------
             // Setup map layers
             //----------------------------------------------------------------------
             
-            var NAIP_Imagery = L.tileLayer('tiles/chesapeake_test/{z}/{x}/{y}.png', {
+            var NAIP_Imagery = L.tileLayer('tiles/philipsburg/{z}/{x}/{y}.png', {
                     attribution: 'Georeferenced Image', 
                     tms:true,
                     maxZoom:20,
-                    maxNativeZoom: 18
-            });
-            var Sentinel_Imagery = L.tileLayer('tiles/yangon/{z}/{x}/{y}.png', {
-                    attribution: 'Georeferenced Image', 
-                    tms:true,
-                    maxZoom:18,
-                    maxNativeZoom: 16
+                    maxNativeZoom: 18,
+                    minZoom: 13
             });
             var OpenStreetMap_Mapnik  = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
@@ -228,7 +217,7 @@
             });
 
             var interesting_locations = [
-                L.marker([16.66177, 96.326427]).bindPopup('Yangon, Myanmar'),
+                L.marker([46.330963, -113.296773]).bindPopup('Philipsburg, MT'),
             ];
 
             var cities = L.layerGroup(interesting_locations);
@@ -236,10 +225,10 @@
             map = L.map('map', {
                 zoomControl: false,
                 crs: L.CRS.EPSG3857, // this is a default, but I'm setting it to be explicit about what CRS we are in	
-                center: [16.66177, 96.326427],
-                zoom: 10,
+                center: [46.330963, -113.296773],
+                zoom: 13,
                 keyboard: false,
-                layers: [Sentinel_Imagery, cities]
+                layers: [NAIP_Imagery, cities]
             });
             map.createPane('labels');
             map.getPane('labels').style.zIndex = 200;
@@ -285,11 +274,12 @@
             // handlers
             //----------------------------------------------------------------------
             var baseMaps = {
+                "NAIP 2011 Imagery": NAIP_Imagery,
                 "OpenStreetMap Mapnik": OpenStreetMap_Mapnik,
                 "ESRI World Imagery": Esri_WorldImagery,
-                "Sentinel 2019 Imagery": Sentinel_Imagery
             };
             var overlayMaps = {
+                "Interesting Points": cities
             };
 
             for(var i=0;i<interesting_locations.length;i++){

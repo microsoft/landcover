@@ -93,6 +93,10 @@ with fiona.open("/mnt/afs/chesapeake/landcover/data/yangon.geojson") as f:
     yangon_outline = next(iter(f))
     yangon_outline = shapely.geometry.shape(yangon_outline["geometry"])
 
+with fiona.open("data/HCMC_outline.geojson") as f:
+    hcmc_outline = next(iter(f))
+    hcmc_outline = shapely.geometry.shape(hcmc_outline["geometry"])
+
 def lookup_tile_by_geom(extent):
     tile_index = rtree.index.Index(ROOT_DIR + "/data/tile_index")
 
@@ -118,6 +122,8 @@ def lookup_tile_by_geom(extent):
         geom = GeoTools.extent_to_transformed_geom(extent, "EPSG:4326")
         if yangon_outline.contains(shapely.geometry.shape(geom)):
             return "/mnt/afs/chesapeake/landcover/data/merged_rgbnir_byte.tif"
+        elif hcmc_outline.contains(shapely.geometry.shape(geom)):
+            return "data/ThuDuc_WGS84.tif"
         else:
             raise ValueError("No tile intersections")
 
@@ -143,8 +149,8 @@ def get_data_by_extent(naip_fn, extent, geo_data_type, return_transforms=False):
 
     f = rasterio.open(fn, "r")
     f_index = f.index
-    f_crs = f.crs["init"]
-    geom = GeoTools.extent_to_transformed_geom(extent, f.crs["init"])
+    f_crs = f.crs.to_dict()
+    geom = GeoTools.extent_to_transformed_geom(extent, f_crs)
     # b_geom = shapely.geometry.shape(geom)
     # minx, miny, maxx, maxy = b_geom.bounds
     # geomb = shapely.geometry.mapping(shapely.geometry.box(minx, miny, maxx, maxy, ccw=True))
@@ -157,6 +163,11 @@ def get_data_by_extent(naip_fn, extent, geo_data_type, return_transforms=False):
     minx, miny, maxx, maxy = buffed_geom.bounds
     geom = shapely.geometry.mapping(shapely.geometry.box(minx, miny, maxx, maxy, ccw=True))
     out_image, out_transform = rasterio.mask.mask(f, [geom], crop=True)
+    if out_image.shape[0] == 3: #slap another layer of zeros on that bad boy
+        out_image = np.concatenate([
+            out_image.data,
+            np.zeros((1, out_image.shape[1], out_image.shape[2]), dtype=out_image.dtype)
+        ], axis=0)
     src_crs = f.crs.copy()
     f.close()
     

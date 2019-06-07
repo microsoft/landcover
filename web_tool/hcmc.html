@@ -212,11 +212,12 @@
                     maxZoom:20,
                     maxNativeZoom: 18
             });
-            var Sentinel_Imagery = L.tileLayer('tiles/yangon/{z}/{x}/{y}.png', {
+            var Sentinel_Imagery = L.tileLayer('tiles/HCMC/{z}/{x}/{y}.png', {
                     attribution: 'Georeferenced Image', 
                     tms:true,
-                    maxZoom:18,
-                    maxNativeZoom: 16
+                    maxZoom:21,
+                    maxNativeZoom: 18,
+                    minZoom: 14
             });
             var OpenStreetMap_Mapnik  = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
@@ -228,7 +229,7 @@
             });
 
             var interesting_locations = [
-                L.marker([16.66177, 96.326427]).bindPopup('Yangon, Myanmar'),
+                L.marker([10.83898610719171, 106.740692498798225]).bindPopup('Thủ Đức District, Hồ Chí Minh City, Vietnam'),
             ];
 
             var cities = L.layerGroup(interesting_locations);
@@ -236,8 +237,8 @@
             map = L.map('map', {
                 zoomControl: false,
                 crs: L.CRS.EPSG3857, // this is a default, but I'm setting it to be explicit about what CRS we are in	
-                center: [16.66177, 96.326427],
-                zoom: 10,
+                center: [10.83898610719171, 106.740692498798225],
+                zoom: 14,
                 keyboard: false,
                 layers: [Sentinel_Imagery, cities]
             });
@@ -287,8 +288,9 @@
             var baseMaps = {
                 "OpenStreetMap Mapnik": OpenStreetMap_Mapnik,
                 "ESRI World Imagery": Esri_WorldImagery,
-                "Sentinel 2019 Imagery": Sentinel_Imagery
+                "Digital Globe Imagery": Sentinel_Imagery
             };
+            
             var overlayMaps = {
             };
 

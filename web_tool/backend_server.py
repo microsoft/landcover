@@ -19,6 +19,7 @@ import fiona
 import fiona.transform
 
 import rasterio
+import rasterio.warp
 
 import DataLoader
 import GeoTools
@@ -283,17 +284,63 @@ def pred_tile():
 
     print("Loading tile: %s" % (naip_file_name))
     f = rasterio.open(naip_file_name, "r")
-    naip_profile = f.meta
+    src_crs = f.crs
+    src_transform = f.transform
+    src_height, src_width = f.shape
+    src_bounds = f.bounds
     naip_data = f.read()
     f.close()
-    naip_data = np.rollaxis(naip_data, 0, 3)
 
-    print(naip_profile)
+    ## Warp to EPSG:3857
+    dst_crs = rasterio.crs.CRS.from_epsg(3857)
+    dst_bounds = rasterio.warp.transform_bounds(src_crs, dst_crs, *f.bounds)
+    dst_transform, dst_width, dst_height = rasterio.warp.calculate_default_transform(
+        src_crs,
+        dst_crs,
+        src_width,
+        src_height,
+        *src_bounds,
+        resolution=1
+    )
+    dst_image = np.zeros((naip_data.shape[0], dst_height, dst_width), np.uint8)
+    rasterio.warp.reproject(
+        source=naip_data,
+        destination=dst_image,
+        src_transform=src_transform,
+        src_crs=src_crs,
+        dst_transform=dst_transform,
+        dst_crs=dst_crs,
+        resampling=rasterio.warp.Resampling.nearest
+    )
+    dst_image = np.rollaxis(dst_image, 0, 3)
     
-    print("Running on tile")
-    output = AugmentationState.model.run(naip_data, naip_file_name, extent, 0)
 
-    print("Finished, output dimensions:", output.shape)
+    print("Running on tile")
+    print(dst_image.shape)
+    output = AugmentationState.model.run(dst_image, naip_file_name, extent, 0)
+    output = np.rollaxis(output, 2, 0)
+    
+    re_bounds = rasterio.warp.transform_bounds(dst_crs, src_crs, *dst_bounds)
+    re_transform, re_width, re_height = rasterio.warp.calculate_default_transform(
+        dst_crs,
+        src_crs,
+        dst_width, dst_height,
+        *dst_bounds,
+        resolution=1
+    )
+    re_image = np.zeros((output.shape[0], re_height, re_width), np.uint8)
+    rasterio.warp.reproject(
+        source=output,
+        destination=re_image,
+        src_transform=dst_transform,
+        src_crs=dst_crs,
+        dst_transform=re_transform,
+        dst_crs=src_crs,
+        resampling=rasterio.warp.Resampling.nearest
+    )
+    re_image = np.rollaxis(re_image, 0, 3)
+    re_image_clipped = GeoTools.get_trimmed(re_image)
+    print(re_image_clipped.shape)
 
     # ------------------------------------------------------
     # Step 4
@@ -305,7 +352,7 @@ def pred_tile():
     cv2.imwrite(os.path.join(ROOT_DIR, "tmp/%s.png" % (tmp_id)), img_hard)
     data["downloadPNG"] = "tmp/%s.png" % (tmp_id)
 
-    new_profile = naip_profile.copy()
+    new_profile = src_profile.copy()
     new_profile['driver'] = 'GTiff'
     new_profile['dtype'] = 'uint8'
     new_profile['count'] = 1
