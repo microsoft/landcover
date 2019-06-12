@@ -20,7 +20,7 @@ def extent_to_transformed_geom(extent, dest_crs="EPSG:4269"):
 def get_trimmed(image):
     '''Removes a border of zeros around an image 
     '''
-    zeros = np.zeros((image.shape[2]))
+    zeros = image[0,0].copy()
 
     y = image.shape[0] // 2
     x = 0

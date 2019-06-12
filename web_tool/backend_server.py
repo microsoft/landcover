@@ -152,48 +152,33 @@ def record_correction():
     color_list = data["colors"]
     class_idx = data["value"] # what we want to switch the class to
 
-    src_crs, dst_crs, dst_transform, rev_dst_transform, padding = AugmentationState.current_transform
+    naip_crs, naip_transform, naip_index, padding = AugmentationState.current_transform
     #src_crs = "epsg:%s" % (src_crs) # Currently src_crs will be a string like 'epsg:####', this might change with different versions of rasterio --Caleb
     origin_crs = "epsg:%d" % (data["extent"]["spatialReference"]["latestWkid"])
 
-    xs, ys = fiona.transform.transform(origin_crs, src_crs, [tlon,blon], [tlat,blat])
-    xs, ys = fiona.transform.transform(src_crs, dst_crs, xs, ys)
+    xs, ys = fiona.transform.transform(origin_crs, naip_crs.to_dict(), [tlon,blon], [tlat,blat])
     
     tdst_x = xs[0]
     tdst_y = ys[0]
-    tdst_col, tdst_row = rev_dst_transform * (tdst_x, tdst_y)
+    tdst_col, tdst_row = (~naip_transform) * (tdst_x, tdst_y)
     tdst_row = int(np.floor(tdst_row))
     tdst_col = int(np.floor(tdst_col))
 
     bdst_x = xs[1]
     bdst_y = ys[1]
-    bdst_col, bdst_row = rev_dst_transform * (bdst_x, bdst_y)
+    bdst_col, bdst_row = (~naip_transform) * (bdst_x, bdst_y)
     bdst_row = int(np.floor(bdst_row))
     bdst_col = int(np.floor(bdst_col))
 
     tdst_row, bdst_row = min(tdst_row, bdst_row)-padding, max(tdst_row, bdst_row)-padding
     tdst_col, bdst_col = min(tdst_col, bdst_col)-padding, max(tdst_col, bdst_col)-padding
 
+    print(tdst_row, bdst_row, tdst_col, bdst_col)
+
     AugmentationState.model.add_sample(tdst_row, bdst_row, tdst_col, bdst_col, class_idx)
     num_corrected = (bdst_row-tdst_row) * (bdst_col-tdst_col)
 
-    # Color stuff
-    '''
-    y_pred = AugmentationState.current_output.copy()
-    y_pred[tdst_row:bdst_row+1, tdst_col:bdst_col+1, :] = 0
-    y_pred[tdst_row:bdst_row+1, tdst_col:bdst_col+1, class_idx] = 1
-    AugmentationState.current_output = y_pred
-    
-    img_soft = np.round(Utils.class_prediction_to_img(y_pred, False, color_list)*255,0).astype(np.uint8)
-    img_soft = cv2.imencode(".png", cv2.cvtColor(img_soft, cv2.COLOR_RGB2BGR))[1].tostring()
-    img_soft = base64.b64encode(img_soft).decode("utf-8")
-    data["output_soft"] = img_soft
-
-    img_hard = np.round(Utils.class_prediction_to_img(y_pred, True, color_list)*255,0).astype(np.uint8)
-    img_hard = cv2.imencode(".png", cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGR))[1].tostring()
-    img_hard = base64.b64encode(img_hard).decode("utf-8")
-    data["output_hard"] = img_hard
-    '''
+    print(num_corrected)
 
     data["message"] = "Successfully submitted correction"
     data["count"] = num_corrected
@@ -227,13 +212,11 @@ def pred_patch():
     # Step 2
     #   Load the input data sources for the given tile  
     # ------------------------------------------------------
-
-    naip_data, padding, transform = DataLoader.get_data_by_extent(naip_file_name, extent, DataLoader.GeoDataTypes.NAIP, return_transforms=True)
+    padding = 20
+    naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_data_by_extent(naip_file_name, extent, DataLoader.GeoDataTypes.NAIP, padding=padding)
     naip_data = np.rollaxis(naip_data, 0, 3) # we do this here instead of get_data_by_extent because not all GeoDataTypes will have a channel dimension
-    
-    # record what is going on incase a fine-tuning method needs to use it
-    AugmentationState.current_naip = naip_data[padding:-padding,padding:-padding,:].copy()
-    AugmentationState.current_transform = transform
+
+    AugmentationState.current_transform = (naip_crs, naip_transform, naip_index, padding)
 
     # ------------------------------------------------------
     # Step 3
@@ -242,14 +225,22 @@ def pred_patch():
     #   Fix padding
     # ------------------------------------------------------
     output = AugmentationState.model.run(naip_data, naip_file_name, extent, padding)
-    #assert output.shape[2] == 4, "The model function should return an image shaped as (height, width, num_classes)"
-    
-    if padding > 0:
-        output = output[padding:-padding,padding:-padding,:]
-    AugmentationState.current_output = output.copy()
+    assert len(output.shape) == 3, "The model function should return an image shaped as (height, width, num_classes)"
+    assert (output.shape[2] < output.shape[0] and output.shape[2] < output.shape[1]), "The model function should return an image shaped as (height, width, num_classes)" # assume that num channels is less than img dimensions
 
     # ------------------------------------------------------
     # Step 4
+    #   Warp output to EPSG:3857 and crop off the padded area
+    # ------------------------------------------------------
+    np.save("output_orig.npy",output)
+    output, output_bounds = DataLoader.warp_data_to_3857(output, naip_crs, naip_transform, naip_bounds)
+    np.save("output_warped.npy",output)
+    output = DataLoader.crop_data_by_extent(output, output_bounds, extent)
+
+
+
+    # ------------------------------------------------------
+    # Step 5
     #   Convert images to base64 and return  
     # ------------------------------------------------------
     img_soft = np.round(Utils.class_prediction_to_img(output, False, color_list)*255,0).astype(np.uint8)
@@ -288,59 +279,14 @@ def pred_tile():
     src_transform = f.transform
     src_height, src_width = f.shape
     src_bounds = f.bounds
+    src_profile = f.profile.copy()
     naip_data = f.read()
     f.close()
 
-    ## Warp to EPSG:3857
-    dst_crs = rasterio.crs.CRS.from_epsg(3857)
-    dst_bounds = rasterio.warp.transform_bounds(src_crs, dst_crs, *f.bounds)
-    dst_transform, dst_width, dst_height = rasterio.warp.calculate_default_transform(
-        src_crs,
-        dst_crs,
-        src_width,
-        src_height,
-        *src_bounds,
-        resolution=1
-    )
-    dst_image = np.zeros((naip_data.shape[0], dst_height, dst_width), np.uint8)
-    rasterio.warp.reproject(
-        source=naip_data,
-        destination=dst_image,
-        src_transform=src_transform,
-        src_crs=src_crs,
-        dst_transform=dst_transform,
-        dst_crs=dst_crs,
-        resampling=rasterio.warp.Resampling.nearest
-    )
-    dst_image = np.rollaxis(dst_image, 0, 3)
-    
-
     print("Running on tile")
-    print(dst_image.shape)
-    output = AugmentationState.model.run(dst_image, naip_file_name, extent, 0)
-    output = np.rollaxis(output, 2, 0)
-    
-    re_bounds = rasterio.warp.transform_bounds(dst_crs, src_crs, *dst_bounds)
-    re_transform, re_width, re_height = rasterio.warp.calculate_default_transform(
-        dst_crs,
-        src_crs,
-        dst_width, dst_height,
-        *dst_bounds,
-        resolution=1
-    )
-    re_image = np.zeros((output.shape[0], re_height, re_width), np.uint8)
-    rasterio.warp.reproject(
-        source=output,
-        destination=re_image,
-        src_transform=dst_transform,
-        src_crs=dst_crs,
-        dst_transform=re_transform,
-        dst_crs=src_crs,
-        resampling=rasterio.warp.Resampling.nearest
-    )
-    re_image = np.rollaxis(re_image, 0, 3)
-    re_image_clipped = GeoTools.get_trimmed(re_image)
-    print(re_image_clipped.shape)
+    naip_data = np.rollaxis(naip_data, 0, 3)
+    output = AugmentationState.model.run(naip_data, naip_file_name, extent, 0)
+    print("Finished, output dimensions:", output.shape)
 
     # ------------------------------------------------------
     # Step 4
@@ -391,16 +337,18 @@ def get_input():
     # Step 2
     #   Load the input data sources for the given tile  
     # ------------------------------------------------------
-
-    naip_data, padding = DataLoader.get_data_by_extent(naip_file_name, extent, DataLoader.GeoDataTypes.NAIP)
+    padding = 20
+    naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_data_by_extent(naip_file_name, extent, DataLoader.GeoDataTypes.NAIP, padding=padding)
     naip_data = np.rollaxis(naip_data, 0, 3)
-    naip_img = naip_data[:,:,:3].copy().astype(np.uint8) # keep the RGB channels to save as a color image later
-    if padding > 0:
-        naip_img = naip_img[padding:-padding,padding:-padding,:]
 
-    img_naip = cv2.imencode(".png", cv2.cvtColor(naip_img, cv2.COLOR_RGB2BGR))[1].tostring()
-    img_naip = base64.b64encode(img_naip).decode("utf-8")
-    data["input_naip"] = img_naip
+    naip_data, new_bounds = DataLoader.warp_data_to_3857(naip_data, naip_crs, naip_transform, naip_bounds)
+    naip_data = DataLoader.crop_data_by_extent(naip_data, new_bounds, extent)
+
+    naip_img = naip_data[:,:,:3].copy().astype(np.uint8) # keep the RGB channels to save as a color image
+
+    naip_img = cv2.imencode(".png", cv2.cvtColor(naip_img, cv2.COLOR_RGB2BGR))[1].tostring()
+    naip_img = base64.b64encode(naip_img).decode("utf-8")
+    data["input_naip"] = naip_img
 
     bottle.response.status = 200
     return json.dumps(data)

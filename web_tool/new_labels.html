@@ -125,7 +125,7 @@
         var START_CENTER = [38, -88]; // lat, lon
         var START_ZOOM = 4;
 
-        var SELECTION_SIZE = 200; // in meters, probably
+        var SELECTION_SIZE = 300; // in meters, probably
         var CORRECTION_SIZE = 1;
 
         var selectionBox = null;
@@ -169,7 +169,8 @@
 
         var map = null;
         var animating = false;
-       
+
+        var numClicks = 0;
         
         //----------------------------------------------------------------------
         // Runtime entrance
@@ -383,6 +384,15 @@
                             curSelPoly = getPolyAround(e.latlng, CORRECTION_SIZE);
                             var idx = currentPatches.length-1;
                             doSendCorrection(curSelPoly, idx);
+
+                            map.dragging.disable();
+                            numClicks += 1
+                            window.setTimeout(function(){
+                                numClicks -= 1;
+                                if(numClicks == 0){
+                                    map.dragging.enable();
+                                }
+                            }, 700);
                         }else{
                             console.debug("Click not in selection");
                         }
