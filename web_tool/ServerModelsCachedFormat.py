@@ -19,14 +19,14 @@ class CachedModel(BackendModel):
         self.results_dir = results_dir
 
     def run(self, naip_data, naip_fn, extent, buffer):
-        return self.get_cached_by_extent(naip_fn, extent, buffer), "Full USA Pre-run %s" % (self.results_dir)
+        return self.get_cached_by_extent(naip_fn, extent, buffer)
 
     def get_cached_by_extent(self, fn, extent, buffer):
         fn = fn.replace("esri-naip/", "full-usa-output/%s/" % (self.results_dir))[:-4] + "_prob.tif"
 
         f = rasterio.open(fn, "r")
         geom = GeoTools.extent_to_transformed_geom(extent, f.crs["init"])
-        pad_rad = 15 # TODO: this might need to be changed for much larger inputs
+        pad_rad = buffer # TODO: this might need to be changed for much larger inputs
         buffed_geom = shapely.geometry.shape(geom).buffer(pad_rad)
         minx, miny, maxx, maxy = buffed_geom.bounds
         geom = shapely.geometry.mapping(shapely.geometry.box(minx, miny, maxx, maxy, ccw=True))
@@ -58,14 +58,23 @@ class CachedModel(BackendModel):
         )
         
         # Calculate the correct padding
-        #w = extent["xmax"] - extent["xmin"]
-        #padding = int(np.round((dst_image.shape[1] - w) / 2))
-
+        w = extent["xmax"] - extent["xmin"]
+        padding = int(np.round((dst_image.shape[1] - w) / 2))
         dst_image = np.rollaxis(dst_image, 0, 3)
-        #dst_image = dst_image[padding:-padding, padding:-padding, :]
+        dst_image = dst_image[padding:-padding, padding:-padding, :]
+        print(dst_image.shape)
 
         return dst_image / 255.0
 
+    def retrain(self):
+        raise NotImplementedError()
+
+    def add_sample(self, tdst_row, bdst_row, tdst_col, bdst_col, class_idx):
+        raise NotImplementedError()
+
+    def reset(self):
+        pass
+        #raise NotImplementedError()
 
 class CachedMiddleCedarModel(BackendModel):
 
