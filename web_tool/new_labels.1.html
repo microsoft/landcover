@@ -125,7 +125,7 @@
         var START_CENTER = [38, -88]; // lat, lon
         var START_ZOOM = 4;
 
-        var SELECTION_SIZE = 300; // in meters, probably
+        var SELECTION_SIZE = 500; // in meters, probably
         var CORRECTION_SIZE = 1;
 
         var selectionBox = null;
@@ -169,7 +169,7 @@
 
         var map = null;
         var animating = false;
-
+        
         var numClicks = 0;
         
         //----------------------------------------------------------------------
@@ -200,11 +200,12 @@
             // Setup map layers
             //----------------------------------------------------------------------
             
-            var NAIP_Imagery = L.tileLayer('tiles/chesapeake_test/{z}/{x}/{y}.png', {
+            var NAIP_Imagery = L.tileLayer('tiles/philipsburg/{z}/{x}/{y}.png', {
                     attribution: 'Georeferenced Image', 
                     tms:true,
                     maxZoom:20,
-                    maxNativeZoom: 18
+                    maxNativeZoom: 18,
+                    minZoom: 13
             });
             var OpenStreetMap_Mapnik  = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
@@ -216,10 +217,7 @@
             });
 
             var interesting_locations = [
-                L.marker([47.60, -122.15]).bindPopup('Bellevue, WA'),
-                L.marker([39.74, -104.99]).bindPopup('Denver, CO'),
-                L.marker([37.53,  -77.44]).bindPopup('Richmond, VA'),
-                L.marker([38.11437, -75.99980]).bindPopup('NAIP Imagery - Potential wetlands')
+                L.marker([46.330963, -113.296773]).bindPopup('Philipsburg, MT'),
             ];
 
             var cities = L.layerGroup(interesting_locations);
@@ -227,8 +225,8 @@
             map = L.map('map', {
                 zoomControl: false,
                 crs: L.CRS.EPSG3857, // this is a default, but I'm setting it to be explicit about what CRS we are in	
-                center: [38.11437, -75.99980],
-                zoom: 10,
+                center: [46.330963, -113.296773],
+                zoom: 13,
                 keyboard: false,
                 layers: [NAIP_Imagery, cities]
             });
@@ -276,9 +274,9 @@
             // handlers
             //----------------------------------------------------------------------
             var baseMaps = {
+                "NAIP 2011 Imagery": NAIP_Imagery,
                 "OpenStreetMap Mapnik": OpenStreetMap_Mapnik,
                 "ESRI World Imagery": Esri_WorldImagery,
-                "NAIP 2011 Imagery": NAIP_Imagery
             };
             var overlayMaps = {
                 "Interesting Points": cities
@@ -317,6 +315,41 @@
                 }
             );
             opacitySlider.addTo(map);
+
+            //----------------------------------------------------------------------
+            // Setup the sharpness slider to control which type of image is shown
+            //----------------------------------------------------------------------
+            L.control.slider( // sharpness slider
+                function(value){
+                    soft0_hard1 = value;
+
+                    for(idx=0; idx<currentPatches.length; idx++){
+                        var tActiveImgIdx = currentPatches[idx]["activeImgIdx"];
+                        var srcs = currentPatches[idx]["patches"][tActiveImgIdx]["srcs"];
+                        currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
+                    }
+
+                    if(currentPatches.length>0){
+                        var idx = currentPatches.length - 1;
+                        for(var tActiveImgIdx=0; tActiveImgIdx<currentPatches[idx]["patches"].length; tActiveImgIdx++){
+                            var srcs = currentPatches[idx]["patches"][tActiveImgIdx]["srcs"];
+                            $("#exampleImage_"+tActiveImgIdx).attr("src", srcs[soft0_hard1]);
+                        }
+                    }
+
+                }, {
+                    position: 'bottomleft',
+                    id: 'soft_hard_slider',
+                    orientation: 'horizontal',
+                    collapsed: true,
+                    syncSlider: true,
+                    min: 0,
+                    max: 1,
+                    value: 1,
+                    logo: "Sharpness",
+                    size: "171px"
+                }
+            ).addTo(map);
             
             //----------------------------------------------------------------------
             // Setup leaflet-sidebar-v2 and open the "#home" tab 

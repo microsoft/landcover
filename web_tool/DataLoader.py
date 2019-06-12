@@ -33,54 +33,11 @@ class GeoDataTypes(Enum):
     LANDCOVER = 6
 
 # ------------------------------------------------------------------------------
-# Le's methods for finding which NAIP tiles exist for a given "filename id"
-#
-# E.g. given "m_3907638_nw_18_1_20150815.mrf", find all files from other years that
-# match "m_3907638_nw_18_1*"
-# 
-# TODO: Make this lookup faster, currently O(n) where n is total number of tiles 100k-1000k
-# ------------------------------------------------------------------------------
-
-def naip2id(naip):
-    return '_'.join(naip.split('/')[-1].split('_')[:-1])
-
-def get_naip_same_loc(naip):
-    if naip2id(naip) in naip_d:
-        return naip_d[naip2id(naip)]
-    return [naip,]
-
-try:
-    assert all([os.path.exists(fn) for fn in [
-        ROOT_DIR + "/data/list_all_naip.txt",
-    ]])
-except:
-    raise Exception('Did not find all necessary data files as specified in %s. \n'
-                    'Have you run `cp -r /mnt/afs/chesapeake/demo_data/ data/` from inside `%s` directory? \n'
-                    '(Have you followed all steps in README.md?)' % (ROOT_DIR + "/data/list_all_naip.txt", ROOT_DIR))
-
-naip_d = {}
-fdid = open(ROOT_DIR + '/data/list_all_naip.txt', 'r')
-while True:
-    line = fdid.readline().strip()
-    if not line:
-        break
-    naipid = naip2id(line)
-    if naipid in naip_d:
-        naip_d[naipid] += [line,]
-    else:
-        naip_d[naipid] = [line,]
-fdid.close()
-
-# ------------------------------------------------------------------------------
-
-
-# ------------------------------------------------------------------------------
 # Caleb's methods for finding which NAIP tiles are assosciated with an input extent
 # 
 # TODO: Assume that the tile_index.dat file is already created, make a separate script
 # for generating it
 # ------------------------------------------------------------------------------
-
 
 assert all([os.path.exists(fn) for fn in [
     ROOT_DIR + "/data/tile_index.dat",
@@ -92,6 +49,11 @@ TILES = pickle.load(open(ROOT_DIR + "/data/tiles.p", "rb"))
 with fiona.open("/mnt/afs/chesapeake/landcover/data/yangon.geojson") as f:
     yangon_outline = next(iter(f))
     yangon_outline = shapely.geometry.shape(yangon_outline["geometry"])
+
+with fiona.open("data/HCMC_outline.geojson") as f:
+    hcmc_outline = next(iter(f))
+    hcmc_outline = shapely.geometry.shape(hcmc_outline["geometry"])
+
 
 def lookup_tile_by_geom(extent):
     tile_index = rtree.index.Index(ROOT_DIR + "/data/tile_index")
@@ -117,13 +79,15 @@ def lookup_tile_by_geom(extent):
 
         geom = GeoTools.extent_to_transformed_geom(extent, "EPSG:4326")
         if yangon_outline.contains(shapely.geometry.shape(geom)):
-            return "/mnt/afs/chesapeake/landcover/data/ermged_rgbnir_byte.tif"
+            return "/mnt/afs/chesapeake/landcover/data/merged_rgbnir_byte.tif"
+        elif hcmc_outline.contains(shapely.geometry.shape(geom)):
+            return "data/ThuDuc_WGS84.tif"
         else:
             raise ValueError("No tile intersections")
 
 # ------------------------------------------------------------------------------
 
-def get_data_by_extent(naip_fn, extent, geo_data_type, return_transforms=False):
+def get_data_by_extent(naip_fn, extent, geo_data_type, padding=20):
 
     if geo_data_type == GeoDataTypes.NAIP:
         fn = naip_fn
@@ -142,160 +106,59 @@ def get_data_by_extent(naip_fn, extent, geo_data_type, return_transforms=False):
         raise ValueError("GeoDataType not recognized")
 
     f = rasterio.open(fn, "r")
-    f_index = f.index
-    f_crs = f.crs["init"]
-    geom = GeoTools.extent_to_transformed_geom(extent, f.crs["init"])
-    # b_geom = shapely.geometry.shape(geom)
-    # minx, miny, maxx, maxy = b_geom.bounds
-    # geomb = shapely.geometry.mapping(shapely.geometry.box(minx, miny, maxx, maxy, ccw=True))
-    # img, _ = rasterio.mask.mask(f, [geomb], crop=True)
-    # _, r, _ = img.shape
-
-    pad_rad = 369 #TODO: this might need to be changed for much larger inputs
-    # pad_rad = int((890 - r) / 2)  #
-    buffed_geom = shapely.geometry.shape(geom).buffer(pad_rad)
-    minx, miny, maxx, maxy = buffed_geom.bounds
-    geom = shapely.geometry.mapping(shapely.geometry.box(minx, miny, maxx, maxy, ccw=True))
-    out_image, out_transform = rasterio.mask.mask(f, [geom], crop=True)
-    src_crs = f.crs.copy()
+    src_index = f.index
+    src_crs = f.crs
+    transformed_geom = GeoTools.extent_to_transformed_geom(extent, f.crs.to_dict())
+    transformed_geom = shapely.geometry.shape(transformed_geom)
+    buffed_geom = transformed_geom.buffer(padding)
+    geom = shapely.geometry.mapping(shapely.geometry.box(*buffed_geom.bounds))
+    src_image, src_transform = rasterio.mask.mask(f, [geom], crop=True)
     f.close()
+
+    return src_image, src_crs, src_transform, buffed_geom.bounds, src_index
+
+
+def warp_data_to_3857(src_img, src_crs, src_transform, src_bounds):
+    ''' Assume that src_img is (height, width, channels)
+    '''
+    assert len(src_img.shape) == 3
+    src_height, src_width, num_channels = src_img.shape
+
+    src_img_tmp = np.rollaxis(src_img.copy(), 2, 0)
     
-    dst_crs = {"init": "EPSG:%s" % (extent["spatialReference"]["latestWkid"])}
+    dst_crs = rasterio.crs.CRS.from_epsg(3857)
+    dst_bounds = rasterio.warp.transform_bounds(src_crs, dst_crs, *src_bounds)
     dst_transform, width, height = rasterio.warp.calculate_default_transform(
         src_crs,
         dst_crs,
-        width=out_image.shape[2], height=out_image.shape[1],
-        left=buffed_geom.bounds[0],
-        bottom=buffed_geom.bounds[1],
-        right=buffed_geom.bounds[2],
-        top=buffed_geom.bounds[3],
+        width=src_width, height=src_height,
+        left=src_bounds[0],
+        bottom=src_bounds[1],
+        right=src_bounds[2],
+        top=src_bounds[3],
         resolution=1
     )
 
-    dst_image = np.zeros((out_image.shape[0], height, width), np.uint8)
+    dst_image = np.zeros((num_channels, height, width), np.float32)
     rasterio.warp.reproject(
-            source=out_image,
-            destination=dst_image,
-            src_transform=out_transform,
-            src_crs=src_crs,
-            dst_transform=dst_transform,
-            dst_crs=dst_crs,
-            resampling=rasterio.warp.Resampling.nearest
+        source=src_img_tmp,
+        destination=dst_image,
+        src_transform=src_transform,
+        src_crs=src_crs,
+        dst_transform=dst_transform,
+        dst_crs=dst_crs,
+        resampling=rasterio.warp.Resampling.nearest
     )
+    dst_image = np.rollaxis(dst_image, 0, 3)
     
-    # Calculate the correct padding
-    w = extent["xmax"] - extent["xmin"]
-    padding = int(np.round((dst_image.shape[1] - w) / 2))
-
-    if return_transforms:
-        return dst_image, padding, (f_crs, dst_crs["init"], dst_transform, ~dst_transform, padding)
-    else:
-        return dst_image, padding
-# ------------------------------------------------------------------------------
+    return dst_image, dst_bounds
 
 
-# ------------------------------------------------------------------------------
-# Le's methods for predicting entire tile worth of data
-#
-# NOTE: I have not refactored these --Caleb
-# ------------------------------------------------------------------------------
+def crop_data_by_extent(src_img, src_bounds, extent):
 
-def naip_fn_to_pred_tile_fn(naip_fn):
-    return os.path.basename(naip_fn).split('.mrf')[0] + '_tilepred'
+    original_bounds = np.array((extent["xmin"], extent["ymin"], extent["xmax"], extent["ymax"]))
+    new_bounds = np.array(src_bounds)
 
-def find_tile_and_load_pred(centerp):
-    geom, naip_fn = center_to_tile_geom(centerp)
-    naip_key = naip_fn_to_pred_tile_fn(naip_fn)
-    fnames = []
-    usernames = []
-    for paths in glob.glob('img/*/{}_geotif.tif'.format(naip_key)):
-        fnames.append(paths[len('img/'):-len('_geotif.tif')])
-        usernames.append(os.path.basename(os.path.dirname(paths)))
-    return fnames, usernames
+    diff = np.round(original_bounds - new_bounds).astype(int)
 
-def find_tile_and_save_pred(centerp, tif_names, username):
-    datasets = [rasterio.open(fn, "r") for fn in tif_names[::-1]]
-
-    # Get geom and CRS
-    # Assumes the CRS of the tile is the same as the CRSes of patches
-    geom, naip_fn = center_to_tile_geom(centerp)
-    fid = rasterio.open(naip_fn, "r")
-    tile_crs = fid.crs.copy()
-    fid.close()
-    geom = fiona.transform.transform_geom("EPSG:3857", tile_crs["init"], geom)
-
-    # Merge all geospatial patches
-    tile, tile_transform = rasterio.merge.merge(datasets, shapely.geometry.shape(geom).bounds, nodata=0)
-    for fid in datasets:
-        fid.close()
-
-    # Save the resulting tile
-    if not os.path.exists('img/{}'.format(username)):
-        os.makedirs('img/{}'.format(username))
-    fname_tif = 'img/{}/{}_geotif.tif'.format(username, naip_fn_to_pred_tile_fn(naip_fn))
-    fid = rasterio.open(fname_tif, 'w', driver='GTiff',
-            width=tile.shape[2], height=tile.shape[1], count=tile.shape[0], dtype=np.uint8,
-            transform=tile_transform, crs=tile_crs, nodata=0)
-    for ch in range(tile.shape[0]):
-        fid.write(tile[ch, ...], ch+1)
-    fid.close()
-
-    # Get pngs in CRS EPSG3857 for display purpose
-    dst_CRS = "EPSG:3857"
-
-    png_tile_bounds = shapely.geometry.shape(geom).bounds
-    dest_transform, width, height = rasterio.warp.calculate_default_transform(
-            tile_crs, rasterio.crs.CRS({"init": dst_CRS}),
-            width=tile.shape[2], height=tile.shape[1],
-            left=png_tile_bounds[0], bottom=png_tile_bounds[1],
-            right=png_tile_bounds[2], top=png_tile_bounds[3])
-
-    tile_dest = np.zeros((tile.shape[0], height, width), np.uint8)
-    rasterio.warp.reproject(
-            source=tile,
-            destination=tile_dest,
-            src_transform=tile_transform,
-            src_crs=tile_crs,
-            dst_transform=dest_transform,
-            dst_crs=rasterio.crs.CRS({"init": dst_CRS}),
-            resampling=rasterio.warp.Resampling.nearest
-    )
-    tile_dest = np.swapaxes(tile_dest, 0, 1)
-    tile_dest = np.swapaxes(tile_dest, 1, 2)
-    mask = np.max(tile_dest, axis=2, keepdims=True) > 0
-    tile_dest = tile_dest.astype(np.float32) / 255.0
-    im_soft = np.round(255*pic(tile_dest, hard=False)).astype(np.uint8)
-    im_hard = np.round(255*pic(tile_dest, hard=True)).astype(np.uint8) * mask
-    fname_png = 'img/{}/{}_soft.png'.format(username, naip_fn_to_pred_tile_fn(naip_fn))
-    cv2.imwrite(fname_png, cv2.cvtColor(im_soft, cv2.COLOR_RGB2BGR))
-    fname_png = 'img/{}/{}_hard.png'.format(username, naip_fn_to_pred_tile_fn(naip_fn))
-    cv2.imwrite(fname_png, cv2.cvtColor(im_hard, cv2.COLOR_RGB2BGR))
-
-    return fname_tif
-
-def center_to_tile_geom(centerp):
-    xctr = centerp["xcenter"]
-    yctr = centerp["ycenter"]
-
-    geom = {
-        "type": "Polygon",
-        "coordinates": [[(xctr-1, yctr-1), (xctr+1, yctr-1), (xctr+1, yctr+1), (xctr-1, yctr+1), (xctr-1, yctr-1)]]
-    }
-
-    # The map navigator uses EPSG:3857 and Caleb's indices use EPSG:4269
-    geom = fiona.transform.transform_geom("EPSG:3857", "EPSG:4269", geom)
-    geom = shapely.geometry.shape(geom)
-
-    tile_index = rtree.index.Index(ROOT_DIR + "/data/tile_index")
-    intersected_indices = list(tile_index.intersection(geom.bounds))
-    for idx in intersected_indices:
-        intersected_fn = TILES[idx][0]
-        intersected_geom = TILES[idx][1]
-        geom = shapely.geometry.mapping(intersected_geom)
-        geom = fiona.transform.transform_geom("EPSG:4269", "EPSG:3857", geom)
-        return geom, intersected_fn
-
-    print('No tile intersecton')
-    return None, None
-
-# ------------------------------------------------------------------------------
+    return src_img[diff[0]:diff[2], diff[1]:diff[3], :]

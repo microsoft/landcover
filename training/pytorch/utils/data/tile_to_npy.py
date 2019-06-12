@@ -52,8 +52,11 @@ def main(tile_fn, save_npy=False):
     test_tiles_files = f.read().strip().split("\n")
     f.close()
 
+    # results = []
     for count, naip_fn in enumerate(test_tiles_files):
-        print(count, len(test_tiles_files))
+        naip_fn = naip_fn.split(',')[0] # get first column if multi-column format
+
+        # print(count, len(test_tiles_files))
 
         lc_fn = naip_fn.replace("esri-naip", "resampled-lc")[:-4] + "_lc.tif"
         nlcd_fn = naip_fn.replace("esri-naip", "resampled-nlcd")[:-4] + "_nlcd.tif"
@@ -97,7 +100,8 @@ def main(tile_fn, save_npy=False):
         result = merged[np.newaxis].data
         if save_npy:
             np.save(output_fn, result)
-        return result
+            print(output_fn)
+    # return result
 
 
 def sample(tile, patch_fns_fn, patches_output_directory, patch_dimension, num_patches):

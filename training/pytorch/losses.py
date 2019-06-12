@@ -187,10 +187,42 @@ class multiclass_tversky_loss(nn.modules.Module):
         tversky = self.tversky_loss(y_true, logits, alpha, beta)
         return tversky
 
-#TODO: Add superres pytorch loss
+#TODO: Test that this actually works
 class super_resolution_loss(nn.modules.Module):
-    def __init__(self):
+    def __init__(self, nlcd_class_weights, nlcd_means, nlcd_vars, boundary=0):
         super(super_resolution_loss, self).__init__()
+        self.nlcd_class_weights = nlcd_class_weights
+        self.nlcd_means = nlcd_means
+        self.nlcd_vars = nlcd_vars
+        self.boundary = boundary
+
+    def ddist(self, prediction_mean, c_interval_center, c_interval_radius):
+        return F.relu(torch.abs(prediction_mean - c_interval_center) - c_interval_radius)
 
     def super_res_loss(self, y_true, y_pred):
-        pass
+        super_res_crit = 0
+        mask_size = torch.unsqueeze((torch.sum(y_true, dim=[1,2,3]) + 10), -1)
+
+        for nlcd_idx in range(self.nlcd_class_weights[0]):
+            c_mask = torch.unsqueeze(y_true[:,:,:,nlcd_idx], -1)
+            c_mask_size = torch.sum(c_mask, dim=[1,2]) + 0.0000001
+
+            c_interval_center = self.nlcd_means[nlcd_idx]
+            c_interval_radius = self.nlcd_vars[nlcd_idx]
+
+            masked_probs = y_pred * c_mask
+
+            mean = torch.sum(masked_probs, dim=[1,2]) / c_mask_size
+            var = torch.sum(masked_probs * (1. - masked_probs), dim=[1,2]) / (c_mask_size * c_mask_size)
+
+            c_super_res_crit  = torch.sqrt(self.ddist(mean, c_interval_center, c_interval_radius))
+            c_super_res_crit = c_super_res_crit / (
+                        var + (c_interval_radius * c_interval_radius) + 0.000001)  # calculate denominator
+            c_super_res_crit = c_super_res_crit + torch.log(var + 0.03)  # calculate log term
+            c_super_res_crit = c_super_res_crit * (c_mask_size / mask_size) * self.nlcd_class_weights[
+                nlcd_idx]  # weight by the fraction of NLCD pixels and the NLCD class weight
+            super_res_crit = super_res_crit + c_super_res_crit  # accumulate
+
+        super_res_crit = torch.sum(super_res_crit, dim=1)  # sum superres loss across highres classes
+        return super_res_crit
+

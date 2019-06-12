@@ -36,7 +36,7 @@
             <!-- Start of "home" tab -->
             <div class="sidebar-pane" id="home">
                 <div style="text-align: center; margin-bottom:10px;" id="inputImages">
-                    <h3>NAIP Input</h3>
+                    <h3>Satellite Input</h3>
                     <img id="inputNAIP">
                 </div>
 
@@ -125,7 +125,7 @@
         var START_CENTER = [38, -88]; // lat, lon
         var START_ZOOM = 4;
 
-        var SELECTION_SIZE = 300; // in meters, probably
+        var SELECTION_SIZE = 200; // in meters, probably
         var CORRECTION_SIZE = 1;
 
         var selectionBox = null;
@@ -169,7 +169,7 @@
 
         var map = null;
         var animating = false;
-
+       
         var numClicks = 0;
         
         //----------------------------------------------------------------------
@@ -190,10 +190,16 @@
             var url = new URL(window.location.href);
             var userID = url.searchParams.get("userID");
             var modelID = url.searchParams.get("modelID");
+            var backendID = url.searchParams.get("backendID");
             if(userID === null) userID = "test";
             if(modelID === null) modelID = "test";
+            if(backendID === null){
+                backendID = 0;
+            } else{
+                backendID = parseInt(backendID);
+            }
             EXP_NAME = userID + "_" + modelID
-            BACKEND_URL = ENDPOINTS[0]["url"];
+            BACKEND_URL = BACKEND_ENDPOINTS[backendID]["url"];
 
 
             //----------------------------------------------------------------------
@@ -206,6 +212,13 @@
                     maxZoom:20,
                     maxNativeZoom: 18
             });
+            var Sentinel_Imagery = L.tileLayer('tiles/HCMC/{z}/{x}/{y}.png', {
+                    attribution: 'Georeferenced Image', 
+                    tms:true,
+                    maxZoom:21,
+                    maxNativeZoom: 18,
+                    minZoom: 14
+            });
             var OpenStreetMap_Mapnik  = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -216,10 +229,7 @@
             });
 
             var interesting_locations = [
-                L.marker([47.60, -122.15]).bindPopup('Bellevue, WA'),
-                L.marker([39.74, -104.99]).bindPopup('Denver, CO'),
-                L.marker([37.53,  -77.44]).bindPopup('Richmond, VA'),
-                L.marker([38.11437, -75.99980]).bindPopup('NAIP Imagery - Potential wetlands')
+                L.marker([10.83898610719171, 106.740692498798225]).bindPopup('Thủ Đức District, Hồ Chí Minh City, Vietnam'),
             ];
 
             var cities = L.layerGroup(interesting_locations);
@@ -227,10 +237,10 @@
             map = L.map('map', {
                 zoomControl: false,
                 crs: L.CRS.EPSG3857, // this is a default, but I'm setting it to be explicit about what CRS we are in	
-                center: [38.11437, -75.99980],
-                zoom: 10,
+                center: [10.83898610719171, 106.740692498798225],
+                zoom: 14,
                 keyboard: false,
-                layers: [NAIP_Imagery, cities]
+                layers: [Sentinel_Imagery, cities]
             });
             map.createPane('labels');
             map.getPane('labels').style.zIndex = 200;
@@ -278,10 +288,10 @@
             var baseMaps = {
                 "OpenStreetMap Mapnik": OpenStreetMap_Mapnik,
                 "ESRI World Imagery": Esri_WorldImagery,
-                "NAIP 2011 Imagery": NAIP_Imagery
+                "Digital Globe Imagery": Sentinel_Imagery
             };
+            
             var overlayMaps = {
-                "Interesting Points": cities
             };
 
             for(var i=0;i<interesting_locations.length;i++){
