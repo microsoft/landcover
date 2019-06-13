@@ -5,7 +5,7 @@
 import sys
 import os
 import time
-import pdb
+import collections
 
 import bottle
 import argparse
@@ -21,12 +21,18 @@ import fiona.transform
 import rasterio
 import rasterio.warp
 
+import mercantile
+
 import DataLoader
 import GeoTools
 import Utils
 
 import pickle
 import joblib
+
+import matplotlib
+matplotlib.use('Agg') 
+import matplotlib.cm
 
 from web_tool.frontend_server import ROOT_DIR
 
@@ -36,6 +42,36 @@ import ServerModelsICLRFormat, ServerModelsCachedFormat, ServerModelsICLRDynamic
 def get_random_string(length):
     alphabet = "abcdefghijklmnopqrstuvwxyz"
     return ''.join([alphabet[np.random.randint(0, len(alphabet))] for i in range(length)])
+
+class Heatmap():
+    count_dict = collections.defaultdict(int)
+    cmap = matplotlib.cm.get_cmap('Reds')
+    norm = matplotlib.colors.Normalize(vmin=0, vmax=20, clip=True)
+
+    @staticmethod
+    def increment(z,y,x):
+        #print("Incrementing", (x,y,z))
+        while z > 1:
+            key = (z,y,x)
+            Heatmap.count_dict[key] += 1
+            tile = mercantile.Tile(x,y,z)
+            tile = mercantile.parent(tile)
+            x,y,z = tile.x, tile.y, tile.z
+
+    def get(z,y,x):
+        #print("Getting", (x,y,z))
+        key = (z,y,x)
+        val = Heatmap.count_dict[key]
+        img = np.zeros((256,256,4), dtype=np.uint8)
+        if val != 0:
+            img[:,:] = np.round(np.array(Heatmap.cmap(Heatmap.norm(val))) * 255).astype(int)
+
+        img = cv2.imencode(".png", cv2.cvtColor(img, cv2.COLOR_RGBA2BGRA))[1].tostring()
+        return img
+
+    def reset():
+        Heatmap.count_dict = collections.defaultdict(int)
+
 
 class AugmentationState():
     #BASE_DIR = "output/"
@@ -110,6 +146,14 @@ def do_options():
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
 
+def do_heatmap(z,y,x):
+    bottle.response.content_type = 'image/jpeg'
+    x = x.split("?")[0]
+    return Heatmap.get(int(z),int(y),int(x))
+
+#---------------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------------
+
 def reset_model():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
@@ -148,17 +192,23 @@ def record_correction():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
     data["time"] = time.ctime()
+    
+    # Record this sample
     AugmentationState.request_list.append(data)
-
 
     tlat, tlon = data["extent"]["ymax"], data["extent"]["xmin"]
     blat, blon = data["extent"]["ymin"], data["extent"]["xmax"]
     color_list = data["colors"]
     class_idx = data["value"] # what we want to switch the class to
-
-    naip_crs, naip_transform, naip_index, padding = AugmentationState.current_transform
-    #src_crs = "epsg:%s" % (src_crs) # Currently src_crs will be a string like 'epsg:####', this might change with different versions of rasterio --Caleb
     origin_crs = "epsg:%d" % (data["extent"]["spatialReference"]["latestWkid"])
+
+    # Add a click to the heatmap
+    xs, ys = fiona.transform.transform(origin_crs, "epsg:4326", [tlon], [tlat])
+    tile = mercantile.tile(xs[0], -ys[0], 17)
+    Heatmap.increment(tile.z, tile.y, tile.x)
+
+    #
+    naip_crs, naip_transform, naip_index, padding = AugmentationState.current_transform
 
     xs, ys = fiona.transform.transform(origin_crs, naip_crs.to_dict(), [tlon,blon], [tlat,blat])
     
@@ -174,15 +224,11 @@ def record_correction():
     bdst_row = int(np.floor(bdst_row))
     bdst_col = int(np.floor(bdst_col))
 
-    tdst_row, bdst_row = min(tdst_row, bdst_row)-padding, max(tdst_row, bdst_row)-padding
-    tdst_col, bdst_col = min(tdst_col, bdst_col)-padding, max(tdst_col, bdst_col)-padding
-
-    print(tdst_row, bdst_row, tdst_col, bdst_col)
+    tdst_row, bdst_row = min(tdst_row, bdst_row), max(tdst_row, bdst_row)
+    tdst_col, bdst_col = min(tdst_col, bdst_col), max(tdst_col, bdst_col)
 
     AugmentationState.model.add_sample(tdst_row, bdst_row, tdst_col, bdst_col, class_idx)
     num_corrected = (bdst_row-tdst_row) * (bdst_col-tdst_col)
-
-    print(num_corrected)
 
     data["message"] = "Successfully submitted correction"
     data["count"] = num_corrected
@@ -205,19 +251,22 @@ def pred_patch():
     #   Transform the input extent into a shapely geometry
     #   Find the tile assosciated with the geometry
     # ------------------------------------------------------
+    naip_file_name = ""
     try:
         naip_file_name = DataLoader.lookup_tile_by_geom(extent)
     except ValueError as e:
         print(e)
-        bottle.response.status = 400
-        return json.dumps({"error": str(e)})
+        #bottle.response.status = 400
+        #return json.dumps({"error": str(e)})
 
     # ------------------------------------------------------
     # Step 2
     #   Load the input data sources for the given tile  
     # ------------------------------------------------------
-    padding = 20
-    naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_data_by_extent(naip_file_name, extent, DataLoader.GeoDataTypes.NAIP, padding=padding)
+    #padding = 20
+    #naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_data_by_extent(naip_file_name, extent, DataLoader.GeoDataTypes.NAIP, padding=padding)
+    padding = 0.0005
+    naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_esri_by_extent(extent, padding=padding)
     naip_data = np.rollaxis(naip_data, 0, 3) # we do this here instead of get_data_by_extent because not all GeoDataTypes will have a channel dimension
 
     AugmentationState.current_transform = (naip_crs, naip_transform, naip_index, padding)
@@ -239,9 +288,8 @@ def pred_patch():
     np.save("output_orig.npy",output)
     output, output_bounds = DataLoader.warp_data_to_3857(output, naip_crs, naip_transform, naip_bounds)
     np.save("output_warped.npy",output)
-    output = DataLoader.crop_data_by_extent(output, output_bounds, extent)
-
-
+    if padding > 0:
+        output = DataLoader.crop_data_by_extent(output, output_bounds, extent)
 
     # ------------------------------------------------------
     # Step 5
@@ -330,23 +378,27 @@ def get_input():
     #   Transform the input extent into a shapely geometry
     #   Find the tile assosciated with the geometry
     # ------------------------------------------------------
+    naip_file_name = ""
     try:
         naip_file_name = DataLoader.lookup_tile_by_geom(extent)
     except ValueError as e:
         print(e)
-        bottle.response.status = 400
-        return json.dumps({"error": str(e)})
+        #bottle.response.status = 400
+        #return json.dumps({"error": str(e)})
 
     # ------------------------------------------------------
     # Step 2
     #   Load the input data sources for the given tile  
     # ------------------------------------------------------
-    padding = 20
-    naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_data_by_extent(naip_file_name, extent, DataLoader.GeoDataTypes.NAIP, padding=padding)
+    #padding = 20
+    #naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_data_by_extent(naip_file_name, extent, DataLoader.GeoDataTypes.NAIP, padding=padding)
+    padding = 0.0005
+    naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_esri_by_extent(extent, padding=padding)
     naip_data = np.rollaxis(naip_data, 0, 3)
-
+    
     naip_data, new_bounds = DataLoader.warp_data_to_3857(naip_data, naip_crs, naip_transform, naip_bounds)
-    naip_data = DataLoader.crop_data_by_extent(naip_data, new_bounds, extent)
+    if padding > 0:
+        naip_data = DataLoader.crop_data_by_extent(naip_data, new_bounds, extent)
 
     naip_img = naip_data[:,:,:3].copy().astype(np.uint8) # keep the RGB channels to save as a color image
 
@@ -458,6 +510,8 @@ def main():
 
     app.route("/resetModel", method="OPTIONS", callback=do_options)
     app.route('/resetModel', method="POST", callback=reset_model)
+
+    app.route("/heatmap/<z>/<y>/<x>", method="GET", callback=do_heatmap)
 
     app.route('/', method="GET", callback=do_get)
 

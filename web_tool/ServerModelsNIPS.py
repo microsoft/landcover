@@ -99,8 +99,7 @@ class KerasDenseFineTune(BackendModel):
             output = output.reshape(original_shape[0], original_shape[1],  -1)
 
         # apply padding to the output_features
-        if padding > 0:
-            output_features = output_features[padding:-padding,padding:-padding,:]
+
         self.current_features = output_features
 
         return output

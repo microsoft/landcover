@@ -5,15 +5,26 @@ import time
 import numpy as np
 from enum import Enum
 
+from urllib.request import urlopen
+
 import fiona
 import fiona.transform
+import fiona.crs
+
 import shapely
 import shapely.geometry
+
 import rasterio
-import rasterio.mask
-import rasterio.merge
 import rasterio.warp
+import rasterio.crs
+import rasterio.io
+import rasterio.mask
+import rasterio.transform
+import rasterio.merge
+\
 import rtree
+
+import mercantile
 
 import cv2
 import pickle
@@ -160,5 +171,83 @@ def crop_data_by_extent(src_img, src_bounds, extent):
     new_bounds = np.array(src_bounds)
 
     diff = np.round(original_bounds - new_bounds).astype(int)
+    print(diff)
+    return src_img[diff[1]:diff[3], diff[0]:diff[2], :]
 
-    return src_img[diff[0]:diff[2], diff[1]:diff[3], :]
+
+def get_image_by_xyz_from_url(tile):
+    req = urlopen("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/%d/%d/%d" % (
+        tile.z, tile.y, tile.x
+    ))
+    arr = np.asarray(bytearray(req.read()), dtype=np.uint8)
+    img = cv2.imdecode(arr, -1)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    return img    
+
+def get_tile_as_virtual_raster(tile):
+    img = get_image_by_xyz_from_url(tile)
+    geom = shapely.geometry.shape(mercantile.feature(tile)["geometry"])
+    minx, miny, maxx, maxy = geom.bounds
+    dst_transform = rasterio.transform.from_bounds(minx, miny, maxx, maxy, 256, 256)
+    dst_profile = {
+        "driver": "GTiff",
+        "width": 256,
+        "height": 256,
+        "transform": dst_transform,
+        "crs": "epsg:4326",
+        "count": 3,
+        "dtype": "uint8"
+    }    
+    test_f = rasterio.io.MemoryFile()
+    with test_f.open(**dst_profile) as test_d:
+        test_d.write(img[:,:,0], 1)
+        test_d.write(img[:,:,1], 2)
+        test_d.write(img[:,:,2], 3)
+    test_f.seek(0)
+    
+    return test_f
+
+def get_esri_by_extent(extent, padding=0.0001, zoom_level=17):
+    transformed_geom = GeoTools.extent_to_transformed_geom(extent, "epsg:4326")
+    transformed_geom = shapely.geometry.shape(transformed_geom)
+    buffed_geom = transformed_geom.buffer(padding)
+    
+    minx, miny, maxx, maxy = buffed_geom.bounds
+    
+    virtual_files = []
+    virtual_datasets = []
+    for i, tile in enumerate(mercantile.tiles(minx, miny, maxx, maxy, zoom_level)):
+        f = get_tile_as_virtual_raster(tile)
+        virtual_files.append(f)
+        virtual_datasets.append(f.open())
+    out_image, out_transform = rasterio.merge.merge(virtual_datasets, bounds=(minx, miny, maxx, maxy))
+
+    for ds in virtual_datasets:
+        ds.close()
+    for f in virtual_files:
+        f.close()
+    
+    dst_crs = rasterio.crs.CRS.from_epsg(4326)
+    dst_profile = {
+        "driver": "GTiff",
+        "width": out_image.shape[1],
+        "height": out_image.shape[0],
+        "transform": out_transform,
+        "crs": "epsg:4326",
+        "count": 3,
+        "dtype": "uint8"
+    }
+    test_f = rasterio.io.MemoryFile()
+    with test_f.open(**dst_profile) as test_d:
+        test_d.write(out_image[:,:,0], 1)
+        test_d.write(out_image[:,:,1], 2)
+        test_d.write(out_image[:,:,2], 3)
+    test_f.seek(0)
+    with test_f.open() as test_d:
+        dst_index = test_d.index
+    test_f.close()
+
+    r,g,b = out_image
+    out_image = np.stack([r,g,b,r])
+    
+    return out_image, dst_crs, out_transform, (minx, miny, maxx, maxy), dst_index

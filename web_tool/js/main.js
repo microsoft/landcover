@@ -14,7 +14,7 @@ var doRetrain = function(){
                 $("#label-retrains").html(retrainCounts);
                 for( k in labelCounts){
                     labelCounts[k] = 0;
-                    $("#label-"+k).html("0");
+                    $("#label-counts-"+k).html("0");
                 }
 
                 var t = currentSelection._latlngs[0];
@@ -55,7 +55,7 @@ var doReset = function(notify=true){
 
                 for( k in labelCounts){
                     labelCounts[k] = 0;
-                    $("#label-"+k).html("0");
+                    $("#label-counts-"+k).html("0");
                 }
             }
         },
@@ -166,27 +166,12 @@ var doSendCorrection = function(polygon, idx){
             console.debug(data);
 
             labelName = findClassByIdx(data["value"])
+            console.debug(labelName)
             //labelCounts[data["value"]] += data["count"];
             labelCounts[labelName] += 1;
 
-            $("#label-"+labelName).html(labelCounts[labelName]);
+            $("#label-counts-"+labelName).html(labelCounts[labelName]);
             animateSuccessfulCorrection(10, 80);
-            //notifySuccess(data, textStatus, jqXHR);
-            
-            /*
-            var srcs = [
-                "data:image/png;base64," + data.output_soft,
-                "data:image/png;base64," + data.output_hard,
-            ];
-
-            var tActiveImgIdx = currentPatches[idx]["activeImgIdx"];
-            currentPatches[idx]["patches"][tActiveImgIdx]["srcs"] = srcs;
-            $("#exampleImage_"+tActiveImgIdx).attr("src", srcs[soft0_hard1]);
-            
-            if(pred0_naip1 == 0){
-                currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
-            }
-            */
         },
         error: notifyFail,
         dataType: "json",
@@ -302,7 +287,7 @@ var requestInputPatch = function(idx, polygon, serviceURL){
             var resp = data;
             var naipImg = "data:image/png;base64," + resp.input_naip;
             currentPatches[idx]["naipImg"] = naipImg 
-            $("#inputNAIP").attr("src", naipImg);
+            $("#inputImage").attr("src", naipImg);
 
             if(pred0_naip1 == 1){
                 //var imageLayer = L.imageOverlay(naipImg, L.polygon(polygon).getBounds()).addTo(map);
