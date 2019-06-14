@@ -2,7 +2,7 @@ var tileLayers = {
     "esri_world_imagery": {
         "location": [[38, -88], 4, "ESRI World Imagery"],
         "tileObject": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            maxZoom: 19,
+            maxZoom: 20,
             maxNativeZoom: 17,
             attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
         })
