@@ -196,11 +196,23 @@ var doUndo = function(){
             success: function(data, textStatus, jqXHR){
                 
                 // remove previously added point
+                console.debug(data);
+
+                for(var i=0;i<data["count"];i++){
+                    var removedPoint = userPointList.pop();
+                    map.removeLayer(removedPoint[0]);
+                    var labelName = findClassByIdx(removedPoint[1]);
+
+                    labelCounts[labelName] -= 1;
+                    $("#label-counts-"+labelName).html(labelCounts[labelName]);
+                }
+
+                // 
 
                 // alert success
                 new Noty({
                     type: "success",
-                    text: "Successful undo!",
+                    text: "Successful undo! Rewound " + data["count"] + " samples",
                     layout: 'topCenter',
                     timeout: 1000,
                     theme: 'metroui'

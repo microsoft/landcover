@@ -141,6 +141,7 @@
 
         var rightMouseDown = false;
         var shiftKeyDown = false;
+        var ctrlKeyDown = false;
 
         var currentPatches = [];
 
@@ -180,7 +181,10 @@
        
         var numClicks = 0;
 
+        var userPointList = []
+
         var heatmap = null;
+        var undoInProgress = false;
         
         //----------------------------------------------------------------------
         // Runtime entrance
@@ -490,6 +494,17 @@
                             var idx = currentPatches.length-1;
                             doSendCorrection(curSelPoly, idx);
                             
+                            var rect = L.rectangle(
+                                [curSelPoly[0], curSelPoly[2]],
+                                {
+                                    color: colorList[selectedClassIdx],
+                                    weight: 1,
+                                    opacity: 0.5
+                                    //pane: "labels"
+                                }
+                            ).addTo(map);
+                            userPointList.push([rect, selectedClassIdx]);
+
                             map.dragging.disable();
                             numClicks += 1
                             window.setTimeout(function(){
@@ -512,9 +527,11 @@
 
             $(document).keydown(function(e){
                 shiftKeyDown = e.shiftKey;
+                ctrlKeyDown = e.ctrlKey;
             });
             $(document).keyup(function(e){
                 shiftKeyDown = e.shiftKey;
+                ctrlKeyDown = e.ctrlKey;
             });
 
             $(document).keydown(function(e) {
@@ -541,7 +558,7 @@
                     map.getPane('labels').style.opacity = 1.0;
                     opacitySlider.slider.value = 100
                     opacitySlider._updateValue();
-                } else if(e.which == 114 || e.which == 82){ "r"
+                } else if((e.which == 114 || e.which == 82) && !ctrlKeyDown){ "r"
                     doRetrain();
                 } else if(e.which == 37){ "left arrow"
                     var currentOpacity = parseFloat(map.getPane('labels').style.opacity);
@@ -568,12 +585,14 @@
                     e.preventDefault()
                 } else if(e.which == 38 || e.which == 40){
                     e.preventDefault()
+                } else if(ctrlKeyDown && e.which==90){
+                    doUndo();
                 }
             });
 
 
             $("#btnRetrain").click(doRetrain);
-            $("#btnReset").click(doUndo);
+            $("#btnUndo").click(doUndo);
             $("#btnReset").click(doReset);
             $("#btnDownload").click(doDownloadTile);
             $("#btnNewClass").click(function(){

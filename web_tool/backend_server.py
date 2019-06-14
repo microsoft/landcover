@@ -31,7 +31,7 @@ import pickle
 import joblib
 
 import matplotlib
-matplotlib.use('Agg') 
+matplotlib.use("Agg") 
 import matplotlib.cm
 
 from web_tool.frontend_server import ROOT_DIR
@@ -43,11 +43,11 @@ USE_ESRI = False
 
 def get_random_string(length):
     alphabet = "abcdefghijklmnopqrstuvwxyz"
-    return ''.join([alphabet[np.random.randint(0, len(alphabet))] for i in range(length)])
+    return "".join([alphabet[np.random.randint(0, len(alphabet))] for i in range(length)])
 
 class Heatmap():
     count_dict = collections.defaultdict(int)
-    cmap = matplotlib.cm.get_cmap('Reds')
+    cmap = matplotlib.cm.get_cmap("Reds")
     norm = matplotlib.colors.Normalize(vmin=0, vmax=20, clip=True)
 
     @staticmethod
@@ -111,10 +111,6 @@ class AugmentationState():
             joblib.dump(AugmentationState.model, model_fn, protocol=pickle.HIGHEST_PROTOCOL)
             joblib.dump(AugmentationState.request_list, request_list_fn, protocol=pickle.HIGHEST_PROTOCOL)
             AugmentationState.current_snapshot_idx += 1
-
-    @staticmethod
-    def undo():
-        pass
         
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
@@ -224,14 +220,36 @@ def record_correction():
     num_corrected = (bdst_row-tdst_row) * (bdst_col-tdst_col)
 
     data["message"] = "Successfully submitted correction"
-    data["count"] = num_corrected
     data["success"] = True
+    data["count"] = num_corrected
+
+    bottle.response.status = 200
+    return json.dumps(data)
+
+def do_undo():
+    ''' Method called for POST `/doUndo`
+    '''
+    bottle.response.content_type = 'application/json'
+    data = bottle.request.json
+    data["time"] = time.ctime()
+
+    print("Undoing")
+
+    # Record this sample
+    AugmentationState.request_list.append(data)
+
+    # Forward the undo command to the backend model
+    success, message, num_undone = AugmentationState.model.undo()
+    data["message"] = message
+    data["success"] = success
+    data["count"] = num_undone
 
     bottle.response.status = 200
     return json.dumps(data)
 
 def pred_patch():
     ''' Method called for POST `/predPatch`'''
+    global USE_ESRI
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
     data["time"] = time.ctime()
@@ -275,7 +293,7 @@ def pred_patch():
     #   Apply reweighting
     #   Fix padding
     # ------------------------------------------------------
-    output = AugmentationState.model.run(naip_data, naip_file_name, extent, padding)
+    output = AugmentationState.model.run(naip_data, naip_file_name, extent)
     assert len(output.shape) == 3, "The model function should return an image shaped as (height, width, num_classes)"
     assert (output.shape[2] < output.shape[0] and output.shape[2] < output.shape[1]), "The model function should return an image shaped as (height, width, num_classes)" # assume that num channels is less than img dimensions
 
@@ -283,9 +301,7 @@ def pred_patch():
     # Step 4
     #   Warp output to EPSG:3857 and crop off the padded area
     # ------------------------------------------------------
-    np.save("output_orig.npy",output)
     output, output_bounds = DataLoader.warp_data_to_3857(output, naip_crs, naip_transform, naip_bounds)
-    np.save("output_warped.npy",output)
     if padding > 0:
         output = DataLoader.crop_data_by_extent(output, output_bounds, extent)
 
@@ -309,6 +325,7 @@ def pred_patch():
 
 def pred_tile():
     ''' Method called for POST `/predPatch`'''
+    global USE_ESRI
     bottle.response.content_type = 'application/json'
 
     # Inputs
@@ -365,6 +382,7 @@ def pred_tile():
 def get_input():
     ''' Method called for POST `/getInput`
     '''
+    global USE_ESRI
     bottle.response.content_type = 'application/json'
 
     # Inputs
@@ -512,9 +530,12 @@ def main():
     app.route("/resetModel", method="OPTIONS", callback=do_options)
     app.route('/resetModel', method="POST", callback=reset_model)
 
+    app.route("/doUndo", method="OPTIONS", callback=do_options)
+    app.route("/doUndo", method="POST", callback=do_undo)
+
     app.route("/heatmap/<z>/<y>/<x>", method="GET", callback=do_heatmap)
 
-    app.route('/', method="GET", callback=do_get)
+    app.route("/", method="GET", callback=do_get)
 
     bottle_server_kwargs = {
         "host": args.host,
@@ -525,5 +546,5 @@ def main():
     }
     app.run(**bottle_server_kwargs)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

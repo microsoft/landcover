@@ -166,14 +166,11 @@ def warp_data_to_3857(src_img, src_crs, src_transform, src_bounds):
 
 
 def crop_data_by_extent(src_img, src_bounds, extent):
-
     original_bounds = np.array((extent["xmin"], extent["ymin"], extent["xmax"], extent["ymax"]))
     new_bounds = np.array(src_bounds)
 
     diff = np.round(original_bounds - new_bounds).astype(int)
-    print(diff)
     return src_img[diff[1]:diff[3], diff[0]:diff[2], :]
-
 
 def get_image_by_xyz_from_url(tile):
     req = urlopen("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/%d/%d/%d" % (

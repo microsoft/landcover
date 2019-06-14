@@ -8,6 +8,8 @@ from keras import optimizers
 
 from ServerModelsAbstract import BackendModel
 
+from web_tool.frontend_server import ROOT_DIR
+
 AUGMENT_MODEL = MLPClassifier(
     hidden_layer_sizes=(),
     activation='relu',
@@ -73,11 +75,11 @@ class KerasDenseFineTune(BackendModel):
         seed_x_fn = ""
         seed_y_fn = ""
         if superres:
-            seed_x_fn = "data/seed_data_hr+sr_x.npy"
-            seed_y_fn = "data/seed_data_hr+sr_y.npy"
+            seed_x_fn = ROOT_DIR + "/data/seed_data_hr+sr_x.npy"
+            seed_y_fn = ROOT_DIR + "/data/seed_data_hr+sr_y.npy"
         else:
-            seed_x_fn = "data/seed_data_hr_x.npy"
-            seed_y_fn = "data/seed_data_hr_y.npy"
+            seed_x_fn = ROOT_DIR + "/data/seed_data_hr_x.npy"
+            seed_y_fn = ROOT_DIR + "/data/seed_data_hr_y.npy"
         for row in np.load(seed_x_fn):
             self.augment_base_x_train.append(row)
         for row in np.load(seed_y_fn):
@@ -158,15 +160,18 @@ class KerasDenseFineTune(BackendModel):
         self.undo_stack.append("sample")
 
     def undo(self):
+        num_undone = 0
         if len(self.undo_stack) > 0:
             undo = self.undo_stack.pop()
             if undo == "sample":
                 self.augment_x_train.pop()
                 self.augment_y_train.pop()
+                num_undone += 1
                 success = True
                 message = "Undoing sample"
             elif undo == "retrain":
                 while self.undo_stack[-1] == "sample":
+                    num_undone += 1
                     self.undo_stack.pop()
                     self.augment_x_train.pop()
                     self.augment_y_train.pop()
@@ -177,7 +182,7 @@ class KerasDenseFineTune(BackendModel):
         else:
             success = False
             message = "Nothing to undo"
-        return success, message
+        return success, message, num_undone
 
     def reset(self):
         self.augment_x_train = []
@@ -192,7 +197,7 @@ class KerasDenseFineTune(BackendModel):
             self.augment_y_train.append(row)
 
     def run_model_on_tile(self, naip_tile, batch_size=32):
-        ''' Expects naip_data to have shape (height, width, channels) and have values in the [0, 1] range.
+        ''' Expects naip_tile to have shape (height, width, channels) and have values in the [0, 1] range.
         '''
         height = naip_tile.shape[0]
         width = naip_tile.shape[1]
@@ -304,6 +309,9 @@ class KerasBackPropFineTune(BackendModel):
         return output
 
     def run_model_on_batch(self, batch_data, batch_size=32, predict_central_pixel_only=False):
+        ''' Expects batch_data to have shape (none, 240, 240, 4) and have values in the [0, 255] range.
+        '''
+        output = output / 255.0
         output = self.model.predict(batch_data, batch_size=batch_size, verbose=0)
         output = output[:,:,:,1:]
 
@@ -411,7 +419,8 @@ class KerasBackPropFineTune(BackendModel):
         self.correction_labels = None
         
     def run_model_on_tile(self, naip_tile, batch_size=32):
-       
+        ''' Expects naip_tile to have shape (height, width, channels) and have values in the [0, 1] range.
+        '''
         height = naip_tile.shape[0]
         width = naip_tile.shape[1]
         
