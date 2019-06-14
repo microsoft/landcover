@@ -3,12 +3,11 @@ from abc import ABC, abstractmethod
 class BackendModel(ABC):
 
     @abstractmethod
-    def run(self, naip_data, naip_fn, extent, padding):
+    def run(self, naip_data, naip_fn, extent):
         '''Inputs:
         `naip_data` is a (height, width, 4) unnormalized image (all pixels values are in [0,255])
         `naip_fn` the path of the tile that `naip_data` comes from
         `extent` is the extent dictionary that is given by the front-end
-        `padding` is how many pixels on each side will be discarded after `run()` is executed in order to make the output match the extent
         
         Outputs:
         `output` should be a (height, width, 4) softmax image (where the last axis sums to 1)
@@ -42,5 +41,11 @@ class BackendModel(ABC):
     @abstractmethod
     def reset(self):
         '''No inputs or outputs, should reset the base model back to the intial configuration that it was in "from disk".
+        '''
+        raise NotImplementedError()
+
+    @abstractmethod
+    def undo(self):
+        '''No inputs or outputs, should remove the previously added sample (from add_sample)
         '''
         raise NotImplementedError()

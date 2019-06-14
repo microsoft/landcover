@@ -1,6 +1,4 @@
 import numpy as np
-import string
-
 
 NLCD_CLASSES = [
     0, 11, 12, 21, 22, 23, 24, 31, 41, 42, 43, 51, 52, 71, 72, 73, 74, 81, 82, 90, 95, 255
@@ -49,9 +47,6 @@ COLOR_MAP_LC4 = np.array([
     [0.5,0.375,0.375],
 ], dtype=np.float32)
 
-def id_generator(size=10, chars=list(string.ascii_uppercase + string.digits)):
-    return ''.join([np.random.choice(chars) for _ in range(size)])
-
 def to_one_hot(im, class_num):
     one_hot = np.zeros((class_num, im.shape[-2], im.shape[-1]), dtype=np.float32)
     for class_id in range(class_num):
@@ -92,5 +87,5 @@ def class_prediction_to_img(y_pred, hard=True, color_list=None):
                 img[:, :, ch] += y_pred_temp[:, :, c] * colour_map[c, ch]
     return img
     
-#def nlcd_to_img(img):
-#    return np.vectorize(NLCD_COLOR_MAP.__getitem__, signature='()->(n)')(img).astype(np.uint8)
+def nlcd_to_img(img):
+    return np.vectorize(NLCD_COLOR_MAP.__getitem__, signature='()->(n)')(img).astype(np.uint8)
