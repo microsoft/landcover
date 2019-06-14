@@ -179,6 +179,51 @@ var doSendCorrection = function(polygon, idx){
     });
 };
 
+//-----------------------------------------------------------------
+// Submit an undo request
+//-----------------------------------------------------------------
+var doUndo = function(){
+
+    var request = {
+        "command": "undo"
+    };
+
+    if(!undoInProgress){
+        $.ajax({
+            type: "POST",
+            url: BACKEND_URL + "doUndo",
+            data: JSON.stringify(request),
+            success: function(data, textStatus, jqXHR){
+                
+                // remove previously added point
+
+                // alert success
+                new Noty({
+                    type: "success",
+                    text: "Successful undo!",
+                    layout: 'topCenter',
+                    timeout: 1000,
+                    theme: 'metroui'
+                }).show();
+            }, 
+            error: notifyFail,
+            always: function(){
+                undoInProgress = false;
+            },
+            dataType: "json",
+            contentType: "application/json"
+        });
+    }else{
+        new Noty({
+            type: "error",
+            text: "Please wait until current undo request finishes",
+            layout: 'topCenter',
+            timeout: 1000,
+            theme: 'metroui'
+        }).show();
+    }
+};
+
 
 
 //-----------------------------------------------------------------

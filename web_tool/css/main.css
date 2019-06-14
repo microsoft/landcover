@@ -6,7 +6,6 @@ html, body {
 body {
     padding: 0;
     margin: 0;
-    font-family: "Segoe UI Web (West European)",Segoe UI,-apple-system,BlinkMacSystemFont,Roboto,Helvetica Neue,sans-serif !important;
 }
 
 #map {
@@ -22,6 +21,7 @@ body {
 .sidebar{
     border: 0 !important;
     right: 20px !important;
+    font-family: "Segoe UI Web (West European)",Segoe UI,-apple-system,BlinkMacSystemFont,Roboto,Helvetica Neue,sans-serif;
 }
 .sidebar-content{
     right: 0 !important;
@@ -212,4 +212,8 @@ a.leaflet-control-slider-toggle {
 
 #privacy a{
     color:#333;
+}
+
+.ml-1{
+    margin-left:10px;
 }

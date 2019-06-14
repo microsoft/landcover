@@ -39,6 +39,8 @@ from web_tool.frontend_server import ROOT_DIR
 import ServerModelsICLRFormat, ServerModelsCachedFormat, ServerModelsICLRDynamicFormat, ServerModelsNIPS, ServerModelsNIPSGroupNorm
 
 
+USE_ESRI = False
+
 def get_random_string(length):
     alphabet = "abcdefghijklmnopqrstuvwxyz"
     return ''.join([alphabet[np.random.randint(0, len(alphabet))] for i in range(length)])
@@ -110,21 +112,10 @@ class AugmentationState():
             joblib.dump(AugmentationState.request_list, request_list_fn, protocol=pickle.HIGHEST_PROTOCOL)
             AugmentationState.current_snapshot_idx += 1
 
-        # TODO: Save other stuff
-        '''
-        print("Saving snapshot %s" % (snapshot_id))
-
-        os.makedirs("output/", exist_ok=True)
-        np.save("output/%s_x.npy" % (snapshot_id), correction_features)
-        np.save("output/%s_y.npy" % (snapshot_id), correction_targets)
-
-        np.save("output/%s_base_y.npy" % (snapshot_id), correction_model_predictions)
-        np.save("output/%s_sizes.npy" % (snapshot_id), correction_sizes)
-
-        joblib.dump(correction_json, "output/%s_pts.p" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)
-        joblib.dump(augment_model, "output/%s.model" % (snapshot_id), protocol=pickle.HIGHEST_PROTOCOL)
-
-        '''
+    @staticmethod
+    def undo():
+        pass
+        
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
 
@@ -159,6 +150,8 @@ def reset_model():
     data = bottle.request.json
     data["time"] = time.ctime()
     AugmentationState.request_list.append(data)
+
+    Heatmap.reset()
 
     AugmentationState.save(data["experiment"])
     AugmentationState.reset()
@@ -240,6 +233,11 @@ def record_correction():
 def pred_patch():
     ''' Method called for POST `/predPatch`'''
     bottle.response.content_type = 'application/json'
+    data = bottle.request.json
+    data["time"] = time.ctime()
+
+    # Record this sample
+    AugmentationState.request_list.append(data)
 
     # Inputs
     data = bottle.request.json
@@ -418,6 +416,7 @@ def do_get():
 #---------------------------------------------------------------------------------------
 
 def main():
+    global USE_ESRI
     parser = argparse.ArgumentParser(description="Backend Server")
 
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debugging", default=False)
@@ -445,11 +444,13 @@ def main():
         ],
         help="Model to use", required=True
     )
-
+    parser.add_argument("--esri", action="store_true", help="Use global ESRI basemap", default=False)
     parser.add_argument("--model_fn", action="store", dest="model_fn", type=str, help="Model fn to use", default=None)
     parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", default=0)
 
     args = parser.parse_args(sys.argv[1:])
+
+    USE_ESRI = args.esri
 
     model = None
     if args.model == "cached":

@@ -80,6 +80,9 @@
                             <button id="btnRetrain">Retrain (<span id="label-retrains">0</span> times)</button>
                         </div>
                         <div style="text-align: center; margin-top:10px;">
+                            <button id="btnUndo">Undo</button>
+                        </div>
+                        <div style="text-align: center; margin-top:10px;">
                             <button id="btnReset">Reset</button>
                         </div>
                         <div style="text-align: center; margin-top:10px;">
@@ -198,7 +201,7 @@
             EXP_NAME = args.userID + "_" + args.modelID
             BACKEND_URL = ENDPOINTS[0]["url"];
 
-            if(!args.dataset in tileLayers){
+            if(!(args.dataset in tileLayers) && (args.dataset !== null)){
                 args.dataset = null;
                 new Noty({
                     type: "error",
@@ -305,13 +308,14 @@
             //----------------------------------------------------------------------
 
             var baseMaps = {
-                "Basemap": tileLayers[args.dataset]["tileObject"],
                 "ESRI World Imagery": tileLayers["esri_world_imagery"]["tileObject"],
-                //"OpenStreetMap Mapnik": tileLayers["osm"]["tileObject"]
             };
+            if(args.dataset !== null){
+                baseMaps["Basemap"] = baseLayer;
+            }
+
             var overlayMaps = {
                 "Heatmap": heatmap,
-                //"Interesting Points": cities
             };
             L.control.layers(
                 baseMaps, overlayMaps, {
@@ -569,6 +573,7 @@
 
 
             $("#btnRetrain").click(doRetrain);
+            $("#btnReset").click(doUndo);
             $("#btnReset").click(doReset);
             $("#btnDownload").click(doDownloadTile);
             $("#btnNewClass").click(function(){
@@ -579,7 +584,7 @@
                 
                 var newClassElement =  $("<div class='radio'>");
                 //var newPicker = $("<button class=\"circle jscolor\" data-class-name=\"class-"+newClassIdx+"\" data-jscolor=\"{valueElement:null,value:'"+newColor.substring(1)+"',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}\"></button>");
-                var newLabel = $("<label><input type='radio' name='new-class' class='radNewClass' value='class-"+newClassIdx+"'><span id=''></span> Class "+newClassIdx+" (<span id='label-counts-class-"+newClassIdx+"'>0</span> samples since last retrain)</label>");
+                var newLabel = $("<label><input type='radio' name='new-class' class='radNewClass' value='class-"+newClassIdx+"'><span id='label-name-class-"+newClassIdx+"' class='label-name'>Class "+newClassIdx+"</span> (<span id='label-counts-class-"+newClassIdx+"'>0</span> samples since last retrain)<i class='fa fa-edit ml-1 label-name-edit'></i></label>");
 
 
                 var newPicker = document.createElement('button');
@@ -618,6 +623,12 @@
 
                 selectedClassIdx = findClassByName(this.value);
                 console.debug(this.value + " " + selectedClassIdx);
+            });
+
+            $(document).on('click', '.label-name-edit', function(){
+                var oldName = $(this).siblings(".label-name").html();
+                var newName = prompt("New label name for '"+oldName+"'");
+                $(this).siblings(".label-name").html(newName);
             });
             
             //----------------------------------------------------------------------

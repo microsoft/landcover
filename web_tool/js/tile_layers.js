@@ -13,7 +13,7 @@ var tileLayers = {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         })
     },
-    "chesapeake_test": {
+    "chesapeake": {
         "location": [[38.11437, -75.99980], 10, 'NAIP Imagery - Potential wetlands'],
         "tileObject": L.tileLayer('tiles/chesapeake_test/{z}/{x}/{y}.png', {
             attribution: 'Georeferenced Image', 
@@ -21,6 +21,16 @@ var tileLayers = {
             maxZoom: 20,
             maxNativeZoom: 18,
             minZoom: 2
+        })
+    },
+    "hcmc": {
+        "location": [[10.83898610719171, 106.740692498798225], 14, "Thủ Đức District, Hồ Chí Minh City, Vietnam"],
+        "tileObject": L.tileLayer('tiles/HCMC/{z}/{x}/{y}.png', {
+            attribution: 'Georeferenced Image', 
+            tms:true,
+            maxZoom:21,
+            maxNativeZoom: 18,
+            minZoom: 14
         })
     },
     "demo_set_1": {
