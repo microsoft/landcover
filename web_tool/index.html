@@ -191,6 +191,8 @@
         //----------------------------------------------------------------------
         $(document).ready(function(){
 
+            doReset(false); // reset the backend server
+
             //----------------------------------------------------------------------
             // Remove the default behavior of the shift key
             //----------------------------------------------------------------------
@@ -203,7 +205,7 @@
             //----------------------------------------------------------------------
             args = getURLArguments()
             EXP_NAME = args.userID + "_" + args.modelID
-            BACKEND_URL = ENDPOINTS[0]["url"];
+            BACKEND_URL = BACKEND_ENDPOINTS[args.backendID]["url"];
 
             if(!(args.dataset in tileLayers) && (args.dataset !== null)){
                 args.dataset = null;
@@ -229,11 +231,12 @@
             // Setup map layers
             //----------------------------------------------------------------------
             
-            heatmap = L.tileLayer('http://msrcalebubuntu.eastus.cloudapp.azure.com:4444/heatmap/{z}/{y}/{x}?{randint}', {
+            heatmap = L.tileLayer(BACKEND_URL + 'heatmap/{z}/{y}/{x}?{randint}', {
                 attribution: 'Georeferenced Image', 
                 tms:true,
                 transparent:true,
-                maxZoom: 17,
+                maxZoom: 20,
+                maxNativeZoom: 17,
                 opacity: 0.6,
                 randint: generateRandInt
             });
@@ -499,7 +502,7 @@
                                 {
                                     color: colorList[selectedClassIdx],
                                     weight: 1,
-                                    opacity: 0.5
+                                    opacity: 1
                                     //pane: "labels"
                                 }
                             ).addTo(map);
@@ -672,9 +675,6 @@
                 currentPatches[idx]["activeImgIdx"] = activeImgIdx;
                 $(this).attr("src", srcs[soft0_hard1]);
             });
-
-
-            doReset(false);
 
         });
 

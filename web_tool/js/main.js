@@ -251,15 +251,21 @@ var requestPatches = function(polygon){
     });
     var idx = currentPatches.length-1;
     
-    // Request input image from the first server we know about
-    requestInputPatch(idx, polygon, ENDPOINTS[0]["url"]);
-    for(var i=0; i<ENDPOINTS.length; i++){
-        //console.debug("Running requestPatch on " + ENDPOINTS[i]["url"]);
-        currentPatches[idx]["patches"].push({
-            "srcs": null
-        });
-        requestPatch(idx, polygon, i, BACKEND_URL); //TODO: this should be changed if we want to have a web tool that queries different backends
-    }
+    requestInputPatch(idx, polygon, BACKEND_URL);
+
+    currentPatches[idx]["patches"].push({
+        "srcs": null
+    });
+    requestPatch(idx, polygon, 0, BACKEND_URL);
+
+    // The following code is for connecting to multiple backends at once
+    // for(var i=0; i<ENDPOINTS.length; i++){
+    //     //console.debug("Running requestPatch on " + ENDPOINTS[i]["url"]);
+    //     currentPatches[idx]["patches"].push({
+    //         "srcs": null
+    //     });
+    //     requestPatch(idx, polygon, i, BACKEND_URL); //TODO: this should be changed if we want to have a web tool that queries different backends
+    // }
 };
 
 var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){

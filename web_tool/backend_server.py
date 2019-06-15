@@ -344,7 +344,7 @@ def pred_tile():
 
     print("Running on tile")
     naip_data = np.rollaxis(naip_data, 0, 3)
-    output = AugmentationState.model.run(naip_data, naip_file_name, extent, 0)
+    output = AugmentationState.model.run(naip_data, naip_file_name, extent)
     print("Finished, output dimensions:", output.shape)
 
     # ------------------------------------------------------
