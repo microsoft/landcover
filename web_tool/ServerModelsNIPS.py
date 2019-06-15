@@ -4,6 +4,7 @@ import numpy as np
 
 import sklearn.base
 from sklearn.neural_network import MLPClassifier
+from xgboost import XGBClassifier
 from keras import optimizers
 
 from ServerModelsAbstract import BackendModel
@@ -20,6 +21,7 @@ AUGMENT_MODEL = MLPClassifier(
     validation_fraction=0.0,
     n_iter_no_change=10
 )
+
 
 class KerasDenseFineTune(BackendModel):
 

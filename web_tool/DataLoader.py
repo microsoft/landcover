@@ -34,7 +34,6 @@ import GeoTools
 
 from web_tool.frontend_server import ROOT_DIR
 
-
 class GeoDataTypes(Enum):
     NAIP = 1
     NLCD = 2
@@ -45,9 +44,6 @@ class GeoDataTypes(Enum):
 
 # ------------------------------------------------------------------------------
 # Caleb's methods for finding which NAIP tiles are assosciated with an input extent
-# 
-# TODO: Assume that the tile_index.dat file is already created, make a separate script
-# for generating it
 # ------------------------------------------------------------------------------
 
 assert all([os.path.exists(fn) for fn in [
@@ -57,22 +53,19 @@ assert all([os.path.exists(fn) for fn in [
 ]])
 TILES = pickle.load(open(ROOT_DIR + "/data/tiles.p", "rb"))
 
-with fiona.open("/mnt/afs/chesapeake/landcover/data/yangon.geojson") as f:
-    yangon_outline = next(iter(f))
-    yangon_outline = shapely.geometry.shape(yangon_outline["geometry"])
+# with fiona.open("/mnt/afs/chesapeake/landcover/data/yangon.geojson") as f:
+#     yangon_outline = next(iter(f))
+#     yangon_outline = shapely.geometry.shape(yangon_outline["geometry"])
 
-with fiona.open("data/HCMC_outline.geojson") as f:
-    hcmc_outline = next(iter(f))
-    hcmc_outline = shapely.geometry.shape(hcmc_outline["geometry"])
+# with fiona.open("data/HCMC_outline.geojson") as f:
+#     hcmc_outline = next(iter(f))
+#     hcmc_outline = shapely.geometry.shape(hcmc_outline["geometry"])
 
 
 def lookup_tile_by_geom(extent):
     tile_index = rtree.index.Index(ROOT_DIR + "/data/tile_index")
 
     geom = GeoTools.extent_to_transformed_geom(extent, "EPSG:4269")
-    
-    # Add some margin
-    #minx, miny, maxx, maxy = shape(geom).buffer(50).bounds
     minx, miny, maxx, maxy = shapely.geometry.shape(geom).bounds
     geom = shapely.geometry.mapping(shapely.geometry.box(minx, miny, maxx, maxy, ccw=True))
 
@@ -87,14 +80,14 @@ def lookup_tile_by_geom(extent):
     if len(intersected_indices) > 0:
         raise ValueError("Error, there are overlaps with tile index, but no tile completely contains selection")
     else:
-
-        geom = GeoTools.extent_to_transformed_geom(extent, "EPSG:4326")
-        if yangon_outline.contains(shapely.geometry.shape(geom)):
-            return "/mnt/afs/chesapeake/landcover/data/merged_rgbnir_byte.tif"
-        elif hcmc_outline.contains(shapely.geometry.shape(geom)):
-            return "data/ThuDuc_WGS84.tif"
-        else:
-            raise ValueError("No tile intersections")
+        # geom = GeoTools.extent_to_transformed_geom(extent, "EPSG:4326")
+        # if yangon_outline.contains(shapely.geometry.shape(geom)):
+        #     return "/mnt/afs/chesapeake/landcover/data/merged_rgbnir_byte.tif"
+        # elif hcmc_outline.contains(shapely.geometry.shape(geom)):
+        #     return "data/ThuDuc_WGS84.tif"
+        # else:
+        #     raise ValueError("No tile intersections")
+        raise ValueError("No tile intersections")
 
 # ------------------------------------------------------------------------------
 

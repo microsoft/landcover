@@ -162,9 +162,12 @@ def retrain_model():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
     data["time"] = time.ctime()
-    AugmentationState.request_list.append(data)
-    success, message = AugmentationState.model.retrain(**data["retrainArgs"])
 
+    # Record this sample
+    AugmentationState.request_list.append(data)
+    
+    #
+    success, message = AugmentationState.model.retrain(**data["retrainArgs"])
     if success:
         bottle.response.status = 200
         AugmentationState.save(data["experiment"])
@@ -181,10 +184,9 @@ def record_correction():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
     data["time"] = time.ctime()
-    
-    # Record this sample
-    AugmentationState.request_list.append(data)
+    AugmentationState.request_list.append(data) # record this interaction
 
+    #
     tlat, tlon = data["extent"]["ymax"], data["extent"]["xmin"]
     blat, blon = data["extent"]["ymin"], data["extent"]["xmax"]
     color_list = data["colors"]
@@ -232,11 +234,7 @@ def do_undo():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
     data["time"] = time.ctime()
-
-    print("Undoing")
-
-    # Record this sample
-    AugmentationState.request_list.append(data)
+    AugmentationState.request_list.append(data) # record this interaction
 
     # Forward the undo command to the backend model
     success, message, num_undone = AugmentationState.model.undo()
@@ -253,9 +251,7 @@ def pred_patch():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
     data["time"] = time.ctime()
-
-    # Record this sample
-    AugmentationState.request_list.append(data)
+    AugmentationState.request_list.append(data) # record this interaction
 
     # Inputs
     data = bottle.request.json
@@ -267,24 +263,21 @@ def pred_patch():
     #   Transform the input extent into a shapely geometry
     #   Find the tile assosciated with the geometry
     # ------------------------------------------------------
-    naip_file_name = ""
-    try:
-        naip_file_name = DataLoader.lookup_tile_by_geom(extent)
-    except ValueError as e:
-        print(e)
-        #bottle.response.status = 400
-        #return json.dumps({"error": str(e)})
-
+    
     # ------------------------------------------------------
     # Step 2
     #   Load the input data sources for the given tile  
     # ------------------------------------------------------
-    #padding = 20
-    #naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_data_by_extent(naip_file_name, extent, DataLoader.GeoDataTypes.NAIP, padding=padding)
-    padding = 0.0005
-    naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_esri_by_extent(extent, padding=padding)
+    naip_file_name = None
+    if USE_ESRI:
+        padding = 0.0005
+        naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_esri_by_extent(extent, padding=padding)
+    else:
+        naip_file_name = DataLoader.lookup_tile_by_geom(extent)
+        padding = 20
+        naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_data_by_extent(naip_file_name, extent, DataLoader.GeoDataTypes.NAIP, padding=padding)
+    
     naip_data = np.rollaxis(naip_data, 0, 3) # we do this here instead of get_data_by_extent because not all GeoDataTypes will have a channel dimension
-
     AugmentationState.current_transform = (naip_crs, naip_transform, naip_index, padding)
 
     # ------------------------------------------------------
@@ -302,8 +295,7 @@ def pred_patch():
     #   Warp output to EPSG:3857 and crop off the padded area
     # ------------------------------------------------------
     output, output_bounds = DataLoader.warp_data_to_3857(output, naip_crs, naip_transform, naip_bounds)
-    if padding > 0:
-        output = DataLoader.crop_data_by_extent(output, output_bounds, extent)
+    output = DataLoader.crop_data_by_extent(output, output_bounds, extent)
 
     # ------------------------------------------------------
     # Step 5
@@ -394,27 +386,23 @@ def get_input():
     #   Transform the input extent into a shapely geometry
     #   Find the tile assosciated with the geometry
     # ------------------------------------------------------
-    naip_file_name = ""
-    try:
-        naip_file_name = DataLoader.lookup_tile_by_geom(extent)
-    except ValueError as e:
-        print(e)
-        #bottle.response.status = 400
-        #return json.dumps({"error": str(e)})
-
     # ------------------------------------------------------
     # Step 2
     #   Load the input data sources for the given tile  
     # ------------------------------------------------------
-    #padding = 20
-    #naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_data_by_extent(naip_file_name, extent, DataLoader.GeoDataTypes.NAIP, padding=padding)
-    padding = 0.0005
-    naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_esri_by_extent(extent, padding=padding)
+    naip_file_name = None
+    if USE_ESRI:
+        padding = 0.0005
+        naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_esri_by_extent(extent, padding=padding)
+    else:
+        naip_file_name = DataLoader.lookup_tile_by_geom(extent)
+        padding = 20
+        naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_data_by_extent(naip_file_name, extent, DataLoader.GeoDataTypes.NAIP, padding=padding)
     naip_data = np.rollaxis(naip_data, 0, 3)
     
+
     naip_data, new_bounds = DataLoader.warp_data_to_3857(naip_data, naip_crs, naip_transform, naip_bounds)
-    if padding > 0:
-        naip_data = DataLoader.crop_data_by_extent(naip_data, new_bounds, extent)
+    naip_data = DataLoader.crop_data_by_extent(naip_data, new_bounds, extent)
 
     naip_img = naip_data[:,:,:3].copy().astype(np.uint8) # keep the RGB channels to save as a color image
 
