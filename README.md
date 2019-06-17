@@ -19,8 +19,9 @@ This repository holds both the "frontend" web-application and "backend" web API 
   - Do NOT commit these files to Git -- though they should be ignored anyway via .gitignore
 - Run `setup/new_vm_setup.sh`, this will restart the machine at the end as I have faced GPU problems on newly provisioned DLVM image machines
 - Log in to VM again
-- Run: `cd landcover; setup/after_restart.sh` (you must re-run this command any time the VM has been shut down)
-- Run: `cd landcover; setup/login.sh` (you must re-run this any time you log in to the VM again, even if it has not been shut down)
+- Run: `cd landcover`
+- Run: `setup/after_restart.sh` (you must re-run this command any time the VM has been shut down)
+- Run: `source setup/login.sh` (you must re-run this any time you log in to the VM again, even if it has not been shut down)
 
 - Run: `cp web_tool/endpoints.js web_tool/endpoints.mine.js`
 - Edit `endpoints.mine.js` (eg., run `nano endpoints.mine.js`) to point to your own server URL (find your VM's host name or IP address in the Azure portal); indicating ports for whichever backend server.py instances you are running (4444 is the default, but you can set alternate ports from command line flags to have multiple servers running, see below)
