@@ -6,28 +6,31 @@ This repository holds both the "frontend" web-application and "backend" web API 
 
 ## Setup Instructions
 
-- Create a new Deep Learning Virtual Machine (DLVM) Ubuntu image on Azure
-- Open up ports 4040 and 4444 to the machine through the Azure Portal
-- `git clone git@github.com:Microsoft/landcover.git`
+- Create a new Deep Learning Virtual Machine (DLVM) Ubuntu image via [Azure Portal](https://ms.portal.azure.com/)
+  - Region: "East US"
+  - Size:
+    - "NC6s_v3  Standard GPU" (if training/running models)
+    - "A4v2" (if simply running scripts that need access to AI for Earth storage accounts)
+  - Image: Data Science Virtual Machine (Ubuntu)
+- `git clone git@github.com:microsoft/landcover.git`
 - `cd landcover`
 - Download mount_remotes_development.sh and mount_remotes_deployment.sh to setup/
   - Do NOT commit these files to Git -- though they should be ignored anyway via .gitignore
-- `./mount_remotes_development.sh`
-- `cd setup/`
-- `./new_vm_setup.sh`, this will restart the machine at the end as I have faced GPU problems on newly provisioned DLVM image machines
+- `setup/new_vm_setup.sh`, this will restart the machine at the end as I have faced GPU problems on newly provisioned DLVM image machines
 - Log in to VM again
-- Any time the VM has been shut down, run: `cd landcover/setup; source login.sh; cd ..`
+- Any time the VM has been shut down, run: `cd landcover; setup/login.sh`
 
-- `cp web-tool/endpoints.js web-tool/endpoints.mine.js`; Edit endpoints.mine.js to point to your own server URL; indicating ports for whichever backend server.py instances you are running (you can set alternate ports from command line flags, see below)
+- `cp web_tool/endpoints.js web_tool/endpoints.mine.js`; Edit endpoints.mine.js to point to your own server URL (find your VM's host name or IP address in the Azure portal); indicating ports for whichever backend server.py instances you are running (4444 is the default, but you can set alternate ports from command line flags to have multiple servers running, see below)
 
 - To run the servers:
-  - `python web-tool/frontend_server.py` this will start up a HTTP server on :4040 to serve the actual webpage
-  - `python web-tool/backend_server.py --port 4444 --model nips_sr --fine_tune last_layer --model_fn /mnt/blobfuse/train-output/ForICCV/ForICCV-landcover-batch_size-16-loss-superres-lr-0.003-model-unet2-schedule-stepped-note-replication_1/final_model.h5 --gpu 0 --verbose` will start up a HTTP server on :4444 that serves our precomputed results with the documented API
+  - Open up ports 4040 and 4444 to the machine through [Azure Portal](https://ms.portal.azure.com/)
+  - `python web_tool/frontend_server.py` this will start up a HTTP server on :4040 to serve the actual webpage
+  - `python web_tool/backend_server.py --port 4444 --model nips_sr --fine_tune last_layer --model_fn /mnt/blobfuse/train-output/ForICCV/ForICCV-landcover-batch_size-16-loss-superres-lr-0.003-model-unet2-schedule-stepped-note-replication_1/final_model.h5 --gpu 0 --verbose` will start up a HTTP server on :4444 that serves our precomputed results with the documented API
   - alternatively use --model 2 to serve results that are computed from a CNTK model
 
 
 
-## Overview
+## Code Overview
 
 - "Frontend"
   - `index.html`, `endpoints.js`

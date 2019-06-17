@@ -12,7 +12,7 @@ pip install --user einops
 source deactivate
 
 # Deal with data
-source after_restart.sh
+setup/after_restart.sh
 cd web_tool
 cp -r /mnt/afs/chesapeake/demo_data/ data/
 mkdir tiles/
