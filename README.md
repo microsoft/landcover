@@ -12,10 +12,11 @@ This repository holds both the "frontend" web-application and "backend" web API 
     - "NC6s_v3  Standard GPU" (if training/running models)
     - "A4v2" (if simply running scripts that need access to AI for Earth storage accounts)
   - Image: Data Science Virtual Machine (Ubuntu)
-- `git clone git@github.com:microsoft/landcover.git`
-- `cd landcover`
+- SSH into the virtual machine using a desktop SSH client
+- Run `git clone git@github.com:microsoft/landcover.git`
+- Run `cd landcover`
 - Visit the Microsoft AI for Earth [Azure storage account](https://ms.portal.azure.com/#blade/Microsoft_Azure_Storage/FileShareMenuBlade/overview/storageAccountId/%2Fsubscriptions%2Fc9726640-cf74-4111-92f5-0d1c87564b93%2FresourceGroups%2FLandcover2%2Fproviders%2FMicrosoft.Storage%2FstorageAccounts%2Fmslandcoverstorageeast/path/vm-fileshare) (your account will need to be given access first)
-  - Download `mount_remotes_development.sh` and `mount_remotes_deployment.sh` to setup/
+  - Download `mount_remotes_development.sh` and `mount_remotes_deployment.sh` to `~/landcover/setup/` in your VM
   - Do NOT commit these files to Git -- though they should be ignored anyway via .gitignore
 - Run `setup/new_vm_setup.sh`, this will restart the machine at the end as I have faced GPU problems on newly provisioned DLVM image machines
 - Log in to VM again
@@ -31,7 +32,7 @@ This repository holds both the "frontend" web-application and "backend" web API 
   - Run `python web_tool/frontend_server.py` this will start up a HTTP server on :4040 to serve the actual webpage
   - Run `python web_tool/backend_server.py --port 4444 --model nips_sr --fine_tune last_layer --model_fn /mnt/blobfuse/train-output/ForICCV/ForICCV-landcover-batch_size-16-loss-superres-lr-0.003-model-unet2-schedule-stepped-note-replication_1/final_model.h5 --gpu 0 --verbose` will start up a HTTP server on :4444 that serves our precomputed results with the documented API
   - alternatively use --model 2 to serve results that are computed from a CNTK model
-
+  - You may now visit `<VM_name_or_IP>:4040` in a browser, where VM host name or IP address is the same as you logged in to via SSH, and can be found in the Azure Portal
 
 
 ## Code Overview

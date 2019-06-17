@@ -9,6 +9,7 @@ source activate /data/anaconda/envs/py35
 conda install rasterio fiona shapely rtree
 pip install --user bottle
 pip install --user einops
+pip install --user mercantile
 source deactivate
 
 # Deal with data
