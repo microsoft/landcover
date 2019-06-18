@@ -192,20 +192,19 @@
         //----------------------------------------------------------------------
         $(document).ready(function(){
 
-            doReset(false); // reset the backend server
-
+            
             //----------------------------------------------------------------------
             // Remove the default behavior of the shift key
             //----------------------------------------------------------------------
             document.onselectstart = function() {
                 return false;
             }
-
+            
             //----------------------------------------------------------------------
             // Parse URL arguments
             //----------------------------------------------------------------------
             args = getURLArguments()
-            EXP_NAME = args.userID + "_" + args.modelID
+            EXP_NAME = args.userID
             BACKEND_URL = BACKEND_ENDPOINTS[args.backendID]["url"];
 
             if(!(args.dataset in tileLayers) && (args.dataset !== null)){
@@ -218,7 +217,9 @@
                     theme: 'metroui'
                 }).show();
             }
-
+            
+            doReset(false); // reset the backend server
+            
             //----------------------------------------------------------------------
             // Start user study if necessary
             //----------------------------------------------------------------------

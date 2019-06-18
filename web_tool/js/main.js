@@ -185,7 +185,8 @@ var doSendCorrection = function(polygon, idx){
 var doUndo = function(){
 
     var request = {
-        "command": "undo"
+        "command": "undo",
+        "experiment": EXP_NAME
     };
 
     if(!undoInProgress){
@@ -285,6 +286,7 @@ var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
             }
         },
         "colors": colorList,
+        "experiment": EXP_NAME
     };
     
     $.ajax({
