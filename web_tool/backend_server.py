@@ -78,7 +78,7 @@ class Heatmap():
 class AugmentationState():
     #BASE_DIR = "output/"
     debug_mode = False
-    BASE_DIR = "/mnt/blobfuse/pred-output/user_study/mturk/"
+    BASE_DIR = "/mnt/blobfuse/pred-output/user_study/testing/"
     current_snapshot_string = get_random_string(8)
     current_snapshot_idx = 0
     model = None
@@ -90,8 +90,9 @@ class AugmentationState():
     request_list = []
 
     @staticmethod
-    def reset():
-        AugmentationState.model.reset() # can't fail, so don't worry about it
+    def reset(soft=False):
+        if not soft:
+            AugmentationState.model.reset() # can't fail, so don't worry about it
         AugmentationState.current_snapshot_string = get_random_string(8)
         if not AugmentationState.debug_mode:
             os.makedirs(os.path.join(AugmentationState.BASE_DIR, AugmentationState.current_snapshot_string))
@@ -435,6 +436,7 @@ def main():
             "iclr_keras",
             "iclr_cntk",
             "nips_sr",
+            "existing",
             "nips_hr",
             "group_norm",
         ],
@@ -487,14 +489,18 @@ def main():
             model = ServerModelsNIPSGroupNorm.GroupParamsLastKLayersFineTune(args.model_fn, args.gpuid, last_k_layers=2)
         elif args.fine_tune == "group_params_then_last_k":
             model = ServerModelsNIPSGroupNorm.GroupParamsThenLastKLayersFineTune(args.model_fn, args.gpuid, last_k_layers=2)
-
+    elif args.model == "existing":
+        model = joblib.load(args.model_fn)
     else:
         print("Model isn't implemented, aborting")
         return
 
     AugmentationState.model = model
     AugmentationState.debug_mode = args.debug
-    AugmentationState.reset()
+    if args.model == "existing":
+        AugmentationState.reset(soft=True)
+    else:
+        AugmentationState.reset()
 
     # Setup the bottle server 
     app = bottle.Bottle()
