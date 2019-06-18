@@ -9,10 +9,11 @@ source activate /data/anaconda/envs/py35
 conda install rasterio fiona shapely rtree
 pip install --user bottle
 pip install --user einops
+pip install --user mercantile
 source deactivate
 
 # Deal with data
-source after_restart.sh
+setup/after_restart.sh
 cd web_tool
 cp -r /mnt/afs/chesapeake/demo_data/ data/
 mkdir tiles/
