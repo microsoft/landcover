@@ -130,9 +130,9 @@
         //----------------------------------------------------------------------
         var BACKEND_URL = "";
         var EXP_NAME = "TEST";
-
-        var START_CENTER = [38, -88]; // lat, lon
-        var START_ZOOM = 4;
+        var DATASET = null;
+        var START_CENTER = null;
+        var START_ZOOM = null;
 
         var SELECTION_SIZE = 300; // in meters, probably
         var CORRECTION_SIZE = 1;
@@ -206,7 +206,7 @@
             args = getURLArguments()
             EXP_NAME = args.userID
             BACKEND_URL = BACKEND_ENDPOINTS[args.backendID]["url"];
-
+            
             if(!(args.dataset in tileLayers) && (args.dataset !== null)){
                 args.dataset = null;
                 new Noty({
@@ -217,6 +217,10 @@
                     theme: 'metroui'
                 }).show();
             }
+            if(args.dataset === null){
+                args.dataset = "esri_world_imagery";
+            }
+            DATASET = args.dataset;
             
             doReset(false); // reset the backend server
             
@@ -232,7 +236,6 @@
             //----------------------------------------------------------------------
             // Setup map layers
             //----------------------------------------------------------------------
-            
             heatmap = L.tileLayer(BACKEND_URL + 'heatmap/{z}/{y}/{x}?{randint}', {
                 attribution: 'Georeferenced Image', 
                 tms:true,
@@ -243,18 +246,16 @@
                 randint: generateRandInt
             });
 
-            var baseLayer = null;
-            if(args.dataset !== null){
-                interestingLocations = [
-                    L.marker(tileLayers[args.dataset]["location"][0]).bindPopup(tileLayers[args.dataset]["location"][2])
-                ];
-                baseLayer = tileLayers[args.dataset]["tileObject"];
-                START_CENTER = tileLayers[args.dataset]["location"][0];
-                START_ZOOM = tileLayers[args.dataset]["location"][1];
 
-            }else{
-                baseLayer = tileLayers["esri_world_imagery"]["tileObject"];
+            if(DATASET != "esri_world_imagery"){
+                interestingLocations = [
+                    L.marker(tileLayers[DATASET]["location"][0]).bindPopup(tileLayers[DATASET]["location"][2])
+                ];
             }
+            var baseLayer = tileLayers[DATASET]["tileObject"];
+            START_CENTER = tileLayers[DATASET]["location"][0];
+            START_ZOOM = tileLayers[DATASET]["location"][1];
+
             
             var cities = L.layerGroup(interestingLocations);
 
@@ -540,7 +541,6 @@
             });
 
             $(document).keydown(function(e) {
-                console.debug(e.which);
                 if(e.which == 97 || e.which == 65) { // "a"
                     visible = false;
                     map.getPane('labels').style.opacity = 0.0;
@@ -567,7 +567,6 @@
                     doRetrain();
                 } else if(e.which == 37){ "left arrow"
                     var currentOpacity = parseFloat(map.getPane('labels').style.opacity);
-                    console.debug(currentOpacity);
                     if (currentOpacity >= 0.05){
                         currentOpacity -= 0.05;
 
@@ -578,10 +577,8 @@
                     e.preventDefault()
                 } else if(e.which == 39){ "right arrow"
                     var currentOpacity = parseFloat(map.getPane('labels').style.opacity);
-                    console.debug(currentOpacity);
                     if (currentOpacity <= 0.95){
                         currentOpacity += 0.05;
-                        console.debug(currentOpacity);
 
                         map.getPane('labels').style.opacity = currentOpacity;
                         opacitySlider.slider.value = currentOpacity*100;
