@@ -2,10 +2,16 @@
 // Retrain backend server
 //-----------------------------------------------------------------
 var doRetrain = function(){
+    var request = {
+        "type": "retrain",
+        "dataset": DATASET,
+        "experiment": EXP_NAME,
+        "retrainArgs": retrainArgs
+    };
     $.ajax({
         type: "POST",
         url: BACKEND_URL + "retrainModel",
-        data: JSON.stringify({"retrain": true, "experiment": EXP_NAME, "retrainArgs": retrainArgs}),
+        data: JSON.stringify(request),
         success: function(data, textStatus, jqXHR){
             if(data["success"]){
                 notifySuccess(data, textStatus, jqXHR, 5000);
@@ -40,7 +46,8 @@ var doRetrain = function(){
 //-----------------------------------------------------------------
 var doReset = function(notify=true){
     var request = {
-        "reset": true,
+        "type": "reset",
+        "dataset": DATASET,
         "experiment": EXP_NAME
     };
     $.ajax({
@@ -85,6 +92,9 @@ var doDownloadTile = function(){
     var bottomrightProjected = L.CRS.EPSG3857.project(bottomright);
 
     var request = {
+        "type": "download",
+        "dataset": DATASET,
+        "experiment": EXP_NAME,
         "extent": {
             "xmax": bottomrightProjected.x,
             "xmin": topleftProjected.x,
@@ -142,6 +152,9 @@ var doSendCorrection = function(polygon, idx){
     var bottomrightProjected = L.CRS.EPSG3857.project(bottomright);
     
     var request = {
+        "type": "correction",
+        "dataset": DATASET,
+        "experiment": EXP_NAME,
         "extent": {
             "xmax": bottomrightProjected.x,
             "xmin": topleftProjected.x,
@@ -152,8 +165,7 @@ var doSendCorrection = function(polygon, idx){
             }
         },
         "colors": colorList,
-        "value" : selectedClassIdx,
-        "experiment": EXP_NAME
+        "value" : selectedClassIdx
     };
 
 
@@ -185,8 +197,9 @@ var doSendCorrection = function(polygon, idx){
 var doUndo = function(){
 
     var request = {
-        "command": "undo",
-        "experiment": EXP_NAME
+        "type": "undo",
+        "dataset": DATASET,
+        "experiment": EXP_NAME,
     };
 
     if(!undoInProgress){
@@ -276,6 +289,9 @@ var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
     var bottomrightProjected = L.CRS.EPSG3857.project(bottomright);
 
     var request = {
+        "type": "runInference",
+        "dataset": DATASET,
+        "experiment": EXP_NAME,
         "extent": {
             "xmax": bottomrightProjected.x,
             "xmin": topleftProjected.x,
@@ -286,7 +302,6 @@ var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
             }
         },
         "colors": colorList,
-        "experiment": EXP_NAME
     };
     
     $.ajax({
@@ -333,6 +348,9 @@ var requestInputPatch = function(idx, polygon, serviceURL){
     var bottomrightProjected = L.CRS.EPSG3857.project(bottomright);
 
     var request = {
+        "type": "getInput",
+        "dataset": DATASET,
+        "experiment": EXP_NAME,
         "extent": {
             "xmax": bottomrightProjected.x,
             "xmin": topleftProjected.x,
