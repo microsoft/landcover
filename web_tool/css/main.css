@@ -138,12 +138,10 @@ a.leaflet-control-slider-toggle {
 
 .logo-area{
     background-color: #19715E;
-    width:300px;
-    height:70px;
-    display: flex !important;
-    flex-basis: auto;
-    flex-grow: 1;
-    align-items: center;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    padding-left: 2rem;
+    padding-right: 2rem;
 }
 
 .logo-text{
@@ -153,8 +151,12 @@ a.leaflet-control-slider-toggle {
     line-height: 1.5;
     color: white;
     padding: 2px;
-    padding-right: 2rem;
-    padding-left: 2rem;
+}
+
+.logo-text-small{
+    line-height: 1.5;
+    color: white;
+    padding: 2px;
 }
 
 .label-area{

@@ -3,12 +3,12 @@ from abc import ABC, abstractmethod
 class BackendModel(ABC):
 
     @abstractmethod
-    def run(self, naip_data, naip_fn, extent):
+    def run(self, naip_data, extent, on_tile):
         '''Inputs:
         `naip_data` is a (height, width, 4) unnormalized image (all pixels values are in [0,255])
-        `naip_fn` the path of the tile that `naip_data` comes from
         `extent` is the extent dictionary that is given by the front-end
-        
+        `on_tile` is a flag that specifies whether we are running the model in "download mode" and shouldn't be updating any internal states 
+
         Outputs:
         `output` should be a (height, width, 4) softmax image (where the last axis sums to 1)
         '''

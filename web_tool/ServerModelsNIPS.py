@@ -93,7 +93,7 @@ class KerasDenseFineTune(BackendModel):
             self.augment_y_train.append(row)
         
 
-    def run(self, naip_data, naip_fn, extent):
+    def run(self, naip_data, extent, on_tile=False):
         ''' Expects naip_data to have shape (height, width, channels) and have values in the [0, 255] range.
         '''
         naip_data = naip_data / 255.0
@@ -105,7 +105,8 @@ class KerasDenseFineTune(BackendModel):
             output = self.augment_model.predict_proba(output)
             output = output.reshape(original_shape[0], original_shape[1],  -1)
 
-        self.current_features = output_features
+        if not on_tile:
+            self.current_features = output_features
 
         return output
 
@@ -292,11 +293,11 @@ class KerasBackPropFineTune(BackendModel):
         
         self.verbose = verbose
         
-    def run(self, naip_data, naip_fn, extent):
+    def run(self, naip_data, extent, on_tile=False):
         ''' Expects naip_data to have shape (height, width, channels) and have values in the [0, 255] range.
         '''
         # If we click somewhere else before retraining we need to commit the current set of training samples
-        if self.correction_labels is not None:
+        if self.correction_labels is not None and not on_tile:
             self.process_correction_labels()
 
         naip_data = naip_data / 255.0
@@ -305,8 +306,9 @@ class KerasBackPropFineTune(BackendModel):
         output = self.run_model_on_tile(naip_data)
 
         # Reset the state of our retraining mechanism
-        self.correction_labels = np.zeros((height, width, self.num_output_channels), dtype=np.float32)
-        self.naip_data = naip_data.copy()
+        if not on_tile:
+            self.correction_labels = np.zeros((height, width, self.num_output_channels), dtype=np.float32)
+            self.naip_data = naip_data.copy()
         
         return output
 

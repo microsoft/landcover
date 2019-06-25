@@ -9,7 +9,7 @@ import shapely.geometry
 import rasterio
 import rasterio.mask
 
-import GeoTools
+import DataLoader
 
 from ServerModelsAbstract import BackendModel
 
@@ -25,7 +25,7 @@ class CachedModel(BackendModel):
         fn = fn.replace("esri-naip/", "full-usa-output/%s/" % (self.results_dir))[:-4] + "_prob.tif"
 
         f = rasterio.open(fn, "r")
-        geom = GeoTools.extent_to_transformed_geom(extent, f.crs["init"])
+        geom = DataLoader.extent_to_transformed_geom(extent, f.crs["init"])
         pad_rad = buffer # TODO: this might need to be changed for much larger inputs
         buffed_geom = shapely.geometry.shape(geom).buffer(pad_rad)
         minx, miny, maxx, maxy = buffed_geom.bounds
@@ -131,7 +131,7 @@ class CachedMiddleCedarModel(BackendModel):
         fn = fn.replace("esri-naip/", "full-usa-output/%s/" % (self.results_dir))[:-4] + "_prob.tif"
 
         f = rasterio.open(fn, "r")
-        geom = GeoTools.extent_to_transformed_geom(extent, f.crs["init"])
+        geom = DataLoader.extent_to_transformed_geom(extent, f.crs["init"])
         pad_rad = 15 # TODO: this might need to be changed for much larger inputs
         buffed_geom = shapely.geometry.shape(geom).buffer(pad_rad)
         minx, miny, maxx, maxy = buffed_geom.bounds
@@ -175,7 +175,7 @@ class CachedMiddleCedarModel(BackendModel):
 
     def get_cached_by_extent(self, fn, extent, buffer):
     
-        geom = GeoTools.extent_to_transformed_geom(extent, "epsg:2794")
+        geom = DataLoader.extent_to_transformed_geom(extent, "epsg:2794")
         geom = shapely.geometry.shape(geom)
         new_fn = None
         for i, boundary_shape in enumerate(highres_boundary_shapes):
@@ -189,7 +189,7 @@ class CachedMiddleCedarModel(BackendModel):
             new_fn = new_fn.replace("esri-naip/", "full-usa-output/1_3_2019/")[:-4] + "_prob.tif"
 
         f = rasterio.open(new_fn, "r")
-        geom = GeoTools.extent_to_transformed_geom(extent, f.crs["init"])
+        geom = DataLoader.extent_to_transformed_geom(extent, f.crs["init"])
         pad_rad = 15 # TODO: this might need to be changed for much larger inputs
         buffed_geom = shapely.geometry.shape(geom).buffer(pad_rad)
         minx, miny, maxx, maxy = buffed_geom.bounds

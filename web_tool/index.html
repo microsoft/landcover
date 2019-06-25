@@ -277,11 +277,35 @@
                 });
             }
 
+            //----------------------------------------------------------------------
+            // Load the dataset specific shapes
+            //----------------------------------------------------------------------
+            if(tileLayers[DATASET]["shapes"] !== null){
+                $.ajax({
+                    dataType: "json",
+                    url: tileLayers[DATASET]["shapes"],
+                    success: function(data) {
+                        console.debug(data);
+                        L.geoJSON(data, {
+                            style: {
+                                "fillOpacity": 0,
+                                "color": "#00ff00",
+                                "weight": 3,
+                                "opacity": 1
+                            }
+                        }).addTo(map);
+                    }
+                });
+            }
+
+
             //---------------------------------------------------------------------
             // Setup AI4E Branding
             //----------------------------------------------------------------------
             var logoControl = $("<div class='leaflet-control logo-area'></div>");
             logoControl.append("<span class='logo-text'>Microsoft AI for Earth</span>");
+            logoControl.append("<br/>");
+            logoControl.append("<span class='logo-text-small'>Version: 0.7</span>");
             
             $(".leaflet-top.leaflet-left").append(logoControl)
 

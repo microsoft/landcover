@@ -24,7 +24,6 @@ import rasterio.warp
 import mercantile
 
 import DataLoader
-import GeoTools
 import Utils
 
 import pickle
@@ -36,10 +35,8 @@ import matplotlib.cm
 
 from web_tool.frontend_server import ROOT_DIR
 
+from TileLayers import DataLayerTypes, DATA_LAYERS
 import ServerModelsICLRFormat, ServerModelsCachedFormat, ServerModelsICLRDynamicFormat, ServerModelsNIPS, ServerModelsNIPSGroupNorm
-
-
-USE_ESRI = False
 
 def get_random_string(length):
     alphabet = "abcdefghijklmnopqrstuvwxyz"
@@ -146,7 +143,7 @@ def reset_model():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
     data["time"] = time.ctime()
-    AugmentationState.request_list.append(data)
+    AugmentationState.request_list.append(data) # record this interaction
 
     Heatmap.reset()
 
@@ -163,9 +160,7 @@ def retrain_model():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
     data["time"] = time.ctime()
-
-    # Record this sample
-    AugmentationState.request_list.append(data)
+    AugmentationState.request_list.append(data) # record this interaction
     
     #
     success, message = AugmentationState.model.retrain(**data["retrainArgs"])
@@ -248,15 +243,14 @@ def do_undo():
 
 def pred_patch():
     ''' Method called for POST `/predPatch`'''
-    global USE_ESRI
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
     data["time"] = time.ctime()
     AugmentationState.request_list.append(data) # record this interaction
 
     # Inputs
-    data = bottle.request.json
     extent = data["extent"]
+    dataset = data["dataset"]
     color_list = data["colors"]
 
     # ------------------------------------------------------
@@ -269,15 +263,23 @@ def pred_patch():
     # Step 2
     #   Load the input data sources for the given tile  
     # ------------------------------------------------------
-    naip_file_name = None
-    if USE_ESRI:
+
+    if dataset not in DATA_LAYERS:
+        raise ValueError("Dataset doesn't seem to be valid, do the datasets in js/tile_layers.js correspond to those in TileLayers.py")
+
+    if DATA_LAYERS[dataset]["data_layer_type"] == DataLayerTypes.ESRI_WORLD_IMAGERY:
         padding = 0.0005
-        naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_esri_by_extent(extent, padding=padding)
-    else:
-        naip_file_name = DataLoader.lookup_tile_by_geom(extent)
+        naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_esri_data_by_extent(extent, padding=padding)
+    elif DATA_LAYERS[dataset]["data_layer_type"] == DataLayerTypes.USA_NAIP_LIST:
         padding = 20
-        naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_data_by_extent(naip_file_name, extent, DataLoader.GeoDataTypes.NAIP, padding=padding)
-    
+        naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_usa_data_by_extent(extent, padding=padding, geo_data_type=DataLoader.GeoDataTypes.NAIP)
+    elif DATA_LAYERS[dataset]["data_layer_type"] == DataLayerTypes.CUSTOM:
+        if "padding" in DATA_LAYERS[dataset]:
+            padding = DATA_LAYERS[dataset]["padding"]
+        else:
+            padding = 20
+        naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_custom_data_by_extent(extent, padding=padding, data_fn=DATA_LAYERS[dataset]["data_fn"])
+
     naip_data = np.rollaxis(naip_data, 0, 3) # we do this here instead of get_data_by_extent because not all GeoDataTypes will have a channel dimension
     AugmentationState.current_transform = (naip_crs, naip_transform, naip_index, padding)
 
@@ -287,7 +289,7 @@ def pred_patch():
     #   Apply reweighting
     #   Fix padding
     # ------------------------------------------------------
-    output = AugmentationState.model.run(naip_data, naip_file_name, extent)
+    output = AugmentationState.model.run(naip_data, extent, False)
     assert len(output.shape) == 3, "The model function should return an image shaped as (height, width, num_classes)"
     assert (output.shape[2] < output.shape[0] and output.shape[2] < output.shape[1]), "The model function should return an image shaped as (height, width, num_classes)" # assume that num channels is less than img dimensions
 
@@ -318,35 +320,35 @@ def pred_patch():
 
 def pred_tile():
     ''' Method called for POST `/predPatch`'''
-    global USE_ESRI
     bottle.response.content_type = 'application/json'
+    data = bottle.request.json
+    data["time"] = time.ctime()
+    AugmentationState.request_list.append(data) # record this interaction
 
     # Inputs
-    data = bottle.request.json
     extent = data["extent"]
     color_list = data["colors"]
+    dataset = data["dataset"]
    
-    try:
-        naip_file_name = DataLoader.lookup_tile_by_geom(extent)
-    except ValueError as e:
-        print(e)
+
+    if dataset not in DATA_LAYERS:
+        raise ValueError("Dataset doesn't seem to be valid, do the datasets in js/tile_layers.js correspond to those in TileLayers.py")
+
+    if DATA_LAYERS[dataset]["data_layer_type"] == DataLayerTypes.ESRI_WORLD_IMAGERY:
         bottle.response.status = 400
-        return json.dumps({"error": str(e)})
-
-    print("Loading tile: %s" % (naip_file_name))
-    f = rasterio.open(naip_file_name, "r")
-    src_crs = f.crs
-    src_transform = f.transform
-    src_height, src_width = f.shape
-    src_bounds = f.bounds
-    src_profile = f.profile.copy()
-    naip_data = f.read()
-    f.close()
-
-    print("Running on tile")
+        return json.dumps({"error": "Cannot currently download with ESRI World Imagery"})
+    elif DATA_LAYERS[dataset]["data_layer_type"] == DataLayerTypes.USA_NAIP_LIST:
+        naip_data, raster_profile, raster_transform = DataLoader.download_usa_data_by_extent(extent, geo_data_type=DataLoader.GeoDataTypes.NAIP)
+    elif DATA_LAYERS[dataset]["data_layer_type"] == DataLayerTypes.CUSTOM:
+        dl = DATA_LAYERS[dataset]
+        naip_data, raster_profile, raster_transform = DataLoader.download_custom_data_by_extent(extent, shapes=dl["shapes"], shapes_crs=dl["shapes_crs"], data_fn=dl["data_fn"])
     naip_data = np.rollaxis(naip_data, 0, 3)
-    output = AugmentationState.model.run(naip_data, naip_file_name, extent)
+
+
+    output = AugmentationState.model.run(naip_data, extent, True)
     print("Finished, output dimensions:", output.shape)
+
+    # apply nodata mask from naip_data
 
     # ------------------------------------------------------
     # Step 4
@@ -355,17 +357,22 @@ def pred_tile():
     tmp_id = get_random_string(8)
     img_hard = np.round(Utils.class_prediction_to_img(output, True, color_list)*255,0).astype(np.uint8)
     img_hard = cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGR)
-    cv2.imwrite(os.path.join(ROOT_DIR, "tmp/%s.png" % (tmp_id)), img_hard)
-    data["downloadPNG"] = "tmp/%s.png" % (tmp_id)
+    cv2.imwrite(os.path.join(ROOT_DIR, "downloads/%s.png" % (tmp_id)), img_hard)
+    data["downloadPNG"] = "downloads/%s.png" % (tmp_id)
 
-    new_profile = src_profile.copy()
+    new_profile = raster_profile.copy()
     new_profile['driver'] = 'GTiff'
     new_profile['dtype'] = 'uint8'
+    new_profile['compress'] = "lzw"
     new_profile['count'] = 1
-    f = rasterio.open(os.path.join(ROOT_DIR, "tmp/%s.tif" % (tmp_id)), 'w', **new_profile)
+    new_profile['transform'] = raster_transform
+    new_profile['height'] = naip_data.shape[0] 
+    new_profile['width'] = naip_data.shape[1]
+    new_profile['nodata'] = 255
+    f = rasterio.open(os.path.join(ROOT_DIR, "downloads/%s.tif" % (tmp_id)), 'w', **new_profile)
     f.write(output.argmax(axis=2).astype(np.uint8), 1)
     f.close()
-    data["downloadTIFF"] = "tmp/%s.tif" % (tmp_id)
+    data["downloadTIFF"] = "downloads/%s.tif" % (tmp_id)
 
 
     bottle.response.status = 200
@@ -375,12 +382,14 @@ def pred_tile():
 def get_input():
     ''' Method called for POST `/getInput`
     '''
-    global USE_ESRI
     bottle.response.content_type = 'application/json'
+    data = bottle.request.json
+    data["time"] = time.ctime()
+    AugmentationState.request_list.append(data) # record this interaction
 
     # Inputs
-    data = bottle.request.json
     extent = data["extent"]
+    dataset = data["dataset"]
 
     # ------------------------------------------------------
     # Step 1
@@ -391,14 +400,21 @@ def get_input():
     # Step 2
     #   Load the input data sources for the given tile  
     # ------------------------------------------------------
-    naip_file_name = None
-    if USE_ESRI:
+    if dataset not in DATA_LAYERS:
+        raise ValueError("Dataset doesn't seem to be valid, do the datasets in js/tile_layers.js correspond to those in TileLayers.py")
+
+    if DATA_LAYERS[dataset]["data_layer_type"] == DataLayerTypes.ESRI_WORLD_IMAGERY:
         padding = 0.0005
-        naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_esri_by_extent(extent, padding=padding)
-    else:
-        naip_file_name = DataLoader.lookup_tile_by_geom(extent)
+        naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_esri_data_by_extent(extent, padding=padding)
+    elif DATA_LAYERS[dataset]["data_layer_type"] == DataLayerTypes.USA_NAIP_LIST:
         padding = 20
-        naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_data_by_extent(naip_file_name, extent, DataLoader.GeoDataTypes.NAIP, padding=padding)
+        naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_usa_data_by_extent(extent, padding=padding, geo_data_type=DataLoader.GeoDataTypes.NAIP)
+    elif DATA_LAYERS[dataset]["data_layer_type"] == DataLayerTypes.CUSTOM:
+        if "padding" in DATA_LAYERS[dataset]:
+            padding = DATA_LAYERS[dataset]["padding"]
+        else:
+            padding = 20
+        naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_custom_data_by_extent(extent, padding=padding, data_fn=DATA_LAYERS[dataset]["data_fn"])
     naip_data = np.rollaxis(naip_data, 0, 3)
     
 
@@ -423,7 +439,6 @@ def do_get():
 #---------------------------------------------------------------------------------------
 
 def main():
-    global USE_ESRI
     parser = argparse.ArgumentParser(description="Backend Server")
 
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debugging", default=False)
@@ -452,13 +467,10 @@ def main():
         ],
         help="Model to use", required=True
     )
-    parser.add_argument("--esri", action="store_true", help="Use global ESRI basemap", default=False)
     parser.add_argument("--model_fn", action="store", dest="model_fn", type=str, help="Model fn to use", default=None)
     parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", default=0)
 
     args = parser.parse_args(sys.argv[1:])
-
-    USE_ESRI = args.esri
 
     model = None
     if args.model == "cached":
