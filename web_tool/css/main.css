@@ -1,0 +1,221 @@
+html, body {
+    height: 100%;
+    height: 100%;
+}
+
+body {
+    padding: 0;
+    margin: 0;
+}
+
+#map {
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+}
+
+.leaflet-control-slider{
+    border-radius: 2px; 
+}
+
+.sidebar{
+    border: 0 !important;
+    right: 20px !important;
+    font-family: "Segoe UI Web (West European)",Segoe UI,-apple-system,BlinkMacSystemFont,Roboto,Helvetica Neue,sans-serif;
+}
+.sidebar-content{
+    right: 0 !important;
+}
+.sidebar-header{
+    background-color: #19715E;
+    font-size: 1.2em;
+    letter-spacing: .1rem;
+    font-weight: 400;
+    color: white;
+}
+.sidebar-tabs{
+    background-color: rgba(255, 255, 255, 0.95);
+}
+
+#inputImage{
+    width: 125px;
+    height: 125px;
+    margin: 10px;
+}
+
+.exampleImage{
+    width: 125px;
+    height: 125px;
+    margin: 10px;
+}
+
+.exampleImage.active{
+    border: 2px solid red;
+}
+
+.leaflet-image-layer.gray{
+    filter: grayscale(66%);
+}
+
+.slider{
+    height: 25px;
+    width: 100%;
+}
+
+button {
+    color: #ccc;
+    background-color: #595959;
+    border: solid 3px #6e6e6e;
+    width: 85%;
+    height: 40px;
+}
+
+button:hover{
+    cursor: pointer;
+    cursor: hand;
+    text-decoration: none;
+    color: #fff;
+}
+
+a.leaflet-control-slider-toggle {
+    width: 171px;
+}
+
+
+.m-0{
+    margin: 0 !important;
+}
+
+
+
+.leaflet-container .logo-area a {
+    color: #19715E;
+}
+
+.leaflet-container .logo-area a:hover {
+    color: #25A782;
+}
+
+.noty_theme__metroui.noty_type__success{
+    background-color: #19715E !important;
+}
+
+
+/*
+    Styling for the "new class" selection
+*/
+.radio{
+    padding:10px;
+    width:350px;
+}
+
+.radio input{
+    display: none;
+}
+
+.radio label{
+    padding: 6px;
+}
+
+.radio .selected{
+    border: 1px solid black;
+}
+
+.radio .circle{
+    position:relative;
+    top:0px;
+    display:inline-block;
+    width:18px;
+    height:18px;
+    border-radius: 10px;
+    border-color: transparent;
+}
+
+
+/*
+    Styling for the rectangular logo and timer blocks in the top left corner
+*/
+
+.logo-area{
+    background-color: #19715E;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    padding-left: 2rem;
+    padding-right: 2rem;
+}
+
+.logo-text{
+    font-size: 1.7em;
+    letter-spacing: .1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: white;
+    padding: 2px;
+}
+
+.logo-text-small{
+    line-height: 1.5;
+    color: white;
+    padding: 2px;
+}
+
+.label-area{
+    background-color: #FFFFFF;
+    width:200px;
+    padding:20px;
+}
+
+.label-text{
+    font-size: 1em;
+    letter-spacing: .1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: black;
+    padding: 2px;
+    padding-left: 1rem;
+}
+
+
+/*
+    Styling for the fullscreen poppup that happens when timer runs out
+*/
+.endOfTrial{
+    font-size: 1.7em;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50% , -50%);
+    -webkit-transform: translate(-50%, -50%);
+    background-color: white;
+    padding: 50px;
+    z-index: 9999;
+    border-radius: 3px;
+    max-width: 400px;
+}
+
+.endOfTrialMask{
+    position:absolute;
+    top: 0;
+    left: 0;
+    width:100%;
+    height:100%;
+    background-color: #77777777;
+    z-index: 9998;
+}
+
+#privacy{
+    position:absolute;
+    bottom:0px;
+    left:40%;
+    background-color:rgba(255, 255, 255, 0.7);
+    z-index: 9998;
+    padding: 0 15px;
+}
+
+#privacy a{
+    color:#333;
+}
+
+.ml-1{
+    margin-left:10px;
+}

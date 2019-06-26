@@ -1,0 +1,8 @@
+/mnt/blobfuse/esri-naip/data/v1/2013/states/ny/ny_1m_2013/43075/m_4307555_sw_18_1_20130620.mrf
+/mnt/blobfuse/esri-naip/data/v1/2013/states/ny/ny_1m_2013/43075/m_4307555_se_18_1_20130620.mrf
+/mnt/blobfuse/esri-naip/data/v1/2013/states/ny/ny_1m_2013/43075/m_4307563_ne_18_1_20130620.mrf
+/mnt/blobfuse/esri-naip/data/v1/2013/states/ny/ny_1m_2013/43075/m_4307563_se_18_1_20130716.mrf
+/mnt/blobfuse/esri-naip/data/v1/2013/states/ny/ny_1m_2013/43075/m_4307563_sw_18_1_20130620.mrf
+/mnt/blobfuse/esri-naip/data/v1/2013/states/ny/ny_1m_2013/43075/m_4307562_se_18_1_20130620.mrf
+/mnt/blobfuse/esri-naip/data/v1/2013/states/ny/ny_1m_2013/43075/m_4307562_ne_18_1_20130620.mrf
+/mnt/blobfuse/esri-naip/data/v1/2013/states/ny/ny_1m_2013/43075/m_4307554_se_18_1_20130620.mrf
