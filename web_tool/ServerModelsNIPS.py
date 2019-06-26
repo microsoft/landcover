@@ -173,13 +173,13 @@ class KerasDenseFineTune(BackendModel):
                 success = True
                 message = "Undoing sample"
             elif undo == "retrain":
-                while self.undo_stack[-1] == "sample":
-                    num_undone += 1
+                while self.undo_stack[-1] == "retrain":
                     self.undo_stack.pop()
-                    self.augment_x_train.pop()
-                    self.augment_y_train.pop()
+                self.augment_x_train.pop()
+                self.augment_y_train.pop()
+                num_undone += 1
                 success = True
-                message = "Undoing training"
+                message = "Undoing sample"
             else:
                 raise ValueError("This shouldn't happen")
         else:
