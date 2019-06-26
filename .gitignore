@@ -12,6 +12,7 @@ files_to_sync.txt
 files_not_to_sync.txt
 sync_up.sh
 .idea/
+.vscode/
 mount_remotes_deployment.sh
 mount_remotes_development.sh
 
