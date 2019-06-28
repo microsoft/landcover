@@ -54,6 +54,13 @@ DATA_LAYERS = {
         "shapes": None,
         "shapes_crs": None
     },
+    "esri_world_imagery_naip": { 
+        "data_layer_type": DataLayerTypes.USA_NAIP_LIST,
+        "shapes_fn": None,
+        "data_fn": None,
+        "shapes": None,
+        "shapes_crs": None
+    },
     "osm": {
         "data_layer_type": DataLayerTypes.ESRI_WORLD_IMAGERY,
         "shapes_fn": None,

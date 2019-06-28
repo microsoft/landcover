@@ -8,6 +8,15 @@ var tileLayers = {
         }),
         "shapes": null 
     },
+    "esri_world_imagery_naip": {
+        "location": [[38, -88], 4, "ESRI World Imagery"],
+        "tileObject": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 20,
+            maxNativeZoom: 17,
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        }),
+        "shapes": null 
+    },
     "osm": {
         "location": [[38, -88], 4, "OpenStreetMap"],
         "tileObject": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
