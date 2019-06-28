@@ -9,7 +9,7 @@ from web_tool.frontend_server import ROOT_DIR
 def load_geojson_as_list(fn):
     shapes = []
     crs = None
-    with fiona.open(os.path.join(ROOT_DIR, fn)) as f:
+    with fiona.open(fn) as f:
         crs = f.crs
         for row in f:
             shape = shapely.geometry.shape(row["geometry"])
@@ -144,7 +144,10 @@ DATA_LAYERS = {
 
 for k in DATA_LAYERS.keys():
     if DATA_LAYERS[k]["shapes_fn"] is not None:
-        shapes, crs = load_geojson_as_list(DATA_LAYERS[k]["shapes_fn"])
-        DATA_LAYERS[k]["shapes"] = shapes
-        DATA_LAYERS[k]["shapes_crs"] = crs["init"]
-        
+        fn = os.path.join(ROOT_DIR, DATA_LAYERS[k]["shapes_fn"])
+        if os.path.exists(fn):
+            shapes, crs = load_geojson_as_list(fn)
+            DATA_LAYERS[k]["shapes"] = shapes
+            DATA_LAYERS[k]["shapes_crs"] = crs["init"]
+        else:
+            print("WARNING: %s doesn't exist, this server will not be able to serve the '%s' dataset" % (fn, k))        
