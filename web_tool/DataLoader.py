@@ -32,14 +32,6 @@ import glob
 
 from web_tool.frontend_server import ROOT_DIR
 
-assert all([os.path.exists(fn) for fn in [
-    ROOT_DIR + "/data/tile_index.dat",
-    ROOT_DIR + "/data/tile_index.idx",
-    ROOT_DIR + "/data/tiles.p"
-]])
-TILES = pickle.load(open(ROOT_DIR + "/data/tiles.p", "rb"))
-
-
 # ------------------------------------------------------
 # Miscellaneous methods
 # ------------------------------------------------------
@@ -108,27 +100,41 @@ class GeoDataTypes(Enum):
     BUILDINGS = 5
     LANDCOVER = 6
 
+class LookupNAIP(object):
+    TILES = None 
+    
+    @staticmethod
+    def lookup(extent):
+        if LookupNAIP.TILES is None:
+            assert all([os.path.exists(fn) for fn in [
+                ROOT_DIR + "/data/tile_index.dat",
+                ROOT_DIR + "/data/tile_index.idx",
+                ROOT_DIR + "/data/tiles.p"
+            ]]), "You do not have the correct files, did you setup the project correctly"
+            LookupNAIP.TILES = pickle.load(open(ROOT_DIR + "/data/tiles.p", "rb"))
+        return LookupNAIP.lookup_naip_tile_by_geom(extent)
 
-def lookup_naip_tile_by_geom(extent):
-    tile_index = rtree.index.Index(ROOT_DIR + "/data/tile_index")
+    @staticmethod
+    def lookup_naip_tile_by_geom(extent):
+        tile_index = rtree.index.Index(ROOT_DIR + "/data/tile_index")
 
-    geom = extent_to_transformed_geom(extent, "EPSG:4269")
-    minx, miny, maxx, maxy = shapely.geometry.shape(geom).bounds
-    geom = shapely.geometry.mapping(shapely.geometry.box(minx, miny, maxx, maxy, ccw=True))
+        geom = extent_to_transformed_geom(extent, "EPSG:4269")
+        minx, miny, maxx, maxy = shapely.geometry.shape(geom).bounds
+        geom = shapely.geometry.mapping(shapely.geometry.box(minx, miny, maxx, maxy, ccw=True))
 
-    geom = shapely.geometry.shape(geom)
-    intersected_indices = list(tile_index.intersection(geom.bounds))
-    for idx in intersected_indices:
-        intersected_fn = TILES[idx][0]
-        intersected_geom = TILES[idx][1]
-        if intersected_geom.contains(geom):
-            print("Found %d intersections, returning at %s" % (len(intersected_indices), intersected_fn))
-            return intersected_fn
+        geom = shapely.geometry.shape(geom)
+        intersected_indices = list(tile_index.intersection(geom.bounds))
+        for idx in intersected_indices:
+            intersected_fn = LookupNAIP.TILES[idx][0]
+            intersected_geom = LookupNAIP.TILES[idx][1]
+            if intersected_geom.contains(geom):
+                print("Found %d intersections, returning at %s" % (len(intersected_indices), intersected_fn))
+                return intersected_fn
 
-    if len(intersected_indices) > 0:
-        raise ValueError("Error, there are overlaps with tile index, but no tile completely contains selection")
-    else:
-        raise ValueError("No tile intersections")
+        if len(intersected_indices) > 0:
+            raise ValueError("Error, there are overlaps with tile index, but no tile completely contains selection")
+        else:
+            raise ValueError("No tile intersections")
 
 def get_fn_by_geo_data_type(naip_fn, geo_data_type):
     fn = None
@@ -151,7 +157,7 @@ def get_fn_by_geo_data_type(naip_fn, geo_data_type):
     return fn
 
 def download_usa_data_by_extent(extent, geo_data_type=GeoDataTypes.NAIP):
-    naip_fn = lookup_naip_tile_by_geom(extent)
+    naip_fn = LookupNAIP.lookup(extent)
     fn = get_fn_by_geo_data_type(naip_fn, geo_data_type)
 
     f = rasterio.open(fn, "r")
@@ -165,7 +171,7 @@ def download_usa_data_by_extent(extent, geo_data_type=GeoDataTypes.NAIP):
     return data, src_profile, src_transform
 
 def get_usa_data_by_extent(extent, padding=20, geo_data_type=GeoDataTypes.NAIP):
-    naip_fn = lookup_naip_tile_by_geom(extent)
+    naip_fn = LookupNAIP.lookup(extent)
     fn = get_fn_by_geo_data_type(naip_fn, geo_data_type)
 
     f = rasterio.open(fn, "r")
