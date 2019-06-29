@@ -266,7 +266,7 @@
                 zoom: START_ZOOM,
                 keyboard: false,
                 minZoom: baseLayer.options.minZoom,
-                layers: [baseLayer, cities, heatmap]
+                layers: [baseLayer, cities]
             });
             map.createPane('labels');
             map.getPane('labels').style.zIndex = 200;
@@ -349,7 +349,6 @@
             }
 
             var overlayMaps = {
-                "Heatmap": heatmap,
             };
             L.control.layers(
                 baseMaps, overlayMaps, {
@@ -400,27 +399,6 @@
                 }
             );
             windowSizeSlider.addTo(map);
-
-            //----------------------------------------------------------------------
-            // Setup the selection window size slider
-            //----------------------------------------------------------------------
-            heatmapSlider = L.control.slider( // opacity slider
-                function(value){
-                   heatmap.setOpacity(value / 100.0);
-                }, {
-                    position: 'bottomleft',
-                    id: 'window_size_slider',
-                    orientation: 'horizontal',
-                    collapsed: true,
-                    syncSlider: true,
-                    min: 0,
-                    max: 100,
-                    value: 60,
-                    logo: "Heatmap Opacity",
-                    size: "171px"
-                }
-            );
-            heatmapSlider.addTo(map);
 
             //----------------------------------------------------------------------
             // Setup the sharpness slider to control which type of image is shown
