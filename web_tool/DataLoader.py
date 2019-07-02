@@ -72,6 +72,12 @@ def download_custom_data_by_extent(extent, shapes, shapes_crs, data_fn):
     src_image, src_transform = rasterio.mask.mask(f, [transformed_mask_geom], crop=True)
     f.close()
 
+    if src_image.shape[0] == 3:
+        src_image = np.concatenate([
+                src_image,
+                src_image[0][np.newaxis]
+            ], axis=0)
+
     return src_image, src_profile, src_transform
 
 def get_custom_data_by_extent(extent, padding, data_fn):
@@ -84,6 +90,14 @@ def get_custom_data_by_extent(extent, padding, data_fn):
     geom = shapely.geometry.mapping(shapely.geometry.box(*buffed_geom.bounds))
     src_image, src_transform = rasterio.mask.mask(f, [geom], crop=True)
     f.close()
+
+    if src_image.shape[0] == 3:
+        src_image = np.concatenate([
+                src_image,
+                src_image[0][np.newaxis]
+            ], axis=0)
+
+    print(src_image.shape)
 
     return src_image, src_crs, src_transform, buffed_geom.bounds, src_index
 

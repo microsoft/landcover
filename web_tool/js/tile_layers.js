@@ -144,8 +144,30 @@ var tileLayers = {
             maxNativeZoom: 18,
             minZoom: 14
         }),
-        "shapes": null 
+        "shapes": "shapes/hcmc_wards.geojson" 
     },
+    "hcmc_sentinel": {
+        "location": [[10.83898610719171, 106.740692498798225], 14, "Hồ Chí Minh City, Vietnam / Sentinel"],
+        "tileObject": L.tileLayer('tiles/hcmc_sentinel/{z}/{x}/{y}.png', {
+            attribution: 'Georeferenced Image', 
+            tms:true,
+            maxZoom:17,
+            maxNativeZoom: 16,
+            minZoom: 10
+        }),
+        "shapes": "shapes/hcmc_sentinel_districts.geojson" 
+    },
+    "yangon_lidar": {
+        "location": [[16.7870, 96.1450], 13, "Yangon, Myanmar"],
+        "tileObject": L.tileLayer('tiles/yangon_lidar/{z}/{x}/{y}.png', {
+            attribution: 'Georeferenced Image', 
+            tms:true,
+            maxZoom:21,
+            maxNativeZoom: 20,
+            minZoom: 10
+        }),
+        "shapes": "shapes/yangon_wards.geojson" 
+    }
 };
 
 var interestingLocations = [

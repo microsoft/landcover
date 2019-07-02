@@ -142,11 +142,26 @@ DATA_LAYERS = {
     },
     "hcmc": {
         "data_layer_type": DataLayerTypes.CUSTOM,
-        "shapes_fn": None,
-        "data_fn": None,
+        "shapes_fn": "shapes/hcmc_wards.geojson",
+        "data_fn": "tiles/HCMC.tif",
         "shapes": None,
         "shapes_crs": None
     },
+    "hcmc_sentinel": {
+        "data_layer_type": DataLayerTypes.CUSTOM,
+        "shapes_fn": "shapes/hcmc_sentinel_districts.geojson",
+        "data_fn": "tiles/hcmc_sentinel.tif",
+        "shapes": None,
+        "shapes_crs": None,
+        "padding": 1100
+    },
+    "yangon_lidar": {
+        "data_layer_type": DataLayerTypes.CUSTOM,
+        "shapes_fn": "shapes/yangon_wards.geojson",
+        "data_fn": "tiles/yangon_lidar.tif",
+        "shapes": None,
+        "shapes_crs": None
+    }
 }
 
 for k in DATA_LAYERS.keys():
