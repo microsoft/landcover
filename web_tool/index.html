@@ -565,54 +565,57 @@
             });
 
             $(document).keydown(function(e) {
-                if(e.which == 97 || e.which == 65) { // "a"
-                    visible = false;
-                    map.getPane('labels').style.opacity = 0.0;
-                    opacitySlider.slider.value = 0;
-                    opacitySlider._updateValue();
-                } else if(e.which == 115 || e.which == 83) { // "s"
-                    if(visible){
+                if(document.activeElement == document.body){
+                    if(e.which == 97 || e.which == 65) { // "a"
                         visible = false;
                         map.getPane('labels').style.opacity = 0.0;
                         opacitySlider.slider.value = 0;
                         opacitySlider._updateValue();
-                    }else{
+                    } else if(e.which == 115 || e.which == 83) { // "s"
+                        if(visible){
+                            visible = false;
+                            map.getPane('labels').style.opacity = 0.0;
+                            opacitySlider.slider.value = 0;
+                            opacitySlider._updateValue();
+                        }else{
+                            visible = true;
+                            map.getPane('labels').style.opacity = 1.0;
+                            opacitySlider.slider.value = 100;
+                            opacitySlider._updateValue();
+                        }
+                    } else if(e.which == 100 || e.which == 68) { "d"
                         visible = true;
                         map.getPane('labels').style.opacity = 1.0;
-                        opacitySlider.slider.value = 100;
+                        opacitySlider.slider.value = 100
                         opacitySlider._updateValue();
-                    }
-                } else if(e.which == 100 || e.which == 68) { "d"
-                    visible = true;
-                    map.getPane('labels').style.opacity = 1.0;
-                    opacitySlider.slider.value = 100
-                    opacitySlider._updateValue();
-                } else if((e.which == 114 || e.which == 82) && !ctrlKeyDown){ "r"
-                    doRetrain();
-                } else if(e.which == 37){ "left arrow"
-                    var currentOpacity = parseFloat(map.getPane('labels').style.opacity);
-                    if (currentOpacity >= 0.05){
-                        currentOpacity -= 0.05;
+                    } else if((e.which == 114 || e.which == 82) && !ctrlKeyDown){ "r"
+                        doRetrain();
+                    } else if(e.which == 37){ "left arrow"
+                        var currentOpacity = parseFloat(map.getPane('labels').style.opacity);
+                        if (currentOpacity >= 0.05){
+                            currentOpacity -= 0.05;
 
-                        map.getPane('labels').style.opacity = currentOpacity;
-                        opacitySlider.slider.value = currentOpacity*100;
-                        opacitySlider._updateValue();
-                    }
-                    e.preventDefault()
-                } else if(e.which == 39){ "right arrow"
-                    var currentOpacity = parseFloat(map.getPane('labels').style.opacity);
-                    if (currentOpacity <= 0.95){
-                        currentOpacity += 0.05;
+                            map.getPane('labels').style.opacity = currentOpacity;
+                            opacitySlider.slider.value = currentOpacity*100;
+                            opacitySlider._updateValue();
+                        }
+                        e.preventDefault()
+                    } else if(e.which == 39){ "right arrow"
+                        var currentOpacity = parseFloat(map.getPane('labels').style.opacity);
+                        if (currentOpacity <= 0.95){
+                            currentOpacity += 0.05;
 
-                        map.getPane('labels').style.opacity = currentOpacity;
-                        opacitySlider.slider.value = currentOpacity*100;
-                        opacitySlider._updateValue();
+                            map.getPane('labels').style.opacity = currentOpacity;
+                            opacitySlider.slider.value = currentOpacity*100;
+                            opacitySlider._updateValue();
+                        }
+                        e.preventDefault()
+                    } else if(e.which == 38 || e.which == 40){
+                        e.preventDefault()
+                    } else if(ctrlKeyDown && e.which==90){
+                        doUndo();
                     }
-                    e.preventDefault()
-                } else if(e.which == 38 || e.which == 40){
-                    e.preventDefault()
-                } else if(ctrlKeyDown && e.which==90){
-                    doUndo();
+                    return false;
                 }
             });
 
