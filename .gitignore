@@ -16,6 +16,7 @@ sync_up.sh
 .vscode/
 mount_remotes_deployment.sh
 mount_remotes_development.sh
+setup/
 
 data/
 tiles/
