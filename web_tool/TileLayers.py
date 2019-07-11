@@ -161,6 +161,14 @@ DATA_LAYERS = {
         "data_fn": "tiles/yangon_lidar.tif",
         "shapes": None,
         "shapes_crs": None
+    },
+    "airbus": {
+        "data_layer_type": DataLayerTypes.CUSTOM,
+        "shapes_fn": "shapes/airbus-data-grid-epsg4326.geojson",
+        "data_fn": "tiles/airbus_epsg4326.tif",
+        "shapes": None,
+        "shapes_crs": None,
+        "padding": 0.003
     }
 }
 
