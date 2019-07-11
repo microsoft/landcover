@@ -167,6 +167,17 @@ var tileLayers = {
             minZoom: 10
         }),
         "shapes": "shapes/yangon_wards.geojson" 
+    },
+    "airbus": {
+        "location": [[36.80, -76.12], 14, "Airbus, VA"],
+        "tileObject": L.tileLayer('tiles/airbus/{z}/{x}/{y}.png', {
+            attribution: 'Georeferenced Image', 
+            tms:true,
+            maxZoom: 21,
+            maxNativeZoom: 18,
+            minZoom: 13
+        }),
+        "shapes": "shapes/airbus-data-grid-epsg4326.geojson"
     }
 };
 
