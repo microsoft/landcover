@@ -162,6 +162,7 @@ DATA_LAYERS = {
 
 for k in DATA_LAYERS.keys():
     if DATA_LAYERS[k]["shapes"] is not None:
+        print("Loading shapes for the %s dataset" % (k))
         for zone_layer in DATA_LAYERS[k]["shapes"]:
             fn = os.path.join(ROOT_DIR, zone_layer["shapes_fn"])
             if os.path.exists(fn):

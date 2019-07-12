@@ -78,67 +78,92 @@ var doReset = function(notify=true){
 // Download tile
 //-----------------------------------------------------------------
 var doDownloadTile = function(){
-    var t = currentSelection._latlngs[0];
-    var polygon = [
-        [t[0]["lat"], t[0]["lng"]],
-        [t[1]["lat"], t[1]["lng"]],
-        [t[2]["lat"], t[2]["lng"]],
-        [t[3]["lat"], t[3]["lng"]]
-    ];
 
-    var topleft = L.latLng(polygon[0][0], polygon[0][1]);
-    var topleftProjected = L.CRS.EPSG3857.project(topleft);
-    var bottomright = L.latLng(polygon[2][0], polygon[2][1]);
-    var bottomrightProjected = L.CRS.EPSG3857.project(bottomright);
+    if(currentZoneLayerName !== null){
 
-    var request = {
-        "type": "download",
-        "dataset": DATASET,
-        "experiment": EXP_NAME,
-        "extent": {
-            "xmax": bottomrightProjected.x,
-            "xmin": topleftProjected.x,
-            "ymax": topleftProjected.y,
-            "ymin": bottomrightProjected.y,
-            "spatialReference": {
-                "latestWkid": 3857
-            }
-        },
-        "colors": colorList,
-        "zoneLayerName": currentZoneLayerName
-    };
 
-    $.ajax({
-        type: "POST",
-        url: BACKEND_URL + "predTile",
-        data: JSON.stringify(request),
-        timeout: 0,
-        success: function(data, textStatus, jqXHR){
+        if(currentSelection !== null){
+            var t = currentSelection._latlngs[0];
+            var polygon = [
+                [t[0]["lat"], t[0]["lng"]],
+                [t[1]["lat"], t[1]["lng"]],
+                [t[2]["lat"], t[2]["lng"]],
+                [t[3]["lat"], t[3]["lng"]]
+            ];
+
+            var topleft = L.latLng(polygon[0][0], polygon[0][1]);
+            var topleftProjected = L.CRS.EPSG3857.project(topleft);
+            var bottomright = L.latLng(polygon[2][0], polygon[2][1]);
+            var bottomrightProjected = L.CRS.EPSG3857.project(bottomright);
+
+
+
+            var request = {
+                "type": "download",
+                "dataset": DATASET,
+                "experiment": EXP_NAME,
+                "extent": {
+                    "xmax": bottomrightProjected.x,
+                    "xmin": topleftProjected.x,
+                    "ymax": topleftProjected.y,
+                    "ymin": bottomrightProjected.y,
+                    "spatialReference": {
+                        "latestWkid": 3857
+                    }
+                },
+                "colors": colorList,
+                "zoneLayerName": currentZoneLayerName
+            };
+
+            $.ajax({
+                type: "POST",
+                url: BACKEND_URL + "predTile",
+                data: JSON.stringify(request),
+                timeout: 0,
+                success: function(data, textStatus, jqXHR){
+                    new Noty({
+                        type: "success",
+                        text: "Tile download ready!",
+                        layout: 'topCenter',
+                        timeout: 5000,
+                        theme: 'metroui'
+                    }).show();
+                    var pngURL = window.location.origin + "/" + data["downloadPNG"];
+                    var tiffURL = window.location.origin + "/" + data["downloadTIFF"];
+                    $("#lblPNG").html("<a href='"+pngURL+"' target='_blank'>Download PNG</a>");
+                    $("#lblTIFF").html("<a href='"+tiffURL+"' target='_blank'>Download TIFF</a>");
+                    
+                },
+                error: notifyFail,
+                dataType: "json",
+                contentType: "application/json"
+            });
+
             new Noty({
                 type: "success",
-                text: "Tile download ready!",
+                text: "Sent tile download request, please wait for 2-3 minutes. When the request is complete the download links will appear underneath the 'Download' button.",
                 layout: 'topCenter',
-                timeout: 5000,
+                timeout: 10000,
                 theme: 'metroui'
             }).show();
-            var pngURL = window.location.origin + "/" + data["downloadPNG"];
-            var tiffURL = window.location.origin + "/" + data["downloadTIFF"];
-            $("#lblPNG").html("<a href='"+pngURL+"' target='_blank'>Download PNG</a>");
-            $("#lblTIFF").html("<a href='"+tiffURL+"' target='_blank'>Download TIFF</a>");
-            
-        },
-        error: notifyFail,
-        dataType: "json",
-        contentType: "application/json"
-    });
-
-    new Noty({
-        type: "success",
-        text: "Sent tile download request, please wait for 2-3 minutes. When the request is complete the download links will appear underneath the 'Download' button.",
-        layout: 'topCenter',
-        timeout: 10000,
-        theme: 'metroui'
-    }).show();
+        }else{
+            new Noty({
+                type: "info",
+                text: "You must shift-click somewhere before downloading",
+                layout: 'topCenter',
+                timeout: 3000,
+                theme: 'metroui'
+            }).show();
+        }
+    }else{
+        new Noty({
+            type: "info",
+            text: "Downloads are not enabled for this dataset",
+            layout: 'topCenter',
+            timeout: 3000,
+            theme: 'metroui'
+        }).show();
+    }
 };
 
 

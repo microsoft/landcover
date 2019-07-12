@@ -270,6 +270,20 @@
             }
 
             //----------------------------------------------------------------------
+            // Load the dataset specific shapes
+            //----------------------------------------------------------------------
+
+            if(tileLayers[DATASET]["shapes"] !== null){
+                for(zoneSetId in tileLayers[DATASET]["shapes"]){
+                    zoneMaps[tileLayers[DATASET]["shapes"][zoneSetId]["name"]] = L.geoJSON(null, {
+                        style: defaultZoneStyle,
+                        onEachFeature: forEachFeatureOnClick
+                    });
+                    getZoneMap(zoneSetId, tileLayers[DATASET]["shapes"][zoneSetId]["name"], tileLayers[DATASET]["shapes"][zoneSetId]["shapes_fn"]);
+                }
+            }
+
+            //----------------------------------------------------------------------
             // Setup map layers
             //----------------------------------------------------------------------
 
@@ -280,9 +294,6 @@
 
 
             if((DATASET != "esri_world_imagery") && (DATASET != "esri_world_imagery_naip")){
-                // interestingLocations = [
-                //     L.marker(tileLayers[DATASET]["location"][0]).bindPopup(tileLayers[DATASET]["location"][2])
-                // ];
                 interestingLocations = [];
             }
             var baseLayer = tileLayers[DATASET]["tileObject"];
@@ -291,6 +302,12 @@
 
             var cities = L.layerGroup(interestingLocations);
 
+            var initialLayers = [baseLayer];
+            if(tileLayers[DATASET]["shapes"] !== null){
+                initialLayers.push(zoneMaps[tileLayers[DATASET]["shapes"][0]["name"]]);
+                currentZoneLayerName = tileLayers[DATASET]["shapes"][0]["name"];
+            }
+
             map = L.map('map', {
                 zoomControl: false,
                 crs: L.CRS.EPSG3857, // this is a default, but I'm setting it to be explicit about what CRS we are in	
@@ -298,7 +315,7 @@
                 zoom: START_ZOOM,
                 keyboard: false,
                 minZoom: baseLayer.options.minZoom,
-                layers: [baseLayer]
+                layers: initialLayers
             });
             map.createPane('labels');
             map.getPane('labels').style.zIndex = 200;
@@ -307,33 +324,6 @@
                 interestingLocations[i].on('click', function(e){
                     map.setView(e.latlng, 13);
                 });
-            }
-
-            //----------------------------------------------------------------------
-            // Load the dataset specific shapes
-            //----------------------------------------------------------------------
-            
-            var getZoneMap = function(zoneSetId, name, url){
-                $.ajax({
-                    dataType: "json",
-                    url: url,
-                    success: function(data) {
-                        for(k in data.features){
-                            data.features[k].properties["KEY"] = tileLayers[DATASET]["shapes"][zoneSetId]["zone_name_key"];
-                        }
-                        zoneMaps[name].addData(data);
-                    }
-                });
-            }
-
-            if(tileLayers[DATASET]["shapes"] !== null){
-                for(zoneSetId in tileLayers[DATASET]["shapes"]){
-                    zoneMaps[tileLayers[DATASET]["shapes"][zoneSetId]["name"]] = L.geoJSON(null, {
-                        style: defaultZoneStyle,
-                        onEachFeature: forEachFeatureOnClick
-                    });
-                    getZoneMap(zoneSetId, tileLayers[DATASET]["shapes"][zoneSetId]["name"], tileLayers[DATASET]["shapes"][zoneSetId]["shapes_fn"]);
-                }
             }
 
             //----------------------------------------------------------------------
