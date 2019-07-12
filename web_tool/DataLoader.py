@@ -97,8 +97,6 @@ def get_custom_data_by_extent(extent, padding, data_fn):
                 src_image[0][np.newaxis]
             ], axis=0)
 
-    print(src_image.shape)
-
     return src_image, src_crs, src_transform, buffed_geom.bounds, src_index
 
 

@@ -329,6 +329,7 @@ def pred_tile():
     extent = data["extent"]
     color_list = data["colors"]
     dataset = data["dataset"]
+    zone_layer_name = data["zoneLayerName"]
    
 
     if dataset not in DATA_LAYERS:
@@ -341,7 +342,13 @@ def pred_tile():
         naip_data, raster_profile, raster_transform = DataLoader.download_usa_data_by_extent(extent, geo_data_type=DataLoader.GeoDataTypes.NAIP)
     elif DATA_LAYERS[dataset]["data_layer_type"] == DataLayerTypes.CUSTOM:
         dl = DATA_LAYERS[dataset]
-        naip_data, raster_profile, raster_transform = DataLoader.download_custom_data_by_extent(extent, shapes=dl["shapes"], shapes_crs=dl["shapes_crs"], data_fn=dl["data_fn"])
+        layer = Utils.get_shape_layer_by_name(dl["shapes"], zone_layer_name)
+
+        if layer is None:
+            bottle.response.status = 400
+            return json.dumps({"error": "You have not selected a set of zones to use"})
+        print("Downloading using shapes from layer: %s" % (layer["name"]))
+        naip_data, raster_profile, raster_transform = DataLoader.download_custom_data_by_extent(extent, shapes=layer["shapes_geoms"], shapes_crs=layer["shapes_crs"], data_fn=dl["data_fn"])
     naip_data = np.rollaxis(naip_data, 0, 3)
 
 

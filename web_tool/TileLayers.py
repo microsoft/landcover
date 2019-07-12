@@ -49,135 +49,124 @@ padding - NOTE: Optional, only used in DataLayerTypes.CUSTOM - defines the paddi
 DATA_LAYERS = {
     "esri_world_imagery": { 
         "data_layer_type": DataLayerTypes.ESRI_WORLD_IMAGERY,
-        "shapes_fn": None,
-        "data_fn": None,
         "shapes": None,
-        "shapes_crs": None
+        "data_fn": None,
     },
     "esri_world_imagery_naip": { 
         "data_layer_type": DataLayerTypes.USA_NAIP_LIST,
-        "shapes_fn": None,
-        "data_fn": None,
         "shapes": None,
-        "shapes_crs": None
+        "data_fn": None,
     },
     "osm": {
         "data_layer_type": DataLayerTypes.ESRI_WORLD_IMAGERY,
-        "shapes_fn": None,
-        "data_fn": None,
         "shapes": None,
-        "shapes_crs": None
+        "data_fn": None,
     },
     "chesapeake": {
         "data_layer_type": DataLayerTypes.USA_NAIP_LIST,
-        "shapes_fn": None,
-        "data_fn": None,
         "shapes": None,
-        "shapes_crs": None
+        "data_fn": None,
     },
     "demo_set_1": {
         "data_layer_type": DataLayerTypes.USA_NAIP_LIST,
-        "shapes_fn": None,
-        "data_fn": None,
         "shapes": None,
-        "shapes_crs": None
+        "data_fn": None,
     },
     "user_study_1": {
         "data_layer_type": DataLayerTypes.USA_NAIP_LIST,
-        "shapes_fn": None,
-        "data_fn": None,
         "shapes": None,
-        "shapes_crs": None
+        "data_fn": None,
     },
     "user_study_2": {
         "data_layer_type": DataLayerTypes.USA_NAIP_LIST,
-        "shapes_fn": None,
-        "data_fn": None,
         "shapes": None,
-        "shapes_crs": None
+        "data_fn": None,
     },
     "user_study_3": {
         "data_layer_type": DataLayerTypes.USA_NAIP_LIST,
-        "shapes_fn": None,
-        "data_fn": None,
         "shapes": None,
-        "shapes_crs": None
+        "data_fn": None,
     },
     "user_study_4": {
         "data_layer_type": DataLayerTypes.USA_NAIP_LIST,
-        "shapes_fn": None,
-        "data_fn": None,
         "shapes": None,
-        "shapes_crs": None
+        "data_fn": None,
     },
     "user_study_5": {
         "data_layer_type": DataLayerTypes.CUSTOM,
-        "shapes_fn": "shapes/user_study_5_outline.geojson",
+        "shapes": [
+            {"name": "Area boundary", "shapes_fn": "shapes/user_study_5_outline.geojson", "zone_name_key": None}
+        ],
         "data_fn": "tiles/user_study_5.tif",
-        "shapes": None,
-        "shapes_crs": None,
         "padding": 20
     },
     "philipsburg_mt": {
         "data_layer_type": DataLayerTypes.USA_NAIP_LIST,
-        "shapes_fn": None,
+        "shapes": None,
         "data_fn": None,
-        "shapes": None,
-        "shapes_crs": None
-    },
-    "yangon": {
-        "data_layer_type": DataLayerTypes.CUSTOM,
-        "shapes_fn": "shapes/yangon_grid_shapes.geojson",
-        "data_fn": "tiles/yangon.tif",
-        "shapes": None,
-        "shapes_crs": None,
-        "padding": 1100
     },
     "aceh": {
         "data_layer_type": DataLayerTypes.CUSTOM,
-        "shapes_fn": None,
+        "shapes": None,
         "data_fn": None,
-        "shapes": None,
-        "shapes_crs": None
     },
-    "hcmc": {
+    "yangon_sentinel": {
         "data_layer_type": DataLayerTypes.CUSTOM,
-        "shapes_fn": "shapes/hcmc_wards.geojson",
-        "data_fn": "tiles/HCMC.tif",
-        "shapes": None,
-        "shapes_crs": None
+        "shapes": [
+            {"name": "Admin 1", "shapes_fn": "shapes/yangon_sentinel_admin_1_clipped.geojson", "zone_name_key": "NAME_1"},
+            {"name": "Admin 2", "shapes_fn": "shapes/yangon_sentinel_admin_2_clipped.geojson", "zone_name_key": "NAME_2"},
+            {"name": "Admin 3", "shapes_fn": "shapes/yangon_sentinel_admin_3_clipped.geojson", "zone_name_key": "NAME_3"}
+        ],
+        "data_fn": "tiles/yangon.tif",
+        "padding": 1100
     },
     "hcmc_sentinel": {
         "data_layer_type": DataLayerTypes.CUSTOM,
-        "shapes_fn": "shapes/hcmc_sentinel_districts.geojson",
+        "shapes": [
+            {"name": "Admin 1", "shapes_fn": "shapes/hcmc_sentinel_admin_1_clipped.geojson", "zone_name_key": "NAME_1"},
+            {"name": "Admin 2", "shapes_fn": "shapes/hcmc_sentinel_admin_2_clipped.geojson", "zone_name_key": "NAME_2"},
+            {"name": "Admin 3", "shapes_fn": "shapes/hcmc_sentinel_admin_3_clipped.geojson", "zone_name_key": "NAME_3"}
+        ],
         "data_fn": "tiles/hcmc_sentinel.tif",
-        "shapes": None,
-        "shapes_crs": None,
         "padding": 1100
     },
     "yangon_lidar": {
         "data_layer_type": DataLayerTypes.CUSTOM,
-        "shapes_fn": "shapes/yangon_wards.geojson",
+        "shapes": [
+            {"name": "Admin 1", "shapes_fn": "shapes/yangon_lidar_admin_1_clipped.geojson", "zone_name_key": "NAME_1"},
+            {"name": "Admin 2", "shapes_fn": "shapes/yangon_lidar_admin_2_clipped.geojson", "zone_name_key": "NAME_2"},
+            {"name": "Admin 3", "shapes_fn": "shapes/yangon_lidar_admin_3_clipped.geojson", "zone_name_key": "NAME_3"},
+            {"name": "Admin 4", "shapes_fn": "shapes/yangon_lidar_admin_4_clipped.geojson", "zone_name_key": "Ward"}
+        ],
         "data_fn": "tiles/yangon_lidar.tif",
-        "shapes": None,
-        "shapes_crs": None
+    },
+    "hcmc_dg": {
+        "data_layer_type": DataLayerTypes.CUSTOM,
+        "shapes": [
+            {"name": "Admin 1", "shapes_fn": "shapes/hcmc_digital-globe_admin_1_clipped.geojson", "zone_name_key": "NAME_1"},
+            {"name": "Admin 2", "shapes_fn": "shapes/hcmc_digital-globe_admin_2_clipped.geojson", "zone_name_key": "NAME_2"},
+            {"name": "Admin 3", "shapes_fn": "shapes/hcmc_digital-globe_admin_3_clipped.geojson", "zone_name_key": "NAME_3"}
+        ],
+        "data_fn": "tiles/HCMC.tif",
+        "padding": 0
     },
     "airbus": {
         "data_layer_type": DataLayerTypes.CUSTOM,
-        "shapes_fn": "shapes/airbus-data-grid-epsg4326.geojson",
+        "shapes": [
+            {"name": "Grid", "shapes_fn": "shapes/airbus-data-grid-epsg4326.geojson", "zone_name_key": None}
+        ],
         "data_fn": "tiles/airbus_epsg4326.tif",
-        "shapes": None,
-        "shapes_crs": None,
         "padding": 0.003
     }
 }
 
 for k in DATA_LAYERS.keys():
-    if DATA_LAYERS[k]["shapes_fn"] is not None:
-        fn = os.path.join(ROOT_DIR, DATA_LAYERS[k]["shapes_fn"])
-        if os.path.exists(fn):
-            shapes, crs = load_geojson_as_list(fn)
-            DATA_LAYERS[k]["shapes"] = shapes
-            DATA_LAYERS[k]["shapes_crs"] = crs["init"]
-        else:
-            print("WARNING: %s doesn't exist, this server will not be able to serve the '%s' dataset" % (fn, k))        
+    if DATA_LAYERS[k]["shapes"] is not None:
+        for zone_layer in DATA_LAYERS[k]["shapes"]:
+            fn = os.path.join(ROOT_DIR, zone_layer["shapes_fn"])
+            if os.path.exists(fn):
+                shapes, crs = load_geojson_as_list(fn)
+                zone_layer["shapes_geoms"] = shapes
+                zone_layer["shapes_crs"] = crs["init"]
+            else:
+                print("WARNING: %s doesn't exist, this server will not be able to serve the '%s' dataset" % (fn, k))
