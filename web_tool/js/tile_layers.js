@@ -113,17 +113,6 @@ var tileLayers = {
         }),
         "shapes": null 
     },
-    "yangon": {
-        "location": [[16.66177, 96.326427], 10, 'Yangon, Myanmar'],
-        "tileObject": L.tileLayer('tiles/yangon/{z}/{x}/{y}.png', {
-            attribution: 'Georeferenced Image', 
-            tms:true,
-            maxZoom: 17,
-            maxNativeZoom: 16,
-            minZoom: 10
-        }),
-        "shapes": "shapes/yangon_grid_shapes.geojson" 
-    },
     "aceh": { // Planet data from 3-month mosaics covering the Aceh region of Sumatra
         "location": [[3.68745, 97.47070], 7, "Aceh, Sumatra"],
         "tileObject": L.tileLayer('tiles/leuser/{z}/{x}/{y}.png', {
@@ -135,38 +124,66 @@ var tileLayers = {
         }),
         "shapes": null 
     },
-    "hcmc": {
-        "location": [[10.83898610719171, 106.740692498798225], 14, "Thủ Đức District, Hồ Chí Minh City, Vietnam"],
-        "tileObject": L.tileLayer('tiles/HCMC/{z}/{x}/{y}.png', {
+    "yangon_sentinel": {
+        "location": [[16.66177, 96.326427], 10, 'Yangon, Myanmar', "Sentinel Imagery"],
+        "tileObject": L.tileLayer('tiles/yangon/{z}/{x}/{y}.png', {
             attribution: 'Georeferenced Image', 
             tms:true,
-            maxZoom:21,
-            maxNativeZoom: 18,
-            minZoom: 14
-        }),
-        "shapes": "shapes/hcmc_wards.geojson" 
-    },
-    "hcmc_sentinel": {
-        "location": [[10.83898610719171, 106.740692498798225], 14, "Hồ Chí Minh City, Vietnam / Sentinel"],
-        "tileObject": L.tileLayer('tiles/hcmc_sentinel/{z}/{x}/{y}.png', {
-            attribution: 'Georeferenced Image', 
-            tms:true,
-            maxZoom:17,
+            maxZoom: 17,
             maxNativeZoom: 16,
             minZoom: 10
         }),
-        "shapes": "shapes/hcmc_sentinel_districts.geojson" 
+        "shapes": [
+            {"name": "Admin 1", "shapes_fn": "shapes/yangon_sentinel_admin_1_clipped.geojson", "zone_name_key": "NAME_1"},
+            {"name": "Admin 2", "shapes_fn": "shapes/yangon_sentinel_admin_2_clipped.geojson", "zone_name_key": "NAME_2"},
+            {"name": "Admin 3", "shapes_fn": "shapes/yangon_sentinel_admin_3_clipped.geojson", "zone_name_key": "NAME_3"}
+        ]
+    },
+    "hcmc_sentinel": {
+        "location": [[10.682, 106.752], 11, "Hồ Chí Minh City, Vietnam", "Sentinel Imagery"],
+        "tileObject": L.tileLayer('tiles/hcmc_sentinel_tiles/{z}/{x}/{y}.png', {
+            attribution: 'Georeferenced Image', 
+            tms:true,
+            maxZoom: 17,
+            maxNativeZoom: 16,
+            minZoom: 10
+        }),
+        "shapes": [
+            {"name": "Admin 1", "shapes_fn": "shapes/hcmc_sentinel_admin_1_clipped.geojson", "zone_name_key": "NAME_1"},
+            {"name": "Admin 2", "shapes_fn": "shapes/hcmc_sentinel_admin_2_clipped.geojson", "zone_name_key": "NAME_2"},
+            {"name": "Admin 3", "shapes_fn": "shapes/hcmc_sentinel_admin_3_clipped.geojson", "zone_name_key": "NAME_3"}
+        ]
     },
     "yangon_lidar": {
-        "location": [[16.7870, 96.1450], 13, "Yangon, Myanmar"],
+        "location": [[16.7870, 96.1450], 15, "Yangon, Myanmar", "LiDAR Imagery"],
         "tileObject": L.tileLayer('tiles/yangon_lidar/{z}/{x}/{y}.png', {
             attribution: 'Georeferenced Image', 
             tms:true,
-            maxZoom:21,
+            maxZoom: 21,
             maxNativeZoom: 20,
             minZoom: 10
         }),
-        "shapes": "shapes/yangon_wards.geojson" 
+        "shapes": [
+            {"name": "Admin 1", "shapes_fn": "shapes/yangon_lidar_admin_1_clipped.geojson", "zone_name_key": "NAME_1"},
+            {"name": "Admin 2", "shapes_fn": "shapes/yangon_lidar_admin_2_clipped.geojson", "zone_name_key": "NAME_2"},
+            {"name": "Admin 3", "shapes_fn": "shapes/yangon_lidar_admin_3_clipped.geojson", "zone_name_key": "NAME_3"},
+            {"name": "Admin 4", "shapes_fn": "shapes/yangon_lidar_admin_4_clipped.geojson", "zone_name_key": "Ward"}
+        ] 
+    },
+    "hcmc_dg": {
+        "location": [[10.838, 106.750], 14, "Thủ Đức District, Hồ Chí Minh City, Vietnam", "Digital Globe Imagery"],
+        "tileObject": L.tileLayer('tiles/HCMC/{z}/{x}/{y}.png', {
+            attribution: 'Georeferenced Image', 
+            tms:true,
+            maxZoom: 21,
+            maxNativeZoom: 18,
+            minZoom: 14
+        }),
+        "shapes": [
+            {"name": "Admin 1", "shapes_fn": "shapes/hcmc_digital-globe_admin_1_clipped.geojson", "zone_name_key": "NAME_1"},
+            {"name": "Admin 2", "shapes_fn": "shapes/hcmc_digital-globe_admin_2_clipped.geojson", "zone_name_key": "NAME_2"},
+            {"name": "Admin 3", "shapes_fn": "shapes/hcmc_digital-globe_admin_3_clipped.geojson", "zone_name_key": "NAME_3"}
+        ]
     },
     "airbus": {
         "location": [[36.80, -76.12], 14, "Airbus, VA"],
@@ -177,7 +194,9 @@ var tileLayers = {
             maxNativeZoom: 18,
             minZoom: 13
         }),
-        "shapes": "shapes/airbus-data-grid-epsg4326.geojson"
+        "shapes": [
+            {"name": "Grid", "shapes_fn": "shapes/airbus-data-grid-epsg4326.geojson", "zone_name_key": null}
+        ]
     }
 };
 

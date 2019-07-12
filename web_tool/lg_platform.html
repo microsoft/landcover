@@ -1,0 +1,730 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="icon" href="favicon.ico">
+
+    <title>Microsoft AI for Earth</title>
+
+    <!-- Core CSS -->
+    <link href="css/leaflet.css" rel="stylesheet" />
+    <link href="css/leaflet-slider.css" rel="stylesheet" />
+    <link href="css/leaflet-sidebar.css" rel="stylesheet" />
+    <link href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.css">
+    <link href="css/noty.css" rel="stylesheet">
+
+    <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet">
+    <link href="css/main.css" rel="stylesheet">
+    
+
+</head>
+
+<body>
+
+    <div id="map"></div>
+
+    <div id="privacy" class="leaflet-container">
+        <a href="https://privacy.microsoft.com/en-US/privacystatement" target="_blank">Privacy Statement</a>
+    </div>
+    
+    <div id="sidebar" class="sidebar">
+    
+        <!-- Tab panes -->
+        <div class="sidebar-content">
+
+            <!-- Start of "home" tab -->
+            <div class="sidebar-pane" id="home">
+                <div style="text-align: center; margin-bottom:10px;" id="inputImages">
+                    <h3 id="lblModelInput">Model Input</h3>
+                    <img id="inputImage">
+                </div>
+
+                <div style="text-align: center; margin-bottom:10px; width:100%;" id="exampleImages">
+                    <h3>Land Cover Predictions</h3>
+                    <div id="exampleImageList">
+                    </div>
+                </div>
+
+                <div style="text-align: left; margin-bottom:10px; width:100%; padding-left:30px;">
+                    <span>Name of zone: <span id="lblZoneName">undefined</span></span>
+                </div>
+
+                <div style="margin-bottom:10px;">
+
+                    <h3 style="text-align: center; margin-top:20px;">Correction type:</h3>
+                    <div style="padding-left:20px">
+                        <div id="classList" class="classList">
+                            <div class="radio">
+                                <button class="circle jscolor" data-class-name="water" data-jscolor="{valueElement:null,value:'0000FF',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
+                                <label class="selected"><input type="radio" name="new-class" class="radNewClass" value="water" checked>Water (<span id="label-counts-water">0</span> samples since last retrain)</label>
+                            </div>
+                            <div class="radio">
+                                <button class="circle jscolor" data-class-name="forest" data-jscolor="{valueElement:null,value:'008000',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
+                                <label><input type="radio" name="new-class" class="radNewClass" value="forest">Tree Canopy (<span id="label-counts-forest">0</span> samples since last retrain)</label>
+                            </div>
+                            <div class="radio">
+                                <button class="circle jscolor" data-class-name="field" data-jscolor="{valueElement:null,value:'80FF80',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
+                                <label><input type="radio" name="new-class" class="radNewClass" value="field">Field (<span id="label-counts-field">0</span> samples since last retrain)</label>
+                            </div>
+                            <div class="radio">
+                                <button class="circle jscolor" data-class-name="built" data-jscolor="{valueElement:null,value:'806060',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
+                                <label><input type="radio" name="new-class" class="radNewClass" value="built">Built (<span id="label-counts-built">0</span> samples since last retrain)</label>
+                            </div>
+                        </div>
+                        <div style="text-align: center; margin-top:10px; margin-bottom:20px;">
+                            <button id="btnNewClass" style="background-color: gray; border-color: white;"> Add new class</button>
+                        </div>
+
+                        <div style="text-align: center; margin-top:10px;">
+                            <button id="btnRetrain">Retrain (<span id="label-retrains">0</span> times)</button>
+                        </div>
+                        <div style="text-align: center; margin-top:10px;">
+                            <button id="btnUndo">Undo</button>
+                        </div>
+                        <div style="text-align: center; margin-top:10px;">
+                            <button id="btnReset">Reset</button>
+                        </div>
+                        <div style="text-align: center; margin-top:10px;">
+                            <button id="btnDownload">Download</button>
+                        </div>
+                        <div style="text-align: center; margin-top:5px;">
+                            <div id="lblPNG"></div>
+                            <div id="lblTIFF"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- End of "home" tab -->
+        </div>
+    </div>
+
+    <!-- Core JavaScript
+    ================================================== -->
+    <script src="js/jquery-3.3.1.min.js"></script>
+    <script src="js/noty.js" type="text/javascript"></script>
+    <script src="js/jscolor.js" type="text/javascript"></script>
+
+    <!-- Leaflet JavaScript
+    ================================================== -->
+    <script src="js/leaflet.js" type="text/javascript"></script>
+    <script src="js/leaflet-slider.js" type="text/javascript"></script>
+    <script src="js/leaflet-sidebar.min.js" type="text/javascript"></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.js" type="text/javascript"></script>
+
+    <!-- Application JavaScript
+    ================================================== -->
+    <script src="js/main.js" type="text/javascript"></script>
+    <script src="js/utils.js" type="text/javascript"></script>
+    <script src="js/tile_layers.js" type="text/javascript"></script>
+
+    <!-- List of backend URLS to query
+    ================================================== -->
+    <script src="endpoints.js" type="text/javascript"></script>
+    <script src="endpoints.mine.js" type="text/javascript"></script>
+
+    <script type="text/javascript">
+        //----------------------------------------------------------------------
+        // Standard implementation globals
+        //----------------------------------------------------------------------
+        var BACKEND_URL = "";
+        var EXP_NAME = "TEST";
+        var DATASET = null;
+        var START_CENTER = null;
+        var START_ZOOM = null;
+
+        var SELECTION_SIZE = 300; // in meters, probably
+        var CORRECTION_SIZE = 1;
+
+        var selectionBox = null;
+        var currentSelection = null;
+
+        var rightMouseDown = false;
+        var shiftKeyDown = false;
+        var ctrlKeyDown = false;
+
+        var currentPatches = [];
+        var currentZoneLayerName = null;
+
+        var visible = true;
+        var opacitySlider;
+        
+        var soft0_hard1 = 1;
+        var pred0_naip1 = 0;
+        var activeImgIdx = 0;
+
+        var colorList = [
+            "#0000FF",
+            "#008000",
+            "#80FF80",
+            "#806060"
+        ]
+        var selectedClassIdx = 0;
+        var classList = [
+            {"name": "water"},
+            {"name": "forest"},
+            {"name": "field"},
+            {"name": "built"}
+        ];
+        var labelCounts = {
+            "water": 0,
+            "forest": 0,
+            "field": 0,
+            "built": 0
+        };
+        var retrainCounts = 0
+
+        var retrainArgs = {
+        };
+
+        var map = null;
+        var animating = false;
+       
+        var numClicks = 0;
+
+        var userPointList = []
+
+        var heatmap = null;
+        var undoInProgress = false;
+
+
+        var zoneMaps = {};
+        var defaultZoneStyle = {
+            "fillOpacity": 0,
+            "color": "#00ff00",
+            "weight": 2,
+            "opacity": 1
+        };
+
+        var highlightedZoneStyle = {
+            "fillOpacity": 0,
+            "color": "#ff0000",
+            "weight": 4,
+            "opacity": 1
+        }
+
+        var forEachFeatureOnClick = function(feature, layer) {
+            layer.on('click', function (e) {
+                for(k in zoneMaps){
+                    zoneMaps[k].setStyle(defaultZoneStyle);
+                }
+                layer.setStyle(highlightedZoneStyle);
+                layer.bringToFront();
+                var nameKey = e.target.feature.properties["KEY"];
+                if (nameKey !== null){
+                    $("#lblZoneName").html(e.target.feature.properties[nameKey]);
+                }
+            });
+        }
+
+        
+        //----------------------------------------------------------------------
+        // Runtime entrance
+        //----------------------------------------------------------------------
+        $(document).ready(function(){
+
+            
+            //----------------------------------------------------------------------
+            // Remove the default behavior of the shift key
+            //----------------------------------------------------------------------
+            document.onselectstart = function() {
+                return false;
+            }
+            
+            //----------------------------------------------------------------------
+            // Parse URL arguments
+            //----------------------------------------------------------------------
+            args = getURLArguments()
+            EXP_NAME = args.userID
+            BACKEND_URL = BACKEND_ENDPOINTS[args.backendID]["url"];
+            
+            if(!(args.dataset in tileLayers) && (args.dataset !== null)){
+                args.dataset = null;
+                new Noty({
+                    type: "error",
+                    text: "Requested dataset doesn't exist, using default",
+                    layout: 'topCenter',
+                    timeout: 5000,
+                    theme: 'metroui'
+                }).show();
+            }
+            if(args.dataset === null){
+                args.dataset = "esri_world_imagery";
+            }
+            DATASET = args.dataset;
+            
+            doReset(false); // reset the backend server
+            
+            //----------------------------------------------------------------------
+            // Start user study if necessary
+            //----------------------------------------------------------------------
+            var userStudy = false;
+            if(args.maxTime !== null){
+                runUserStudyTimer(args.maxTime);
+                userStudy = true;
+            }
+
+            //----------------------------------------------------------------------
+            // Setup map layers
+            //----------------------------------------------------------------------
+
+            var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 17,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            })
+
+
+            if((DATASET != "esri_world_imagery") && (DATASET != "esri_world_imagery_naip")){
+                // interestingLocations = [
+                //     L.marker(tileLayers[DATASET]["location"][0]).bindPopup(tileLayers[DATASET]["location"][2])
+                // ];
+                interestingLocations = [];
+            }
+            var baseLayer = tileLayers[DATASET]["tileObject"];
+            START_CENTER = tileLayers[DATASET]["location"][0];
+            START_ZOOM = tileLayers[DATASET]["location"][1];
+
+            var cities = L.layerGroup(interestingLocations);
+
+            map = L.map('map', {
+                zoomControl: false,
+                crs: L.CRS.EPSG3857, // this is a default, but I'm setting it to be explicit about what CRS we are in	
+                center: START_CENTER,
+                zoom: START_ZOOM,
+                keyboard: false,
+                minZoom: baseLayer.options.minZoom,
+                layers: [baseLayer]
+            });
+            map.createPane('labels');
+            map.getPane('labels').style.zIndex = 200;
+
+            for(var i=0;i<interestingLocations.length;i++){
+                interestingLocations[i].on('click', function(e){
+                    map.setView(e.latlng, 13);
+                });
+            }
+
+            //----------------------------------------------------------------------
+            // Load the dataset specific shapes
+            //----------------------------------------------------------------------
+            
+            var getZoneMap = function(zoneSetId, name, url){
+                $.ajax({
+                    dataType: "json",
+                    url: url,
+                    success: function(data) {
+                        for(k in data.features){
+                            data.features[k].properties["KEY"] = tileLayers[DATASET]["shapes"][zoneSetId]["zone_name_key"];
+                        }
+                        zoneMaps[name].addData(data);
+                    }
+                });
+            }
+
+            if(tileLayers[DATASET]["shapes"] !== null){
+                for(zoneSetId in tileLayers[DATASET]["shapes"]){
+                    zoneMaps[tileLayers[DATASET]["shapes"][zoneSetId]["name"]] = L.geoJSON(null, {
+                        style: defaultZoneStyle,
+                        onEachFeature: forEachFeatureOnClick
+                    });
+                    getZoneMap(zoneSetId, tileLayers[DATASET]["shapes"][zoneSetId]["name"], tileLayers[DATASET]["shapes"][zoneSetId]["shapes_fn"]);
+                }
+            }
+
+            //----------------------------------------------------------------------
+            // Setup layer picker
+            //----------------------------------------------------------------------
+
+            var baseMapString = tileLayers[DATASET]["location"][3];
+            var baseMaps = {};
+            baseMaps[baseMapString] = baseLayer;
+            baseMaps["OpenStreetMap"] = osmLayer;
+
+            L.control.layers(
+                baseMaps, null, {
+                    collapsed:false,
+                    position:"bottomleft"
+                }
+            ).addTo(map);
+
+            var zoneControl = L.control.layers(
+                zoneMaps, null, {
+                    collapsed:false,
+                    position:"bottomleft"
+                }
+            ).addTo(map);
+
+            var zoneControlContainer = zoneControl.getContainer();
+
+            //---------------------------------------------------------------------
+            // Setup AI4E Branding
+            //----------------------------------------------------------------------
+            var logoControl = $("<div class='leaflet-control logo-area'></div>");
+            logoControl.append("<span class='logo-text'>Microsoft AI for Earth</span>");
+            logoControl.append("<br/>");
+            logoControl.append("<span class='logo-text-small'>Version: 0.7</span>");
+            logoControl.append("<br/>");
+            logoControl.append("<span class='logo-text-small'>Location: "+tileLayers[DATASET]["location"][2]+"</span>");
+            
+            $(".leaflet-top.leaflet-left").append(logoControl)
+
+            $("#lblModelInput").html(tileLayers[DATASET]["location"][3]);
+            
+            //----------------------------------------------------------------------
+            // Custom initialization of the map zoom controls so that we can 
+            // position it where we want
+            //----------------------------------------------------------------------
+            L.control.zoom({
+                position:'topleft'
+            }).addTo(map);
+
+            //----------------------------------------------------------------------
+            // Setup the leaflet-easybutton plugin to reset the map to its initial
+            // position
+            //----------------------------------------------------------------------
+            L.easyButton(
+                'fa-undo', function(btn, map) {
+                    map.closePopup();
+                    map.setView(START_CENTER, START_ZOOM);
+                },
+            ).addTo(map);
+
+            //----------------------------------------------------------------------
+            // Setup leaflet-slider plugin
+            // First slider is to control map opacity
+            //----------------------------------------------------------------------
+            opacitySlider = L.control.slider( // opacity slider
+                function(value){
+                    map.getPane('labels').style.opacity = value / 100.0;
+                }, {
+                    position: 'bottomleft',
+                    id: 'opacity_slider',
+                    orientation: 'horizontal',
+                    collapsed: true,
+                    syncSlider: true,
+                    min: 0,
+                    max: 100,
+                    value: 100,
+                    logo: "Opacity",
+                    size: "171px"
+                }
+            );
+            opacitySlider.addTo(map);
+
+            //----------------------------------------------------------------------
+            // Setup the selection window size slider
+            //----------------------------------------------------------------------
+            windowSizeSlider = L.control.slider( // opacity slider
+                function(value){
+                   SELECTION_SIZE = value;
+                }, {
+                    position: 'bottomleft',
+                    id: 'window_size_slider',
+                    orientation: 'horizontal',
+                    collapsed: true,
+                    syncSlider: true,
+                    min: 10,
+                    max: 700,
+                    value: 300,
+                    logo: "Window Size",
+                    size: "171px"
+                }
+            );
+            windowSizeSlider.addTo(map);
+
+            //----------------------------------------------------------------------
+            // Setup the sharpness slider to control which type of image is shown
+            //----------------------------------------------------------------------
+            L.control.slider( // sharpness slider
+                function(value){
+                    soft0_hard1 = value;
+
+                    for(idx=0; idx<currentPatches.length; idx++){
+                        var tActiveImgIdx = currentPatches[idx]["activeImgIdx"];
+                        var srcs = currentPatches[idx]["patches"][tActiveImgIdx]["srcs"];
+                        currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
+                    }
+
+                    if(currentPatches.length>0){
+                        var idx = currentPatches.length - 1;
+                        for(var tActiveImgIdx=0; tActiveImgIdx<currentPatches[idx]["patches"].length; tActiveImgIdx++){
+                            var srcs = currentPatches[idx]["patches"][tActiveImgIdx]["srcs"];
+                            $("#exampleImage_"+tActiveImgIdx).attr("src", srcs[soft0_hard1]);
+                        }
+                    }
+
+                }, {
+                    position: 'bottomleft',
+                    id: 'soft_hard_slider',
+                    orientation: 'horizontal',
+                    collapsed: true,
+                    syncSlider: true,
+                    min: 0,
+                    max: 1,
+                    value: 1,
+                    logo: "Sharpness",
+                    size: "171px"
+                }
+            ).addTo(map);
+            
+            //----------------------------------------------------------------------
+            // Setup leaflet-sidebar-v2 and open the "#home" tab 
+            //----------------------------------------------------------------------
+            var sidebar = L.control.sidebar(
+                'sidebar', {
+                    position: 'right'
+                }
+            ).addTo(map);
+            sidebar.open("home")        
+
+            //----------------------------------------------------------------------
+            // Setup map selection handlers
+            //----------------------------------------------------------------------
+            map.addEventListener('mousemove', function(e){
+                // Choose style
+                var curSelPoly = null;
+                if(!shiftKeyDown){
+                    curSelPoly = getPolyAround(e.latlng, CORRECTION_SIZE);
+                }else{
+                    curSelPoly = getPolyAround(e.latlng, SELECTION_SIZE);
+                }
+
+                if(selectionBox === null){
+                    selectionBox = L.polygon(curSelPoly, {
+                        color: "#000000",
+                        fillColor: "#ffffff",
+                        weight: 2
+                    });
+                    selectionBox.addTo(map);
+                }else{
+                    if(!animating){
+                        selectionBox.setStyle({
+                            color: "#000000",
+                            fillColor: "#ffffff",
+                            weight: 2
+                        });
+                    }
+                    selectionBox.setLatLngs(curSelPoly);
+                }
+            });
+
+            map.addEventListener('click', function(e){
+                
+                var curSelPoly = null;
+                if(shiftKeyDown){
+                    // Run the inference path
+                    curSelPoly = getPolyAround(e.latlng, SELECTION_SIZE);
+                    if(currentSelection === null){ // This condition creates the red selection box on the first click
+                        currentSelection = L.polygon(curSelPoly, {
+                            color: "#ff0000",
+                            fillColor: "#ffffff",
+                            weight: 2
+                        });
+                        currentSelection.addTo(map);
+                    }else{
+                        currentSelection.setLatLngs(curSelPoly);
+                    }
+   
+                    requestPatches(curSelPoly);
+                }else{
+                    // Run the add sample path
+                    if(currentSelection !== null){
+                        if(isPointInsidePolygon(e.latlng, currentSelection)){
+                            curSelPoly = getPolyAround(e.latlng, CORRECTION_SIZE);
+                            var idx = currentPatches.length-1;
+                            doSendCorrection(curSelPoly, idx);
+                            
+                            var rect = L.rectangle(
+                                [curSelPoly[0], curSelPoly[2]],
+                                {
+                                    color: colorList[selectedClassIdx],
+                                    weight: 1,
+                                    opacity: 1
+                                    //pane: "labels"
+                                }
+                            ).addTo(map);
+                            userPointList.push([rect, selectedClassIdx]);
+
+                            map.dragging.disable();
+                            numClicks += 1
+                            window.setTimeout(function(){
+                                numClicks -= 1;
+                                if(numClicks == 0){
+                                    map.dragging.enable();
+                                }
+                            }, 700);
+                        }else{
+                            console.debug("Click not in selection");
+                        }
+                    }
+                }
+            });
+
+            map.on('contextmenu',function(e){}); // disables the context menu
+            map.on('dblclick',function(e){});
+            map.doubleClickZoom.disable();
+            map.boxZoom.disable();
+
+            $(zoneControlContainer).find('input[type=radio]').change(function() {
+                var name = $(this).siblings()[0].innerHTML.trim();
+                currentZoneLayerName = name;
+                console.debug("Switched zone layer to: " + name);
+            });
+
+            $(document).keydown(function(e){
+                shiftKeyDown = e.shiftKey;
+                ctrlKeyDown = e.ctrlKey;
+            });
+            $(document).keyup(function(e){
+                shiftKeyDown = e.shiftKey;
+                ctrlKeyDown = e.ctrlKey;
+            });
+
+            $(document).keydown(function(e) {
+                if(document.activeElement == document.body){
+                    if(e.which == 97 || e.which == 65) { // "a"
+                        visible = false;
+                        map.getPane('labels').style.opacity = 0.0;
+                        opacitySlider.slider.value = 0;
+                        opacitySlider._updateValue();
+                    } else if(e.which == 115 || e.which == 83) { // "s"
+                        if(visible){
+                            visible = false;
+                            map.getPane('labels').style.opacity = 0.0;
+                            opacitySlider.slider.value = 0;
+                            opacitySlider._updateValue();
+                        }else{
+                            visible = true;
+                            map.getPane('labels').style.opacity = 1.0;
+                            opacitySlider.slider.value = 100;
+                            opacitySlider._updateValue();
+                        }
+                    } else if(e.which == 100 || e.which == 68) { "d"
+                        visible = true;
+                        map.getPane('labels').style.opacity = 1.0;
+                        opacitySlider.slider.value = 100
+                        opacitySlider._updateValue();
+                    } else if((e.which == 114 || e.which == 82) && !ctrlKeyDown){ "r"
+                        doRetrain();
+                    } else if(e.which == 37){ "left arrow"
+                        var currentOpacity = parseFloat(map.getPane('labels').style.opacity);
+                        if (currentOpacity >= 0.05){
+                            currentOpacity -= 0.05;
+
+                            map.getPane('labels').style.opacity = currentOpacity;
+                            opacitySlider.slider.value = currentOpacity*100;
+                            opacitySlider._updateValue();
+                        }
+                        e.preventDefault()
+                    } else if(e.which == 39){ "right arrow"
+                        var currentOpacity = parseFloat(map.getPane('labels').style.opacity);
+                        if (currentOpacity <= 0.95){
+                            currentOpacity += 0.05;
+
+                            map.getPane('labels').style.opacity = currentOpacity;
+                            opacitySlider.slider.value = currentOpacity*100;
+                            opacitySlider._updateValue();
+                        }
+                        e.preventDefault()
+                    } else if(e.which == 38 || e.which == 40){
+                        e.preventDefault()
+                    } else if(ctrlKeyDown && e.which==90){
+                        doUndo();
+                    }
+                }
+            });
+
+
+            $("#btnRetrain").click(doRetrain);
+            $("#btnUndo").click(doUndo);
+            $("#btnReset").click(doReset);
+            $("#btnDownload").click(doDownloadTile);
+            $("#btnNewClass").click(function(){
+                
+                var newClassIdx = classList.length + 1;
+                var newColor = getRandomColor();
+
+                
+                var newClassElement =  $("<div class='radio'>");
+                //var newPicker = $("<button class=\"circle jscolor\" data-class-name=\"class-"+newClassIdx+"\" data-jscolor=\"{valueElement:null,value:'"+newColor.substring(1)+"',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}\"></button>");
+                var newLabel = $("<label><input type='radio' name='new-class' class='radNewClass' value='class-"+newClassIdx+"'><span id='label-name-class-"+newClassIdx+"' class='label-name'>Class "+newClassIdx+"</span> (<span id='label-counts-class-"+newClassIdx+"'>0</span> samples since last retrain)<i class='fa fa-edit ml-1 label-name-edit'></i></label>");
+
+
+                var newPicker = document.createElement('button');
+                newPicker.classList.add("circle");
+                newPicker.setAttribute("data-class-name", "class-"+newClassIdx);
+                var output = new jscolor(newPicker, {
+                    valueElement: null,
+                    value: newColor.substr(1),
+                    position:'left',
+                    zIndex:2001,
+                    closable:true,
+                    closeText:'Close',
+                    onFineChange:'updateClassColor(this)'
+                });
+
+                newClassElement.append(newPicker);
+                newClassElement.append(newLabel);        
+            
+                $("#classList").append(newClassElement);
+
+                classList.push({
+                    "name": "class-" + newClassIdx
+                });
+                colorList.push(newColor)
+                labelCounts["class-" + newClassIdx] = 0;
+
+            });
+
+            //----------------------------------------------------------------------
+            // Setup radio button change detection
+            //----------------------------------------------------------------------
+            $(document).on('change', '.radNewClass', function(){
+
+                $('.radio label').removeClass("selected");
+                $(this).parent().addClass("selected");
+
+                selectedClassIdx = findClassByName(this.value);
+                console.debug(this.value + " " + selectedClassIdx);
+            });
+
+            $(document).on('click', '.label-name-edit', function(){
+                var oldName = $(this).siblings(".label-name").html();
+                var newName = prompt("New label name for '"+oldName+"'");
+                $(this).siblings(".label-name").html(newName);
+            });
+            
+            //----------------------------------------------------------------------
+            // Setup the example images list
+            //----------------------------------------------------------------------
+            for(var i=0; i<ENDPOINTS.length; i++){
+                var img = $("<img class='exampleImage'>");
+                img.attr("im-id", i);
+                img.attr("id", "exampleImage_"+i);
+                $("#exampleImageList").append(img);
+            }
+
+            $(".exampleImage").click(function(){
+                $(".exampleImage").removeClass("active");
+                $(this).addClass("active");
+                
+                var idx = currentPatches.length-1;
+                activeImgIdx = $(this).attr("im-id");
+
+                var srcs = currentPatches[idx]["patches"][activeImgIdx]["srcs"];
+                currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
+                currentPatches[idx]["activeImgIdx"] = activeImgIdx;
+                $(this).attr("src", srcs[soft0_hard1]);
+            });
+
+        });
+
+    </script>
+</body>
+
+</html>

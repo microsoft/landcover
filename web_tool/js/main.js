@@ -104,7 +104,8 @@ var doDownloadTile = function(){
                 "latestWkid": 3857
             }
         },
-        "colors": colorList
+        "colors": colorList,
+        "zoneLayerName": currentZoneLayerName
     };
 
     $.ajax({

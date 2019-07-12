@@ -89,3 +89,9 @@ def class_prediction_to_img(y_pred, hard=True, color_list=None):
     
 def nlcd_to_img(img):
     return np.vectorize(NLCD_COLOR_MAP.__getitem__, signature='()->(n)')(img).astype(np.uint8)
+
+def get_shape_layer_by_name(shapes, layer_name):
+    for layer in shapes:
+        if layer["name"] == layer_name:
+            return layer
+    return None
