@@ -34,7 +34,7 @@ var tileLayers = {
             maxNativeZoom: 18,
             minZoom: 2
         }),
-        "shapes": "shapes/chesapeake_test_outline.geojson" 
+        "shapes": null 
     },
     "demo_set_1": {
         "location": [[39.40625604822793804, -76.5937627969694006], 13, "User study - Demo area"],
@@ -45,7 +45,7 @@ var tileLayers = {
             maxNativeZoom: 18,
             minZoom: 13
         }),
-        "shapes": "shapes/demo_set_1_boundary.geojson" 
+        "shapes": null
     },
     "user_study_1": {
         "location": [[42.406253302897575, -77.12504090737812135], 13, "User study - Area 1"],
@@ -56,7 +56,7 @@ var tileLayers = {
             maxNativeZoom: 18,
             minZoom: 13
         }),
-        "shapes": "shapes/training_set_1_boundary.geojson"
+        "shapes": null
     },
     "user_study_2": {
         "location": [[42.40625552034823897, -76.87503698687157794], 13, "User study - Area 2"],
@@ -67,7 +67,7 @@ var tileLayers = {
             maxNativeZoom: 18,
             minZoom: 13
         }),
-        "shapes": "shapes/training_set_2_boundary.geojson" 
+        "shapes": null
     },
     "user_study_3": {
         "location": [[42.46875623949721046, -76.50003291357666058], 13, "User study - Area 3"],
@@ -78,7 +78,7 @@ var tileLayers = {
             maxNativeZoom: 18,
             minZoom: 13
         }),
-        "shapes": "shapes/training_set_3_boundary.geojson" 
+        "shapes": null
     },
     "user_study_4": {
         "location": [[43.09375587600650448, -76.18754117285706684], 13, "User study - Area 4"],
@@ -89,7 +89,7 @@ var tileLayers = {
             maxNativeZoom: 18,
             minZoom: 13
         }),
-        "shapes": "shapes/training_set_4_boundary.geojson"
+        "shapes": null
     },
     "user_study_5": {
         "location": [[42.448269618302362, -75.110429001207137], 13, "User study area"],
@@ -100,7 +100,9 @@ var tileLayers = {
             maxNativeZoom: 18,
             minZoom: 13
         }),
-        "shapes": "shapes/user_study_5_outline.geojson"
+        "shapes": [
+            {"name": "Area boundary", "shapes_fn": "shapes/user_study_5_outline.geojson", "zone_name_key": null}
+        ]
     },
     "philipsburg_mt": {
         "location": [[46.330963, -113.296773], 13, 'Philipsburg, MT'],

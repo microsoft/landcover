@@ -187,6 +187,37 @@
 
         var heatmap = null;
         var undoInProgress = false;
+
+        
+        var zoneMaps = {};
+        var defaultZoneStyle = {
+            "fillOpacity": 0,
+            "color": "#00ff00",
+            "weight": 2,
+            "opacity": 1
+        };
+
+        var highlightedZoneStyle = {
+            "fillOpacity": 0,
+            "color": "#ff0000",
+            "weight": 4,
+            "opacity": 1
+        }
+
+        var forEachFeatureOnClick = function(feature, layer) {
+            layer.on('click', function (e) {
+                for(k in zoneMaps){
+                    zoneMaps[k].setStyle(defaultZoneStyle);
+                }
+                layer.setStyle(highlightedZoneStyle);
+                layer.bringToFront();
+                var nameKey = e.target.feature.properties["KEY"];
+                if (nameKey !== null){
+                    $("#lblZoneName").html(e.target.feature.properties[nameKey]);
+                }
+            });
+        }
+        
         
         //----------------------------------------------------------------------
         // Runtime entrance
@@ -235,6 +266,20 @@
             }
 
             //----------------------------------------------------------------------
+            // Load the dataset specific shapes
+            //----------------------------------------------------------------------
+
+            if(tileLayers[DATASET]["shapes"] !== null){
+                for(zoneSetId in tileLayers[DATASET]["shapes"]){
+                    zoneMaps[tileLayers[DATASET]["shapes"][zoneSetId]["name"]] = L.geoJSON(null, {
+                        style: defaultZoneStyle,
+                        onEachFeature: forEachFeatureOnClick
+                    });
+                    getZoneMap(zoneSetId, tileLayers[DATASET]["shapes"][zoneSetId]["name"], tileLayers[DATASET]["shapes"][zoneSetId]["shapes_fn"]);
+                }
+            }
+
+            //----------------------------------------------------------------------
             // Setup map layers
             //----------------------------------------------------------------------
             heatmap = L.tileLayer(BACKEND_URL + 'heatmap/{z}/{y}/{x}?{randint}', {
@@ -249,16 +294,19 @@
 
 
             if((DATASET != "esri_world_imagery") && (DATASET != "esri_world_imagery_naip")){
-                interestingLocations = [
-                    L.marker(tileLayers[DATASET]["location"][0]).bindPopup(tileLayers[DATASET]["location"][2])
-                ];
+                interestingLocations = [];
             }
             var baseLayer = tileLayers[DATASET]["tileObject"];
             START_CENTER = tileLayers[DATASET]["location"][0];
             START_ZOOM = tileLayers[DATASET]["location"][1];
 
-            
             var cities = L.layerGroup(interestingLocations);
+
+            var initialLayers = [baseLayer];
+            if(tileLayers[DATASET]["shapes"] !== null){
+                initialLayers.push(zoneMaps[tileLayers[DATASET]["shapes"][0]["name"]]);
+                currentZoneLayerName = tileLayers[DATASET]["shapes"][0]["name"];
+            }
 
             map = L.map('map', {
                 zoomControl: false,
@@ -267,7 +315,7 @@
                 zoom: START_ZOOM,
                 keyboard: false,
                 minZoom: baseLayer.options.minZoom,
-                layers: [baseLayer, cities, heatmap]
+                layers: initialLayers
             });
             map.createPane('labels');
             map.getPane('labels').style.zIndex = 200;
@@ -277,28 +325,6 @@
                     map.setView(e.latlng, 13);
                 });
             }
-
-            //----------------------------------------------------------------------
-            // Load the dataset specific shapes
-            //----------------------------------------------------------------------
-            if(tileLayers[DATASET]["shapes"] !== null){
-                $.ajax({
-                    dataType: "json",
-                    url: tileLayers[DATASET]["shapes"],
-                    success: function(data) {
-                        console.debug(data);
-                        L.geoJSON(data, {
-                            style: {
-                                "fillOpacity": 0,
-                                "color": "#00ff00",
-                                "weight": 3,
-                                "opacity": 1
-                            }
-                        }).addTo(map);
-                    }
-                });
-            }
-
 
             //---------------------------------------------------------------------
             // Setup AI4E Branding

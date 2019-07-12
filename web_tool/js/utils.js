@@ -215,3 +215,16 @@ var getURLArguments = function(){
 var generateRandInt = function() {
     return Math.floor( Math.random() * 200000 ) + 1;
 };
+
+var getZoneMap = function(zoneSetId, name, url){
+    $.ajax({
+        dataType: "json",
+        url: url,
+        success: function(data) {
+            for(k in data.features){
+                data.features[k].properties["KEY"] = tileLayers[DATASET]["shapes"][zoneSetId]["zone_name_key"];
+            }
+            zoneMaps[name].addData(data);
+        }
+    });
+}
