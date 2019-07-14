@@ -130,9 +130,10 @@ var doDownloadTile = function(){
                     }).show();
                     var pngURL = window.location.origin + "/" + data["downloadPNG"];
                     var tiffURL = window.location.origin + "/" + data["downloadTIFF"];
+                    var statisticsURL = window.location.origin + "/" + data["downloadStatistics"];
                     $("#lblPNG").html("<a href='"+pngURL+"' target='_blank'>Download PNG</a>");
                     $("#lblTIFF").html("<a href='"+tiffURL+"' target='_blank'>Download TIFF</a>");
-                    
+                    $("#lblStatistics").html("<a href='"+statisticsURL+"' target='_blank'>Download Class Statistics</a>");
                 },
                 error: notifyFail,
                 dataType: "json",
