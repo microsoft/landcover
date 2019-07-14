@@ -353,9 +353,15 @@ def pred_tile():
 
 
     output = AugmentationState.model.run(naip_data, extent, True)
+    output_hard = output.argmax(axis=2)
     print("Finished, output dimensions:", output.shape)
 
     # apply nodata mask from naip_data
+    nodata_mask = np.sum(naip_data == 0, axis=2) == 4
+    output_hard[nodata_mask] = 255
+    vals, counts = np.unique(output_hard[~nodata_mask], return_counts=True)
+    
+    
 
     # ------------------------------------------------------
     # Step 4
@@ -364,6 +370,7 @@ def pred_tile():
     tmp_id = get_random_string(8)
     img_hard = np.round(Utils.class_prediction_to_img(output, True, color_list)*255,0).astype(np.uint8)
     img_hard = cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGR)
+    img_hard[nodata_mask] = [0,0,0]
     cv2.imwrite(os.path.join(ROOT_DIR, "downloads/%s.png" % (tmp_id)), img_hard)
     data["downloadPNG"] = "downloads/%s.png" % (tmp_id)
 
@@ -377,10 +384,16 @@ def pred_tile():
     new_profile['width'] = naip_data.shape[1]
     new_profile['nodata'] = 255
     f = rasterio.open(os.path.join(ROOT_DIR, "downloads/%s.tif" % (tmp_id)), 'w', **new_profile)
-    f.write(output.argmax(axis=2).astype(np.uint8), 1)
+    f.write(output_hard.astype(np.uint8), 1)
     f.close()
     data["downloadTIFF"] = "downloads/%s.tif" % (tmp_id)
 
+    f = open(os.path.join(ROOT_DIR, "downloads/%s.txt" % (tmp_id)), "w")
+    f.write("Class id\tFrequency\n")
+    for i in range(len(vals)):
+        f.write("%d\t%0.4f%%\n" % (vals[i], (counts[i] / np.sum(counts))*100))
+    f.close()
+    data["downloadStatistics"] = "downloads/%s.txt" % (tmp_id)
 
     bottle.response.status = 200
     return json.dumps(data)
