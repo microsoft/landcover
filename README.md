@@ -1,41 +1,55 @@
 # Land Cover Mapping Tool
 
-
-This repository holds both the "frontend" web-application and "backend" web API server that make up our "Land Cover Mapping" demo. An instance of this demo is live, [here](http://msrcalebubuntu.eastus.cloudapp.azure.com:4040/).
+This repository holds both the "frontend" web-application and "backend" web API server that make up our "Land Cover Mapping" tool.
+An instance of this tool may be live, [here](http://msrcalebubuntu.eastus.cloudapp.azure.com:4040/).
 
 
 ## Setup Instructions
 
-- Create a new Deep Learning Virtual Machine (DLVM) Ubuntu image via [Azure Portal](https://ms.portal.azure.com/)
-  - Region: "East US"
-  - Size:
-    - "NC6s_v3  Standard GPU" (if training/running models)
-    - "A4v2" (if simply running scripts that need access to AI for Earth storage accounts)
-  - Image: Data Science Virtual Machine (Ubuntu)
-- SSH into the virtual machine using a desktop SSH client
-- Run `git clone git@github.com:microsoft/landcover.git`
-- Run `cd landcover`
+We develop / use the tool on Data Science Virtual Machines for Linux (Ubuntu) images on Azure (see the [Azure Portal](https://ms.portal.azure.com/)), so these setup instructions are tailored for that environment, however there is no reason that this project cannot be run on any machine.
+
+### Initial machine setup
+
+- Create a new VM with the Data Science Virtual Machine for Linux (Ubuntu) image via the [Azure Portal](https://ms.portal.azure.com/)
+- Open the incoming ports 4040 and 4444 to the VM through the Azure Portal (these ports will be used by the web tool)
+- SSH into the VM using a desktop SSH client
+- Run the following commands to install the additional necessary Python packages:
+```
+sudo apt-get update
+sudo apt-get install blobfuse
+conda activate py35
+conda install rasterio fiona shapely rtree
+pip install --user --upgrade bottle mercantile rasterio
+conda deactivate
+```
+- Log out and log back in
 - Visit the Microsoft AI for Earth [Azure storage account](https://ms.portal.azure.com/#blade/Microsoft_Azure_Storage/FileShareMenuBlade/overview/storageAccountId/%2Fsubscriptions%2Fc9726640-cf74-4111-92f5-0d1c87564b93%2FresourceGroups%2FLandcover2%2Fproviders%2FMicrosoft.Storage%2FstorageAccounts%2Fmslandcoverstorageeast/path/vm-fileshare) (your account will need to be given access first)
-  - Download `mount_remotes_development.sh` and `mount_remotes_deployment.sh` to `~/landcover/setup/` in your VM
-  - Do NOT commit these files to Git -- though they should be ignored anyway via .gitignore
-- Run `setup/new_vm_setup.sh`, this will restart the machine at the end as I have faced GPU problems on newly provisioned DLVM image machines
-- Log in to VM again
-- Run: `cd landcover`
-- Run: `setup/after_restart.sh` (you must re-run this command any time the VM has been shut down)
-- Run: `source setup/login.sh` (you must re-run this any time you log in to the VM again, even if it has not been shut down)
+  - Download the `web-tool/mount_remotes_deployment.sh` and `web-tool/new_repo_install.sh` scripts to the home directory
+  - Run the `mount_remotes_deployment.sh` script to mount the necessary blob storage containers (note: you will need to run this script every time you restart the VM)
 
-- Run: `cp web_tool/endpoints.js web_tool/endpoints.mine.js`
-- Edit `endpoints.mine.js` (eg., run `nano endpoints.mine.js`) to point to your own server URL (find your VM's host name or IP address in the Azure portal); indicating ports for whichever backend server.py instances you are running (4444 is the default, but you can set alternate ports from command line flags to have multiple servers running, see below)
+### Repository setup instructions
 
-- To run the servers:
-  - Open up ports 4040 and 4444 to the machine through [Azure Portal](https://ms.portal.azure.com/)
-  - Run `python web_tool/frontend_server.py` this will start up a HTTP server on :4040 to serve the actual webpage
-  - Run `python web_tool/backend_server.py --port 4444 --model nips_sr --fine_tune last_layer --model_fn /mnt/blobfuse/train-output/ForICCV/ForICCV-landcover-batch_size-16-loss-superres-lr-0.003-model-unet2-schedule-stepped-note-replication_1/final_model.h5 --gpu 0 --verbose` will start up a HTTP server on :4444 that serves our precomputed results with the documented API
-  - alternatively use --model 2 to serve results that are computed from a CNTK model
-  - You may now visit `<VM_name_or_IP>:4040` in a browser, where VM host name or IP address is the same as you logged in to via SSH, and can be found in the Azure Portal
+- SSH into the VM using a desktop SSH client
+- `git clone git@github.com:microsoft/landcover.git` (clone this repository)
+- `mv new_repo_install.sh landcover/`
+- `cd landcover`
+- Edit `new_repo_install.sh` as appropriate. This script will copy the necessary data files from the `web-tool-data` blob container to the project directory,  however you probably don't need _all_ the data in `web-tool-data/web_tool/tiles/` as these files can be large and are project instance specific.
+- `./new_repo_install.sh`
+- `rm new_repo_install.sh` (to keep the project directory clean!)
+- Edit `web_tool/endpoints.mine.js` and replace "msrcalebubuntu.eastus.cloudapp.azure.com" with the address of your VM (find/change your VM's host name or IP address in the Azure portal).
 
 
-## Code Overview
+## Running an instance of the tool
+
+- SSH into the VM using a desktop SSH client
+- `cd landcover`
+- `python web_tool/frontend_server.py` to start up a HTTP server on :4040 that will serve the actual web-application (i.e. the "frontend") and any custom basemaps in `web_tool/tiles/`.
+- `python web_tool/backend_server.py --model nips_sr --model_fn web_tool/data/final_model.h5 --fine_tune last_layer --gpu 0 --debug --verbose` to start up a HTTP server on :4444 that responds to API calls from the "frontend", allowing the web-app to interface with our CNN models (i.e. the "backend").
+- Note: the previous two commands will block while the servers are running. You can exeute them in seperate tmux windows to have them running even when your SSH session isn't active.
+- You should now be able to visit `http://<your VM address>:4040/index.html` and see the "frontend" interface.
+
+
+## Design Overview
 
 - "Frontend"
   - `index.html`, `endpoints.js`
@@ -106,16 +120,13 @@ Output example:
 ```js
 {
     "extent": ..., // copied from input
-    "input_naip": "..." // base64 encoding of input NAIP imagery used to generate the model output, as PNG
+    "input_naip": "..." // base64 encoding of input NAIP imagery used to webpagegenerate the model output, as PNG
 }
 ```
 
-
-
-
-## Issues/To-do list
-
-- `/predPatch` will probably _not_ work with other CRSs (besides EPSG:3857)
-- `/predPatch` will probably _not_ fail in an useful way
-- We want the `backend_server.py` to be decoupled from the implementation of the code needed to run the model. The way this currently works (in `main()` of `backend_server.py`) is really hacky.
-- If you switch the "Sharpness" slider immediately after clicking on the map (before results are returned) then an error happens.
+# TODO
+- Update "Design Overview" section
+- Add a tutorial for using the tool
+- Update the "API" section
+- Explain how different datasets work
+- Write section detailing the user study implementation
