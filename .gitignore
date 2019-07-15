@@ -19,3 +19,6 @@ mount_remotes_development.sh
 data/
 tiles/
 models/
+
+setup/
+setup_new/
