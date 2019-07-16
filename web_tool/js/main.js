@@ -18,9 +18,9 @@ var doRetrain = function(){
                 retrainCounts += 1;
 
                 $("#label-retrains").html(retrainCounts);
-                for( k in labelCounts){
-                    labelCounts[k] = 0;
-                    $("#label-counts-"+k).html("0");
+                $(".classCounts").html("0")
+                for(c in classes){
+                    classes[c]["count"] = 0;
                 }
 
                 var t = currentSelection._latlngs[0];
@@ -59,10 +59,9 @@ var doReset = function(notify=true){
                 notifySuccess(data, textStatus, jqXHR);
                 
                 $("#label-retrains").html("0");
-
-                for( k in labelCounts){
-                    labelCounts[k] = 0;
-                    $("#label-counts-"+k).html("0");
+                $(".classCounts").html("0")
+                for(c in classes){
+                    classes[c]["count"] = 0;
                 }
             }
         },
@@ -111,7 +110,7 @@ var doDownloadTile = function(){
                         "latestWkid": 3857
                     }
                 },
-                "colors": colorList,
+                "classes": classes,
                 "zoneLayerName": currentZoneLayerName
             };
 
@@ -191,7 +190,7 @@ var doSendCorrection = function(polygon, idx){
                 "latestWkid": 3857
             }
         },
-        "colors": colorList,
+        "classes": classes,
         "value" : selectedClassIdx
     };
 
@@ -201,15 +200,9 @@ var doSendCorrection = function(polygon, idx){
         url: BACKEND_URL + "recordCorrection",
         data: JSON.stringify(request),
         success: function(data, textStatus, jqXHR){
-            console.debug("Successfully recorded correction");
-            console.debug(data);
-
-            labelName = findClassByIdx(data["value"])
-            console.debug(labelName)
-            //labelCounts[data["value"]] += data["count"];
-            labelCounts[labelName] += 1;
-
-            $("#label-counts-"+labelName).html(labelCounts[labelName]);
+            var labelIdx = data["value"];
+            classes[labelIdx]["count"] += 1;
+            renderClassCount(classes[labelIdx]["name"], classes[labelIdx]["count"]);
             animateSuccessfulCorrection(10, 80);
         },
         error: notifyFail,
@@ -236,19 +229,14 @@ var doUndo = function(){
             data: JSON.stringify(request),
             success: function(data, textStatus, jqXHR){
                 
-                // remove previously added point
-                console.debug(data);
-
                 for(var i=0;i<data["count"];i++){
                     var removedPoint = userPointList.pop();
                     map.removeLayer(removedPoint[0]);
-                    var labelName = findClassByIdx(removedPoint[1]);
-
-                    labelCounts[labelName] -= 1;
-                    $("#label-counts-"+labelName).html(labelCounts[labelName]);
+                    
+                    var labelIdx = removedPoint[1];
+                    classes[labelIdx]["count"] -= 1;
+                    renderClassCount(classes[labelIdx]["name"], classes[labelIdx]["count"]);
                 }
-
-                // 
 
                 // alert success
                 new Noty({
@@ -328,7 +316,7 @@ var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
                 "latestWkid": 3857
             }
         },
-        "colors": colorList,
+        "classes": classes,
     };
     
     $.ajax({
