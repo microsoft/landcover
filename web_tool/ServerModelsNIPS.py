@@ -14,9 +14,9 @@ from web_tool.frontend_server import ROOT_DIR
 AUGMENT_MODEL = MLPClassifier(
     hidden_layer_sizes=(),
     activation='relu',
-    alpha=0.001,
+    alpha=0.0001,
     solver='lbfgs',
-    tol=0.1,
+    tol=0.0001,
     verbose=False,
     validation_fraction=0.0,
     n_iter_no_change=10
