@@ -136,9 +136,10 @@ var tileLayers = {
             minZoom: 10
         }),
         "shapes": [
-            {"name": "Admin 1", "shapes_fn": "shapes/yangon_sentinel_admin_1_clipped.geojson", "zone_name_key": "NAME_1"},
-            {"name": "Admin 2", "shapes_fn": "shapes/yangon_sentinel_admin_2_clipped.geojson", "zone_name_key": "NAME_2"},
-            {"name": "Admin 3", "shapes_fn": "shapes/yangon_sentinel_admin_3_clipped.geojson", "zone_name_key": "NAME_3"}
+            {"name": "States", "shapes_fn": "shapes/yangon_sentinel_admin_1_clipped.geojson", "zone_name_key": "ST"},
+            {"name": "Districts", "shapes_fn": "shapes/yangon_sentinel_admin_2_clipped.geojson", "zone_name_key": "DT"},
+            {"name": "Townships", "shapes_fn": "shapes/yangon_sentinel_admin_3_clipped.geojson", "zone_name_key": "TS"},
+            {"name": "Wards", "shapes_fn": "shapes/yangon_sentinel_admin_4_clipped.geojson", "zone_name_key": "Ward"}
         ]
     },
     "hcmc_sentinel": {
@@ -166,10 +167,10 @@ var tileLayers = {
             minZoom: 10
         }),
         "shapes": [
-            {"name": "Admin 1", "shapes_fn": "shapes/yangon_lidar_admin_1_clipped.geojson", "zone_name_key": "NAME_1"},
-            {"name": "Admin 2", "shapes_fn": "shapes/yangon_lidar_admin_2_clipped.geojson", "zone_name_key": "NAME_2"},
-            {"name": "Admin 3", "shapes_fn": "shapes/yangon_lidar_admin_3_clipped.geojson", "zone_name_key": "NAME_3"},
-            {"name": "Admin 4", "shapes_fn": "shapes/yangon_lidar_admin_4_clipped.geojson", "zone_name_key": "Ward"}
+            {"name": "States", "shapes_fn": "shapes/yangon_sentinel_admin_1_clipped.geojson", "zone_name_key": "ST"},
+            {"name": "Districts", "shapes_fn": "shapes/yangon_sentinel_admin_2_clipped.geojson", "zone_name_key": "DT"},
+            {"name": "Townships", "shapes_fn": "shapes/yangon_sentinel_admin_3_clipped.geojson", "zone_name_key": "TS"},
+            {"name": "Wards", "shapes_fn": "shapes/yangon_sentinel_admin_4_clipped.geojson", "zone_name_key": "Ward"}
         ] 
     },
     "hcmc_dg": {
