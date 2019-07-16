@@ -185,7 +185,9 @@ def record_correction():
     #
     tlat, tlon = data["extent"]["ymax"], data["extent"]["xmin"]
     blat, blon = data["extent"]["ymin"], data["extent"]["xmax"]
-    color_list = data["colors"]
+    class_list = data["classes"]
+    name_list = [item["name"] for item in class_list]
+    color_list = [item["color"] for item in class_list]
     class_idx = data["value"] # what we want to switch the class to
     origin_crs = "epsg:%d" % (data["extent"]["spatialReference"]["latestWkid"])
 
@@ -251,7 +253,9 @@ def pred_patch():
     # Inputs
     extent = data["extent"]
     dataset = data["dataset"]
-    color_list = data["colors"]
+    class_list = data["classes"]
+    name_list = [item["name"] for item in class_list]
+    color_list = [item["color"] for item in class_list]
 
     # ------------------------------------------------------
     # Step 1
@@ -327,7 +331,9 @@ def pred_tile():
 
     # Inputs
     extent = data["extent"]
-    color_list = data["colors"]
+    class_list = data["classes"]
+    name_list = [item["name"] for item in class_list]
+    color_list = [item["color"] for item in class_list]
     dataset = data["dataset"]
     zone_layer_name = data["zoneLayerName"]
    
@@ -389,9 +395,9 @@ def pred_tile():
     data["downloadTIFF"] = "downloads/%s.tif" % (tmp_id)
 
     f = open(os.path.join(ROOT_DIR, "downloads/%s.txt" % (tmp_id)), "w")
-    f.write("Class id\tFrequency\n")
+    f.write("Class id\tClass name\tFrequency\n")
     for i in range(len(vals)):
-        f.write("%d\t%0.4f%%\n" % (vals[i], (counts[i] / np.sum(counts))*100))
+        f.write("%d\t%s\t%0.4f%%\n" % (vals[i], name_list[vals[i]], (counts[i] / np.sum(counts))*100))
     f.close()
     data["downloadStatistics"] = "downloads/%s.txt" % (tmp_id)
 

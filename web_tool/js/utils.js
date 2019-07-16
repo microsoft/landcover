@@ -1,6 +1,6 @@
 var findClassByName = function(name){
-    for(var i=0; i<classList.length; i++){
-        if(classList[i]["name"] == name){
+    for(var i=0; i<classes.length; i++){
+        if(classes[i]["name"] == name){
             return i;
         }
     }
@@ -8,19 +8,23 @@ var findClassByName = function(name){
 };
 
 var findClassByIdx = function(idx){
-    return classList[idx]["name"];
+    return classes[idx]["name"];
+}
+
+var renderClassCount = function(name, count){
+    $(".radNewClass[value='"+name+"']").siblings(".classCounts").html(count);
 }
 
 var updateClassColor = function(obj){
     var className = $(obj.targetElement).attr("data-class-name");
     var classIdx = findClassByName(className);
-    colorList[classIdx] = '#' + obj;
+    classes[classIdx]["color"] = '#' + obj;
 };
 
 var updateClassLabel = function(obj){
     var className = $(obj.targetElement).attr("data-class-name");
     var classIdx = findClassByName(className);
-    colorList[classIdx] = '#' + obj;
+    classes[classIdx]["color"] = '#' + obj;
 };
 
 var getRandomColor = function(){

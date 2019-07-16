@@ -54,22 +54,22 @@
 
                     <h3 style="text-align: center; margin-top:20px;">Correction type:</h3>
                     <div style="padding-left:20px">
-                        <div id="classList" class="classList">
+                        <div id="classList">
                             <div class="radio">
-                                <button class="circle jscolor" data-class-name="water" data-jscolor="{valueElement:null,value:'0000FF',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
-                                <label class="selected"><input type="radio" name="new-class" class="radNewClass" value="water" checked>Water (<span id="label-counts-water">0</span> samples since last retrain)</label>
+                                <button class="circle jscolor" data-class-name="Water" data-jscolor="{valueElement:null,value:'0000FF',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
+                                <label class="selected"><input type="radio" name="radClasses" class="radNewClass" value="Water" checked><span class="className">Water</span> (<span class="classCounts">0</span> samples since last retrain)</label>
                             </div>
                             <div class="radio">
-                                <button class="circle jscolor" data-class-name="forest" data-jscolor="{valueElement:null,value:'008000',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
-                                <label><input type="radio" name="new-class" class="radNewClass" value="forest">Tree Canopy (<span id="label-counts-forest">0</span> samples since last retrain)</label>
+                                <button class="circle jscolor" data-class-name="Forest" data-jscolor="{valueElement:null,value:'008000',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
+                                <label><input type="radio" name="radClasses" class="radNewClass" value="Forest"><span class="className">Forest</span> (<span class="classCounts">0</span> samples since last retrain)</label>
                             </div>
                             <div class="radio">
-                                <button class="circle jscolor" data-class-name="field" data-jscolor="{valueElement:null,value:'80FF80',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
-                                <label><input type="radio" name="new-class" class="radNewClass" value="field">Field (<span id="label-counts-field">0</span> samples since last retrain)</label>
+                                <button class="circle jscolor" data-class-name="Field" data-jscolor="{valueElement:null,value:'80FF80',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
+                                <label><input type="radio" name="radClasses" class="radNewClass" value="Field"><span class="className">Field</span> (<span class="classCounts">0</span> samples since last retrain)</label>
                             </div>
                             <div class="radio">
-                                <button class="circle jscolor" data-class-name="built" data-jscolor="{valueElement:null,value:'806060',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
-                                <label><input type="radio" name="new-class" class="radNewClass" value="built">Built (<span id="label-counts-built">0</span> samples since last retrain)</label>
+                                <button class="circle jscolor" data-class-name="Built" data-jscolor="{valueElement:null,value:'806060',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
+                                <label><input type="radio" name="radClasses" class="radNewClass" value="Built"><span class="className">Built</span> (<span class="classCounts">0</span> samples since last retrain)</label>
                             </div>
                         </div>
                         <div style="text-align: center; margin-top:10px; margin-bottom:20px;">
@@ -155,27 +155,15 @@
         var pred0_naip1 = 0;
         var activeImgIdx = 0;
 
-        var colorList = [
-            "#0000FF",
-            "#008000",
-            "#80FF80",
-            "#806060"
-        ]
         var selectedClassIdx = 0;
-        var classList = [
-            {"name": "water"},
-            {"name": "forest"},
-            {"name": "field"},
-            {"name": "built"}
+        var classes = [
+            {"name": "Water", "color": "#0000FF", "count": 0},
+            {"name": "Forest", "color": "#008000", "count": 0},
+            {"name": "Field", "color": "#80FF80", "count": 0},
+            {"name": "Built", "color": "#806060", "count": 0},
         ];
-        var labelCounts = {
-            "water": 0,
-            "forest": 0,
-            "field": 0,
-            "built": 0
-        };
+        
         var retrainCounts = 0
-
         var retrainArgs = {
         };
 
@@ -555,7 +543,7 @@
                             var rect = L.rectangle(
                                 [curSelPoly[0], curSelPoly[2]],
                                 {
-                                    color: colorList[selectedClassIdx],
+                                    color: classes[selectedClassIdx]["color"],
                                     weight: 1,
                                     opacity: 1
                                     //pane: "labels"
@@ -653,18 +641,16 @@
             $("#btnDownload").click(doDownloadTile);
             $("#btnNewClass").click(function(){
                 
-                var newClassIdx = classList.length + 1;
+                var newClassIdx = classes.length + 1;
                 var newColor = getRandomColor();
 
-                
                 var newClassElement =  $("<div class='radio'>");
-                //var newPicker = $("<button class=\"circle jscolor\" data-class-name=\"class-"+newClassIdx+"\" data-jscolor=\"{valueElement:null,value:'"+newColor.substring(1)+"',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}\"></button>");
-                var newLabel = $("<label><input type='radio' name='new-class' class='radNewClass' value='class-"+newClassIdx+"'><span id='label-name-class-"+newClassIdx+"' class='label-name'>Class "+newClassIdx+"</span> (<span id='label-counts-class-"+newClassIdx+"'>0</span> samples since last retrain)<i class='fa fa-edit ml-1 label-name-edit'></i></label>");
-
+                var newLabel = $("<label><input type='radio' name='radClasses' class='radNewClass' value='Class "+newClassIdx+"'><span class='className'>Class "+newClassIdx+"</span> (<span class='classCounts'>0</span> samples since last retrain)<i class='fa fa-edit ml-1 classNameEdit'></i></label>");
 
                 var newPicker = document.createElement('button');
                 newPicker.classList.add("circle");
-                newPicker.setAttribute("data-class-name", "class-"+newClassIdx);
+                newPicker.classList.add("jscolor");
+                newPicker.setAttribute("data-class-name", "Class "+newClassIdx);
                 var output = new jscolor(newPicker, {
                     valueElement: null,
                     value: newColor.substr(1),
@@ -680,11 +666,11 @@
             
                 $("#classList").append(newClassElement);
 
-                classList.push({
-                    "name": "class-" + newClassIdx
+                classes.push({
+                    "name": "Class " + newClassIdx,
+                    "color": newColor,
+                    "count": 0
                 });
-                colorList.push(newColor)
-                labelCounts["class-" + newClassIdx] = 0;
 
             });
 
@@ -700,10 +686,14 @@
                 console.debug(this.value + " " + selectedClassIdx);
             });
 
-            $(document).on('click', '.label-name-edit', function(){
-                var oldName = $(this).siblings(".label-name").html();
+            $(document).on('click', '.classNameEdit', function(){
+                var oldName = $(this).siblings(".className").html();
                 var newName = prompt("New label name for '"+oldName+"'");
-                $(this).siblings(".label-name").html(newName);
+                $(this).siblings(".className").html(newName);
+                $(this).siblings(".radNewClass").val(newName);
+
+                var classIdx = findClassByName(oldName)
+                classes[classIdx]["name"] = newName;
             });
             
             //----------------------------------------------------------------------
