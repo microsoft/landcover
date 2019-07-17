@@ -4,7 +4,7 @@ import fiona
 import shapely.geometry
 from enum import Enum
 
-from web_tool.frontend_server import ROOT_DIR
+from web_tool import ROOT_DIR
 
 def load_geojson_as_list(fn):
     shapes = []

@@ -95,3 +95,7 @@ def get_shape_layer_by_name(shapes, layer_name):
         if layer["name"] == layer_name:
             return layer
     return None
+
+def get_random_string(length):
+    alphabet = "abcdefghijklmnopqrstuvwxyz"
+    return "".join([alphabet[np.random.randint(0, len(alphabet))] for i in range(length)])
