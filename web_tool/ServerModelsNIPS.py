@@ -9,7 +9,7 @@ from keras import optimizers
 
 from ServerModelsAbstract import BackendModel
 
-from web_tool.frontend_server import ROOT_DIR
+from web_tool import ROOT_DIR
 
 AUGMENT_MODEL = MLPClassifier(
     hidden_layer_sizes=(),
@@ -26,7 +26,6 @@ AUGMENT_MODEL = MLPClassifier(
 class KerasDenseFineTune(BackendModel):
 
     def __init__(self, model_fn, gpuid, superres=False, verbose=False):
-
         # Load model
         os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
         os.environ["CUDA_VISIBLE_DEVICES"] = str(gpuid)
@@ -36,10 +35,14 @@ class KerasDenseFineTune(BackendModel):
 
         self.model_fn = model_fn
         
-        tmodel = keras.models.load_model(self.model_fn, custom_objects={
+        tmodel = keras.models.load_model(self.model_fn, compile=False, custom_objects={
             "jaccard_loss":keras.metrics.mean_squared_error, 
             "loss":keras.metrics.mean_squared_error
         })
+
+        #with open("web_tool/data/final_model.json", 'r') as json_file:
+        #    tmodel = keras.models.model_from_json(json_file.read())
+        #tmodel.load_weights("web_tool/data/final_model_weights.h5")
 
         feature_layer_idx = None
         if superres:
@@ -49,6 +52,7 @@ class KerasDenseFineTune(BackendModel):
         
         self.model = keras.models.Model(inputs=tmodel.inputs, outputs=[tmodel.outputs[0], tmodel.layers[feature_layer_idx].output])
         self.model.compile("sgd","mse")
+        self.model._make_predict_function()
 
         self.output_channels = self.model.output_shape[0][3]
         self.output_features = self.model.output_shape[1][3]
@@ -225,7 +229,6 @@ class KerasDenseFineTune(BackendModel):
                 batch.append(naip_im)
                 batch_indices.append((y_index, x_index))
                 batch_count+=1
-
 
         model_output = self.model.predict(np.array(batch), batch_size=batch_size, verbose=0)
         

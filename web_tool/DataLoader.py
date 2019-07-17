@@ -30,7 +30,7 @@ import cv2
 import pickle
 import glob
 
-from web_tool.frontend_server import ROOT_DIR
+from web_tool import ROOT_DIR
 
 # ------------------------------------------------------
 # Miscellaneous methods
