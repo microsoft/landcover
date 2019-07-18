@@ -1,4 +1,22 @@
+import threading
+
 import numpy as np
+
+
+class AtomicCounter:
+    ''' From https://gist.github.com/benhoyt/8c8a8d62debe8e5aa5340373f9c509c7 '''
+    def __init__(self, initial=0):
+        """Initialize a new atomic counter to given initial value (default 0)."""
+        self.value = initial
+        self._lock = threading.Lock()
+
+    def increment(self, num=1):
+        """Atomically increment the counter by num (default 1) and return the
+        new value.
+        """
+        with self._lock:
+            self.value += num
+            return self.value
 
 NLCD_CLASSES = [
     0, 11, 12, 21, 22, 23, 24, 31, 41, 42, 43, 51, 52, 71, 72, 73, 74, 81, 82, 90, 95, 255

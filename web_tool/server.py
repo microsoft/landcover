@@ -5,12 +5,14 @@
 import sys
 import os
 import time
+import datetime
 import collections
 
 import bottle
 import argparse
 import base64
 import json
+import uuid
 
 import numpy as np
 import cv2
@@ -26,10 +28,13 @@ import mercantile
 import pickle
 import joblib
 
+from azure.cosmosdb.table.tableservice import TableService
+from azure.cosmosdb.table.models import Entity
+
 import DataLoader
 from Heatmap import Heatmap
 from TileLayers import DataLayerTypes, DATA_LAYERS
-from Utils import get_random_string, class_prediction_to_img, get_shape_layer_by_name
+from Utils import get_random_string, class_prediction_to_img, get_shape_layer_by_name, AtomicCounter
 
 import ServerModelsNIPS
 
@@ -39,14 +44,18 @@ from web_tool import ROOT_DIR
 class Session():
     ''' Currently this is a totally static class, however this is what needs to change if we are to support multiple sessions.
     '''
-    storage_type = None
-    storage_path = None
+    storage_type = None # this will be "table" or "file"
+    storage_path = None # this will be a file path
+    table_service = None # this will be an instance of TableService
+
+    gpuid = None
 
     model = None
     current_transform = ()
 
     current_snapshot_string = get_random_string(8)
     current_snapshot_idx = 0
+    current_request_counter = AtomicCounter()
     request_list = []
 
     @staticmethod
@@ -55,7 +64,18 @@ class Session():
             Session.model.reset() # can't fail, so don't worry about it
         Session.current_snapshot_string = get_random_string(8)
         Session.current_snapshot_idx = 0
+        Session.current_request_counter = AtomicCounter()
         Session.request_list = []
+
+        if Session.storage_type == "table":
+            Session.table_service.insert_entity("webtoolsessions",
+            {
+                "PartitionKey": str(np.random.randint(0,8)),
+                "RowKey": str(uuid.uuid4()),
+                "session_id": Session.current_snapshot_string,
+                "server_hostname": os.uname()[1],
+                "server_sys_argv": ' '.join(sys.argv)
+            })
 
     @staticmethod
     def save(model_name):
@@ -77,21 +97,42 @@ class Session():
         elif Session.storage_type == "table":
             print("We don't serialize the model when saving to table storage")
         else:
-            print("Not saving as the --storage_type / --storage_path were not set")
+            # The storage_type / --storage_path command line args were not set
+            pass
 
         Session.current_snapshot_idx += 1
     
     @staticmethod
     def add_entry(data):
         client_ip = bottle.request.environ.get('HTTP_X_FORWARDED_FOR') or bottle.request.environ.get('REMOTE_ADDR')
-        data["time"] = time.ctime()
+        data = data.copy()
+        data["time"] = datetime.datetime.now()
         data["remote_address"] = client_ip
         data["current_snapshot_index"] = Session.current_snapshot_idx
+        current_request_counter = Session.current_request_counter.increment()
+        data["current_request_index"] = current_request_counter
+
+        assert "experiment" in data
 
         if Session.storage_type == "file":
             Session.request_list.append(data)
+        
         elif Session.storage_type == "table":
-            raise NotImplementedError()
+
+            data["PartitionKey"] = Session.current_snapshot_string
+            data["RowKey"] = "%s_%d" % (data["experiment"], current_request_counter)
+
+            for k in data.keys():
+                if isinstance(data[k], dict) or isinstance(data[k], list):
+                    data[k] = json.dumps(data[k])
+            
+            try:
+                Session.table_service.insert_entity("webtoolinteractions", data)
+            except Exception as e:
+                print(e)
+        else:
+            # The storage_type / --storage_path command line args were not set
+            pass
 
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
@@ -125,11 +166,13 @@ def do_heatmap(z,y,x):
 def reset_model():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
-    Session.add_entry(data) # record this interaction
+    
+    initial_reset = data.get("initialReset", False)
+    if not initial_reset:
+        Session.add_entry(data) # record this interaction
+        Session.save(data["experiment"]) # this probably will make us write files where we don't need to
 
     Heatmap.reset()
-
-    Session.save(data["experiment"])
     Session.reset()
 
     data["message"] = "Reset model"
@@ -461,7 +504,7 @@ def main():
         choices=["table", "file"],
         default=None
     )
-    parser.add_argument("--storage_path", action="store", dest="storage_path", type=str, help="Used when --storage_type is 'file'. Path to directory where output will be stored", default=None)
+    parser.add_argument("--storage_path", action="store", dest="storage_path", type=str, help="Path to directory where output will be stored", default=None)
 
     parser.add_argument("--host", action="store", dest="host", type=str, help="Host to bind to", default="0.0.0.0")
     parser.add_argument("--port", action="store", dest="port", type=int, help="Port to listen on", default=4444)
@@ -529,19 +572,22 @@ def main():
 
     if args.storage_type == "file":
         assert args.storage_path is not None, "You must specify a storage path if you select the 'path' storage type"
-    elif args.storage_type == "azureTable":
-        assert args.storage_path is None, "You cannot specify a storage path if you specify the 'azureTable' storage type"
+        Session.storage_path = args.storage_path
+    elif args.storage_type == "table":
+        assert args.storage_path is not None, "You must specify a storage path if you select the 'table' storage type"
+
+        assert "AZURE_ACCOUNT_NAME" in os.environ
+        assert "AZURE_ACCOUNT_KEY" in os.environ
+
+        Session.table_service = TableService(
+            account_name=os.environ['AZURE_ACCOUNT_NAME'],
+            account_key=os.environ['AZURE_ACCOUNT_KEY']
+        )
     elif args.storage_type is None:
-        assert args.storage_path is None, "You cannot specify a storage path if you do not select the 'path' storage type"
+        assert args.storage_path is None, "You cannot specify a storage path if you do not select a storage type"
 
     Session.model = model
     Session.storage_type = args.storage_type
-    Session.storage_path = args.storage_path
-    
-    if args.model == "existing":
-        Session.reset(soft=True)
-    else:
-        Session.reset()
 
     # Setup the bottle server 
     app = bottle.Bottle()
@@ -579,9 +625,12 @@ def main():
         "port": args.port,
         "debug": args.verbose,
         "server": "waitress",
-        "reloader": False
+        "reloader": False,
+        "options": {"threads": 12} # TODO: As of bottle version 0.12.17, the WaitressBackend does not get the **options kwargs
     }
-    app.run(**bottle_server_kwargs)
+    from waitress import serve
+    serve(app, host=args.host, port=args.port, threads=12)
+
 
 if __name__ == "__main__":
     main()

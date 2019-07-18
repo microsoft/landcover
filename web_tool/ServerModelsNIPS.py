@@ -12,7 +12,7 @@ from ServerModelsAbstract import BackendModel
 from web_tool import ROOT_DIR
 
 AUGMENT_MODEL = MLPClassifier(
-    hidden_layer_sizes=(),
+    hidden_layer_sizes=(10),
     activation='relu',
     alpha=0.0001,
     solver='lbfgs',
@@ -39,10 +39,6 @@ class KerasDenseFineTune(BackendModel):
             "jaccard_loss":keras.metrics.mean_squared_error, 
             "loss":keras.metrics.mean_squared_error
         })
-
-        #with open("web_tool/data/final_model.json", 'r') as json_file:
-        #    tmodel = keras.models.model_from_json(json_file.read())
-        #tmodel.load_weights("web_tool/data/final_model_weights.h5")
 
         feature_layer_idx = None
         if superres:

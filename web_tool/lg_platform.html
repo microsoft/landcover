@@ -247,7 +247,7 @@
             }
             DATASET = args.dataset;
             
-            doReset(false); // reset the backend server
+            doReset(false, initialReset=true); // reset the backend server
             
             //----------------------------------------------------------------------
             // Start user study if necessary
@@ -621,7 +621,7 @@
 
             $("#btnRetrain").click(doRetrain);
             $("#btnUndo").click(doUndo);
-            $("#btnReset").click(doReset);
+            $("#btnReset").click(function(){doReset(true, initialReset=false)});
             $("#btnDownload").click(doDownloadTile);
             $("#btnNewClass").click(function(){
                 
