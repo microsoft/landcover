@@ -189,13 +189,14 @@ var tileLayers = {
         ]
     },
     "airbus": {
-        "location": [[36.80, -76.12], 14, "Airbus, VA"],
+        "location": [[36.80, -76.12], 14, "Somewhere, VA", "Airbus Imagery"],
         "tileObject": L.tileLayer('tiles/airbus/{z}/{x}/{y}.png', {
             attribution: 'Georeferenced Image', 
             tms:true,
             maxZoom: 21,
             maxNativeZoom: 18,
-            minZoom: 13
+            minZoom: 13,
+            bounds: L.latLngBounds(L.latLng(36.882932, -76.2623637), L.latLng(36.7298842, -76.0249016))
         }),
         "shapes": [
             {"name": "Grid", "shapes_fn": "shapes/airbus-data-grid-epsg4326.geojson", "zone_name_key": null}
