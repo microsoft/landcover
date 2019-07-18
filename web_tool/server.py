@@ -8,7 +8,9 @@ import time
 import datetime
 import collections
 
+from gevent import monkey; monkey.patch_all()
 import bottle
+
 import argparse
 import base64
 import json
@@ -59,7 +61,7 @@ class Session():
     request_list = []
 
     @staticmethod
-    def reset(soft=False):
+    def reset(soft=False, from_cached=None):
         if not soft:
             Session.model.reset() # can't fail, so don't worry about it
         Session.current_snapshot_string = get_random_string(8)
@@ -74,33 +76,46 @@ class Session():
                 "RowKey": str(uuid.uuid4()),
                 "session_id": Session.current_snapshot_string,
                 "server_hostname": os.uname()[1],
-                "server_sys_argv": ' '.join(sys.argv)
+                "server_sys_argv": ' '.join(sys.argv),
+                "base_model": from_cached
             })
 
     @staticmethod
-    def save(model_name):
-        snapshot_id = "%s_%d" % (model_name, Session.current_snapshot_idx)
+    def load(encoded_model_fn):
+        model_fn = base64.b64decode(encoded_model_fn).decode('utf-8')
 
-        if Session.storage_type == "file":
+        print(model_fn)
+
+        del Session.model
+        Session.model = joblib.load(model_fn)
+
+    @staticmethod
+    def save(model_name):
+
+        if Session.storage_type is not None:
             assert Session.storage_path is not None # we check for this when starting the program
 
+            snapshot_id = "%s_%d" % (model_name, Session.current_snapshot_idx)
+            
             print("Saving state for %s" % (snapshot_id))
             base_dir = os.path.join(Session.storage_path, Session.current_snapshot_string)
             if not os.path.exists(base_dir):
                 os.makedirs(base_dir, exist_ok=False)
-
+            
             model_fn = os.path.join(base_dir, "%s_model.p" % (snapshot_id))
-            request_list_fn = os.path.join(base_dir, "%s_request_list.p" % (snapshot_id))
-        
             joblib.dump(Session.model, model_fn, protocol=pickle.HIGHEST_PROTOCOL)
-            joblib.dump(Session.request_list, request_list_fn, protocol=pickle.HIGHEST_PROTOCOL)
-        elif Session.storage_type == "table":
-            print("We don't serialize the model when saving to table storage")
-        else:
-            # The storage_type / --storage_path command line args were not set
-            pass
 
-        Session.current_snapshot_idx += 1
+            if Session.storage_type == "file":
+                request_list_fn = os.path.join(base_dir, "%s_request_list.p" % (snapshot_id))
+                joblib.dump(Session.request_list, request_list_fn, protocol=pickle.HIGHEST_PROTOCOL)
+            elif Session.storage_type == "table":
+                # We don't serialize the request list when saving to table storage
+                pass
+
+            Session.current_snapshot_idx += 1
+            return base64.b64encode(model_fn.encode('utf-8')).decode('utf-8') # this is super dumb
+        else:
+            return None
     
     @staticmethod
     def add_entry(data):
@@ -163,6 +178,21 @@ def do_heatmap(z,y,x):
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
 
+def do_load():
+    bottle.response.content_type = 'application/json'
+    data = bottle.request.json
+    
+    cached_model = data["cachedModel"]
+
+    Session.reset(False, from_cached=cached_model)
+    Session.load(cached_model)
+
+    data["message"] = "Loaded new model from %s" % (cached_model)
+    data["success"] = True
+
+    bottle.response.status = 200
+    return json.dumps(data)
+
 def reset_model():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
@@ -170,7 +200,7 @@ def reset_model():
     initial_reset = data.get("initialReset", False)
     if not initial_reset:
         Session.add_entry(data) # record this interaction
-        Session.save(data["experiment"]) # this probably will make us write files where we don't need to
+        Session.save(data["experiment"])
 
     Heatmap.reset()
     Session.reset()
@@ -184,16 +214,17 @@ def reset_model():
 def retrain_model():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
-    Session.add_entry(data) # record this interaction
     
-    #
     success, message = Session.model.retrain(**data["retrainArgs"])
     if success:
         bottle.response.status = 200
-        Session.save(data["experiment"])
+        encoded_model_fn = Session.save(data["experiment"])
     else:
         data["error"] = message
         bottle.response.status = 500
+    
+    data["cached_model"] = encoded_model_fn 
+    Session.add_entry(data) # record this interaction
 
     data["message"] = message
     data["success"] = success
@@ -575,6 +606,7 @@ def main():
         Session.storage_path = args.storage_path
     elif args.storage_type == "table":
         assert args.storage_path is not None, "You must specify a storage path if you select the 'table' storage type"
+        Session.storage_path = args.storage_path
 
         assert "AZURE_ACCOUNT_NAME" in os.environ
         assert "AZURE_ACCOUNT_KEY" in os.environ
@@ -614,6 +646,9 @@ def main():
     app.route("/doUndo", method="OPTIONS", callback=do_options)
     app.route("/doUndo", method="POST", callback=do_undo)
 
+    app.route("/doLoad", method="OPTIONS", callback=do_options)
+    app.route("/doLoad", method="POST", callback=do_load)
+
     app.route("/heatmap/<z>/<y>/<x>", method="GET", callback=do_heatmap)
 
     app.route("/", method="GET", callback=root_app)
@@ -624,12 +659,13 @@ def main():
         "host": args.host,
         "port": args.port,
         "debug": args.verbose,
-        "server": "waitress",
+        "server": "tornado",
         "reloader": False,
         "options": {"threads": 12} # TODO: As of bottle version 0.12.17, the WaitressBackend does not get the **options kwargs
     }
-    from waitress import serve
-    serve(app, host=args.host, port=args.port, threads=12)
+    app.run(**bottle_server_kwargs)
+    #from waitress import serve
+    #serve(app, host=args.host, port=args.port, threads=12)
 
 
 if __name__ == "__main__":

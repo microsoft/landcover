@@ -92,6 +92,11 @@
                         <div style="text-align: center; margin-top:10px;">
                             <button id="btnDownload">Download</button>
                         </div>
+
+                        <div style="text-align: center; margin-top:10px;">
+                            <input type="text" id="lblURL" value="" placeholder="Visit this URL to start from a saved checkpoint" readonly="readonly"/>
+                        </div>
+
                         <div style="text-align: center; margin-top:5px;">
                             <div id="lblPNG"></div>
                             <div id="lblTIFF"></div>
@@ -221,7 +226,7 @@
             //----------------------------------------------------------------------
             // Remove the default behavior of the shift key
             //----------------------------------------------------------------------
-            document.onselectstart = function() {
+            document.getElementById("map").onselectstart = function() {
                 return false;
             }
             
@@ -246,8 +251,13 @@
                 args.dataset = "esri_world_imagery";
             }
             DATASET = args.dataset;
+
+            if(args.cachedModel !== null){
+                doLoad(args.cachedModel); // load a cached version of the model
+            }else{
+                doReset(false, initialReset=true); // reset the backend server
+            }
             
-            doReset(false, initialReset=true); // reset the backend server
             
             //----------------------------------------------------------------------
             // Start user study if necessary
@@ -346,7 +356,7 @@
             var logoControl = $("<div class='leaflet-control logo-area'></div>");
             logoControl.append("<span class='logo-text'>Microsoft AI for Earth</span>");
             logoControl.append("<br/>");
-            logoControl.append("<span class='logo-text-small'>Version: 0.7</span>");
+            logoControl.append("<span class='logo-text-small'>Version: 0.9</span>");
             logoControl.append("<br/>");
             logoControl.append("<span class='logo-text-small'>Location: "+tileLayers[DATASET]["location"][2]+"</span>");
             

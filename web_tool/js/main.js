@@ -17,6 +17,14 @@ var doRetrain = function(){
                 notifySuccess(data, textStatus, jqXHR, 5000);
                 retrainCounts += 1;
 
+                if(data["cached_model"] !== null){
+                    var url = new URL(window.location.href);
+                    url.searchParams.set("cachedModel", data["cached_model"])
+                    $("#lblURL").val(url.toString());
+                }else{
+                    $("#lblURL").val("Debug mode - no model checkpoints");
+                }
+
                 $("#label-retrains").html(retrainCounts);
                 $(".classCounts").html("0")
                 for(c in classes){
@@ -65,6 +73,7 @@ var doReset = function(notify=true, initialReset=false){
                     classes[c]["count"] = 0;
                 }
             }
+            $("#lblURL").val("");
         },
         error: notifyFail,
         dataType: "json",
@@ -392,6 +401,40 @@ var requestInputPatch = function(idx, polygon, serviceURL){
                 //var imageLayer = L.imageOverlay(naipImg, L.polygon(polygon).getBounds()).addTo(map);
                 currentPatches[idx]["imageLayer"].setUrl(naipImg);
             }
+        },
+        error: notifyFail,
+        dataType: "json",
+        contentType: "application/json"
+    });
+};
+
+
+
+//-----------------------------------------------------------------
+// Load a saved model state from the backend
+//-----------------------------------------------------------------
+var doLoad = function(cachedModel){
+    var request = {
+        "type": "load",
+        "dataset": DATASET,
+        "experiment": EXP_NAME,
+        "cachedModel": cachedModel
+    };
+    $.ajax({
+        type: "POST",
+        url: BACKEND_URL + "doLoad",
+        data: JSON.stringify(request),
+        success: function(data, textStatus, jqXHR){
+            console.debug(data);
+
+            new Noty({
+                type: "success",
+                text: "Successfully loaded checkpoint!",
+                layout: 'topCenter',
+                timeout: 4000,
+                theme: 'metroui'
+            }).show();
+
         },
         error: notifyFail,
         dataType: "json",

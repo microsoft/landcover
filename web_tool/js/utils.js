@@ -179,6 +179,7 @@ var getURLArguments = function(){
     var maxTime = url.searchParams.get("maxTime");
     var backendID = url.searchParams.get("backendID");
     var dataset = url.searchParams.get("dataset");
+    var cachedModel = url.searchParams.get("cachedModel");
 
     /// trainingSetID will override dataset
     if(trainingSetID === null){
@@ -212,6 +213,7 @@ var getURLArguments = function(){
         modelID: modelID,
         maxTime: maxTime,
         backendID: backendID,
+        cachedModel: cachedModel,
         dataset: dataset
     }
 }
