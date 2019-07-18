@@ -44,11 +44,12 @@ var doRetrain = function(){
 //-----------------------------------------------------------------
 // Reset backend server state
 //-----------------------------------------------------------------
-var doReset = function(notify=true){
+var doReset = function(notify=true, initialReset=false){
     var request = {
         "type": "reset",
         "dataset": DATASET,
-        "experiment": EXP_NAME
+        "experiment": EXP_NAME,
+        "initialReset": initialReset
     };
     $.ajax({
         type: "POST",
