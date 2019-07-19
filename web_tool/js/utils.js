@@ -75,6 +75,16 @@ var notifyFail = function(jqXHR, textStatus, errorThrown, timeout=2000){
     }).show();
 };
 
+var notifyFailMessage = function(message, timeout=2000){
+    new Noty({
+        type: "error",
+        text: message,
+        layout: 'topCenter',
+        timeout: timeout,
+        theme: 'metroui'
+    }).show();
+};
+
 var isPointInsidePolygon = function(latlng, poly) {
     // From https://stackoverflow.com/questions/31790344/determine-if-a-point-reside-inside-a-leaflet-polygon
     var polyPoints = poly.getLatLngs()[0];

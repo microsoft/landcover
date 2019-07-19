@@ -1,6 +1,9 @@
 import os
 
+import utm
 import fiona
+import fiona.transform
+import shapely
 import shapely.geometry
 from enum import Enum
 
@@ -8,13 +11,29 @@ from web_tool import ROOT_DIR
 
 def load_geojson_as_list(fn):
     shapes = []
+    areas = []
     crs = None
     with fiona.open(fn) as f:
-        crs = f.crs
+        src_crs = f.crs
         for row in f:
-            shape = shapely.geometry.shape(row["geometry"])
+            geom = row["geometry"]
+            if geom["type"] == "Polygon":
+                lon, lat = geom["coordinates"][0][0]
+            elif geom["type"] == "MultiPolygon":
+                lon, lat = geom["coordinates"][0][0][0]
+            else:
+                raise ValueError("Polygons and MultiPolygons only")
+
+            zone_number = utm.latlon_to_zone_number(lat, lon)
+            hemisphere = "+north" if lat > 0 else "+south"
+            dest_crs = "+proj=utm +zone=%d %s +datum=WGS84 +units=m +no_defs" % (zone_number, hemisphere)
+            projected_geom = fiona.transform.transform_geom(src_crs, dest_crs, geom)
+            area = shapely.geometry.shape(projected_geom).area / 1000000.0 # we calculate the area in square meters then convert to square kilometers
+
+            shape = shapely.geometry.shape(geom)
+            areas.append(area)
             shapes.append(shape)
-    return shapes, crs
+    return shapes, areas, src_crs
 
 class DataLayerTypes(Enum):
     ESRI_WORLD_IMAGERY = 1
@@ -124,9 +143,9 @@ DATA_LAYERS = {
     "hcmc_sentinel": {
         "data_layer_type": DataLayerTypes.CUSTOM,
         "shapes": [
-            {"name": "Admin 1", "shapes_fn": "shapes/hcmc_sentinel_admin_1_clipped.geojson", "zone_name_key": "NAME_1"},
-            {"name": "Admin 2", "shapes_fn": "shapes/hcmc_sentinel_admin_2_clipped.geojson", "zone_name_key": "NAME_2"},
-            {"name": "Admin 3", "shapes_fn": "shapes/hcmc_sentinel_admin_3_clipped.geojson", "zone_name_key": "NAME_3"}
+            {"name": "Provinces", "shapes_fn": "shapes/hcmc_sentinel_admin_1_clipped.geojson", "zone_name_key": "NAME_1"},
+            {"name": "Districts", "shapes_fn": "shapes/hcmc_sentinel_admin_2_clipped.geojson", "zone_name_key": "NAME_2"},
+            {"name": "Wards", "shapes_fn": "shapes/hcmc_sentinel_admin_3_clipped.geojson", "zone_name_key": "NAME_3"}
         ],
         "data_fn": "tiles/hcmc_sentinel.tif",
         "padding": 1100
@@ -144,9 +163,9 @@ DATA_LAYERS = {
     "hcmc_dg": {
         "data_layer_type": DataLayerTypes.CUSTOM,
         "shapes": [
-            {"name": "Admin 1", "shapes_fn": "shapes/hcmc_digital-globe_admin_1_clipped.geojson", "zone_name_key": "NAME_1"},
-            {"name": "Admin 2", "shapes_fn": "shapes/hcmc_digital-globe_admin_2_clipped.geojson", "zone_name_key": "NAME_2"},
-            {"name": "Admin 3", "shapes_fn": "shapes/hcmc_digital-globe_admin_3_clipped.geojson", "zone_name_key": "NAME_3"}
+            {"name": "Provinces", "shapes_fn": "shapes/hcmc_digital-globe_admin_1_clipped.geojson", "zone_name_key": "NAME_1"},
+            {"name": "Districts", "shapes_fn": "shapes/hcmc_digital-globe_admin_2_clipped.geojson", "zone_name_key": "NAME_2"},
+            {"name": "Wards", "shapes_fn": "shapes/hcmc_digital-globe_admin_3_clipped.geojson", "zone_name_key": "NAME_3"}
         ],
         "data_fn": "tiles/HCMC.tif",
         "padding": 0
@@ -167,8 +186,9 @@ for k in DATA_LAYERS.keys():
         for zone_layer in DATA_LAYERS[k]["shapes"]:
             fn = os.path.join(ROOT_DIR, zone_layer["shapes_fn"])
             if os.path.exists(fn):
-                shapes, crs = load_geojson_as_list(fn)
+                shapes, areas, crs = load_geojson_as_list(fn)
                 zone_layer["shapes_geoms"] = shapes
+                zone_layer["shapes_areas"] = areas
                 zone_layer["shapes_crs"] = crs["init"]
             else:
                 print("WARNING: %s doesn't exist, this server will not be able to serve the '%s' dataset" % (fn, k))
