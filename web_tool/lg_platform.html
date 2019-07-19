@@ -64,8 +64,8 @@
                                 <label class="selected"><input type="radio" name="radClasses" class="radNewClass" value="Water" checked><span class="className">Water</span> (<span class="classCounts">0</span> samples since last retrain)</label>
                             </div>
                             <div class="radio">
-                                <button class="circle jscolor" data-class-name="Forest" data-jscolor="{valueElement:null,value:'008000',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
-                                <label><input type="radio" name="radClasses" class="radNewClass" value="Forest"><span class="className">Forest</span> (<span class="classCounts">0</span> samples since last retrain)</label>
+                                <button class="circle jscolor" data-class-name="Tree Canopy" data-jscolor="{valueElement:null,value:'008000',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
+                                <label><input type="radio" name="radClasses" class="radNewClass" value="Tree Canopy"><span class="className">Tree Canopy</span> (<span class="classCounts">0</span> samples since last retrain)</label>
                             </div>
                             <div class="radio">
                                 <button class="circle jscolor" data-class-name="Field" data-jscolor="{valueElement:null,value:'80FF80',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
@@ -156,6 +156,7 @@
 
         var currentPatches = [];
         var currentZoneLayerName = null;
+        var currentBasemapLayerName = null;
 
         var visible = true;
         var opacitySlider;
@@ -167,7 +168,7 @@
         var selectedClassIdx = 0;
         var classes = [
             {"name": "Water", "color": "#0000FF", "count": 0},
-            {"name": "Forest", "color": "#008000", "count": 0},
+            {"name": "Tree Canopy", "color": "#008000", "count": 0},
             {"name": "Field", "color": "#80FF80", "count": 0},
             {"name": "Built", "color": "#806060", "count": 0},
         ];
@@ -187,12 +188,25 @@
         var undoInProgress = false;
 
 
+        var defaultWeights = [
+            5,2,0.7,0.3
+        ]
+        var zoneMapsWeight = {};
         var zoneMaps = {};
         var defaultZoneStyle = {
             "fillOpacity": 0,
             "color": "#00ff00",
             "weight": 2,
             "opacity": 1
+        };
+
+        var defaultZoneStyle = function(w){
+            return  {
+                "fillOpacity": 0,
+                "color": "#00ff00",
+                "weight": 1.5*w,
+                "opacity": 1
+            }
         };
 
         var highlightedZoneStyle = {
@@ -205,7 +219,7 @@
         var forEachFeatureOnClick = function(feature, layer) {
             layer.on('click', function (e) {
                 for(k in zoneMaps){
-                    zoneMaps[k].setStyle(defaultZoneStyle);
+                    zoneMaps[k].setStyle(defaultZoneStyle(zoneMapsWeight[k]));
                 }
                 layer.setStyle(highlightedZoneStyle);
                 layer.bringToFront();
@@ -274,11 +288,14 @@
 
             if(tileLayers[DATASET]["shapes"] !== null){
                 for(zoneSetId in tileLayers[DATASET]["shapes"]){
-                    zoneMaps[tileLayers[DATASET]["shapes"][zoneSetId]["name"]] = L.geoJSON(null, {
-                        style: defaultZoneStyle,
+                    console.debug("Zonesetid", zoneSetId);
+                    var zoneName = tileLayers[DATASET]["shapes"][zoneSetId]["name"];
+                    zoneMapsWeight[zoneName] = defaultWeights[zoneSetId];
+                    zoneMaps[zoneName] = L.geoJSON(null, {
+                        style: defaultZoneStyle(zoneMapsWeight[zoneName]),
                         onEachFeature: forEachFeatureOnClick
                     });
-                    getZoneMap(zoneSetId, tileLayers[DATASET]["shapes"][zoneSetId]["name"], tileLayers[DATASET]["shapes"][zoneSetId]["shapes_fn"]);
+                    getZoneMap(zoneSetId, zoneName, tileLayers[DATASET]["shapes"][zoneSetId]["shapes_fn"]);
                 }
             }
 
@@ -286,8 +303,20 @@
             // Setup map layers
             //----------------------------------------------------------------------
 
+            var esriLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 20,
+                maxNativeZoom: 17,
+                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+            })
+
+            // var esriLayer = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            //     maxZoom: 20,
+            //     subdomains:['mt0','mt1','mt2','mt3']
+            // });
+
             var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 17,
+                maxZoom: 20,
+                maxNativeZoom: 17,
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             })
 
@@ -330,16 +359,21 @@
             //----------------------------------------------------------------------
 
             var baseMapString = tileLayers[DATASET]["location"][3];
+            currentBasemapLayerName = baseMapString;
+
             var baseMaps = {};
             baseMaps[baseMapString] = baseLayer;
             baseMaps["OpenStreetMap"] = osmLayer;
-
-            L.control.layers(
+            baseMaps["'Google Earth' like Imagery"] = esriLayer;
+            
+            var basemapLayerControl = L.control.layers(
                 baseMaps, null, {
                     collapsed:false,
                     position:"bottomleft"
                 }
             ).addTo(map);
+
+            var basemapLayerControlContainer = basemapLayerControl.getContainer();
 
             var zoneControl = L.control.layers(
                 zoneMaps, null, {
@@ -524,29 +558,33 @@
                     // Run the add sample path
                     if(currentSelection !== null){
                         if(isPointInsidePolygon(e.latlng, currentSelection)){
-                            curSelPoly = getPolyAround(e.latlng, CORRECTION_SIZE);
-                            var idx = currentPatches.length-1;
-                            doSendCorrection(curSelPoly, idx);
-                            
-                            var rect = L.rectangle(
-                                [curSelPoly[0], curSelPoly[2]],
-                                {
-                                    color: classes[selectedClassIdx]["color"],
-                                    weight: 1,
-                                    opacity: 1
-                                    //pane: "labels"
-                                }
-                            ).addTo(map);
-                            userPointList.push([rect, selectedClassIdx]);
+                            if(currentBasemapLayerName == tileLayers[DATASET]["location"][3]){
+                                curSelPoly = getPolyAround(e.latlng, CORRECTION_SIZE);
+                                var idx = currentPatches.length-1;
+                                doSendCorrection(curSelPoly, idx);
+                                
+                                var rect = L.rectangle(
+                                    [curSelPoly[0], curSelPoly[2]],
+                                    {
+                                        color: classes[selectedClassIdx]["color"],
+                                        weight: 1,
+                                        opacity: 1
+                                        //pane: "labels"
+                                    }
+                                ).addTo(map);
+                                userPointList.push([rect, selectedClassIdx]);
 
-                            map.dragging.disable();
-                            numClicks += 1
-                            window.setTimeout(function(){
-                                numClicks -= 1;
-                                if(numClicks == 0){
-                                    map.dragging.enable();
-                                }
-                            }, 700);
+                                map.dragging.disable();
+                                numClicks += 1
+                                window.setTimeout(function(){
+                                    numClicks -= 1;
+                                    if(numClicks == 0){
+                                        map.dragging.enable();
+                                    }
+                                }, 700);
+                            }else{
+                                notifyFailMessage("Please add corrections using the '"+tileLayers[DATASET]["location"][3]+"' imagery layer.")
+                            }
                         }else{
                             console.debug("Click not in selection");
                         }
@@ -564,6 +602,13 @@
                 currentZoneLayerName = name;
                 console.debug("Switched zone layer to: " + name);
             });
+
+            $(basemapLayerControlContainer).find('input[type=radio]').change(function() {
+                var name = $(this).siblings()[0].innerHTML.trim();
+                currentBasemapLayerName = name;
+                console.debug("Switched basemap layer to: " + name);
+            });
+
 
             $(document).keydown(function(e){
                 shiftKeyDown = e.shiftKey;

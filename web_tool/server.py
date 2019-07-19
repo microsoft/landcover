@@ -216,15 +216,15 @@ def retrain_model():
     data = bottle.request.json
     
     success, message = Session.model.retrain(**data["retrainArgs"])
+    
     if success:
         bottle.response.status = 200
         encoded_model_fn = Session.save(data["experiment"])
+        data["cached_model"] = encoded_model_fn 
+        Session.add_entry(data) # record this interaction
     else:
         data["error"] = message
         bottle.response.status = 500
-    
-    data["cached_model"] = encoded_model_fn 
-    Session.add_entry(data) # record this interaction
 
     data["message"] = message
     data["success"] = success
@@ -392,6 +392,7 @@ def pred_tile():
     if dataset not in DATA_LAYERS:
         raise ValueError("Dataset doesn't seem to be valid, do the datasets in js/tile_layers.js correspond to those in TileLayers.py")
 
+    shape_area = None
     if DATA_LAYERS[dataset]["data_layer_type"] == DataLayerTypes.ESRI_WORLD_IMAGERY:
         bottle.response.status = 400
         return json.dumps({"error": "Cannot currently download with ESRI World Imagery"})
@@ -405,7 +406,11 @@ def pred_tile():
             bottle.response.status = 400
             return json.dumps({"error": "You have not selected a set of zones to use"})
         print("Downloading using shapes from layer: %s" % (layer["name"]))
+        
+        shape_idx, _ = DataLoader.lookup_shape_by_extent(extent, layer["shapes_geoms"], layer["shapes_crs"])
+        shape_area = layer["shapes_areas"][shape_idx]
         naip_data, raster_profile, raster_transform = DataLoader.download_custom_data_by_extent(extent, shapes=layer["shapes_geoms"], shapes_crs=layer["shapes_crs"], data_fn=dl["data_fn"])
+
     naip_data = np.rollaxis(naip_data, 0, 3)
 
 
@@ -446,9 +451,14 @@ def pred_tile():
     data["downloadTIFF"] = "downloads/%s.tif" % (tmp_id)
 
     f = open(os.path.join(ROOT_DIR, "downloads/%s.txt" % (tmp_id)), "w")
-    f.write("Class id\tClass name\tFrequency\n")
+    f.write("Class id\tClass name\tPercent area\tArea (km^2)\n")
     for i in range(len(vals)):
-        f.write("%d\t%s\t%0.4f%%\n" % (vals[i], name_list[vals[i]], (counts[i] / np.sum(counts))*100))
+        pct_area = (counts[i] / np.sum(counts))
+        if shape_area is not None:
+            real_area = shape_area * pct_area
+        else:
+            real_area = -1
+        f.write("%d\t%s\t%0.4f%%\t%0.4f\n" % (vals[i], name_list[vals[i]], pct_area*100, real_area))
     f.close()
     data["downloadStatistics"] = "downloads/%s.txt" % (tmp_id)
 

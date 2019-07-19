@@ -131,7 +131,7 @@ var tileLayers = {
         "tileObject": L.tileLayer('tiles/yangon/{z}/{x}/{y}.png', {
             attribution: 'Georeferenced Image', 
             tms:true,
-            maxZoom: 17,
+            maxZoom: 20,
             maxNativeZoom: 16,
             minZoom: 10
         }),
@@ -147,14 +147,14 @@ var tileLayers = {
         "tileObject": L.tileLayer('tiles/hcmc_sentinel_tiles/{z}/{x}/{y}.png', {
             attribution: 'Georeferenced Image', 
             tms:true,
-            maxZoom: 17,
+            maxZoom: 20,
             maxNativeZoom: 16,
             minZoom: 10
         }),
         "shapes": [
-            {"name": "Admin 1", "shapes_fn": "shapes/hcmc_sentinel_admin_1_clipped.geojson", "zone_name_key": "NAME_1"},
-            {"name": "Admin 2", "shapes_fn": "shapes/hcmc_sentinel_admin_2_clipped.geojson", "zone_name_key": "NAME_2"},
-            {"name": "Admin 3", "shapes_fn": "shapes/hcmc_sentinel_admin_3_clipped.geojson", "zone_name_key": "NAME_3"}
+            {"name": "Provinces", "shapes_fn": "shapes/hcmc_sentinel_admin_1_clipped.geojson", "zone_name_key": "NAME_1"},
+            {"name": "Districts", "shapes_fn": "shapes/hcmc_sentinel_admin_2_clipped.geojson", "zone_name_key": "NAME_2"},
+            {"name": "Wards", "shapes_fn": "shapes/hcmc_sentinel_admin_3_clipped.geojson", "zone_name_key": "NAME_3"}
         ]
     },
     "yangon_lidar": {
@@ -183,9 +183,9 @@ var tileLayers = {
             minZoom: 14
         }),
         "shapes": [
-            {"name": "Admin 1", "shapes_fn": "shapes/hcmc_digital-globe_admin_1_clipped.geojson", "zone_name_key": "NAME_1"},
-            {"name": "Admin 2", "shapes_fn": "shapes/hcmc_digital-globe_admin_2_clipped.geojson", "zone_name_key": "NAME_2"},
-            {"name": "Admin 3", "shapes_fn": "shapes/hcmc_digital-globe_admin_3_clipped.geojson", "zone_name_key": "NAME_3"}
+            {"name": "Provinces", "shapes_fn": "shapes/hcmc_digital-globe_admin_1_clipped.geojson", "zone_name_key": "NAME_1"},
+            {"name": "Districts", "shapes_fn": "shapes/hcmc_digital-globe_admin_2_clipped.geojson", "zone_name_key": "NAME_2"},
+            {"name": "Wards", "shapes_fn": "shapes/hcmc_digital-globe_admin_3_clipped.geojson", "zone_name_key": "NAME_3"}
         ]
     },
     "airbus": {

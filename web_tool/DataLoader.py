@@ -53,16 +53,20 @@ def extent_to_transformed_geom(extent, dest_crs="EPSG:4269"):
 # Methods for DataLayerTypes.CUSTOM
 # ------------------------------------------------------
 
-def download_custom_data_by_extent(extent, shapes, shapes_crs, data_fn):
-    
-    # First, figure out which shape the extent is in
+def lookup_shape_by_extent(extent, shapes, shapes_crs):
     transformed_geom = extent_to_transformed_geom(extent, shapes_crs)
     transformed_shape = shapely.geometry.shape(transformed_geom)
     mask_geom = None
-    for shape in shapes:
+    for i, shape in enumerate(shapes):
         if shape.contains(transformed_shape):
-            mask_geom = shapely.geometry.mapping(shape)
-            break
+            return i, shape
+    raise ValueError("No shape contains the extent")
+
+def download_custom_data_by_extent(extent, shapes, shapes_crs, data_fn):
+    
+    # First, figure out which shape the extent is in
+    _, shape = lookup_shape_by_extent(extent, shapes, shapes_crs)
+    mask_geom = shapely.geometry.mapping(shape)
 
     # Second, crop out that area for running the entire model on
     f = rasterio.open(os.path.join(ROOT_DIR, data_fn), "r")
