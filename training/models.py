@@ -8,7 +8,7 @@ from keras.layers import Concatenate, Cropping2D, Lambda
 from keras.losses import categorical_crossentropy
 
 from training.unet import level_block
-from utils import load_nlcd_stats
+from training.utils import load_nlcd_stats
 
 def jaccard_loss(y_true, y_pred, smooth=0.001, num_classes=7):                                                                              
     intersection = y_true * y_pred                                                                                                          
@@ -148,6 +148,44 @@ def extended_model_bn_landcover(input_shape, num_classes, lr=0.003, loss=None):
     else:
         print("Loss function not specified, model not compiled")
     return model
+
+
+def extended2_model_bn_landcover(input_shape, num_classes, lr=0.003, loss=None):
+    inputs = Input(input_shape)
+
+    x1 = Conv2D(64, kernel_size=(3,3), strides=(1,1), padding="same", activation="relu")(inputs)
+    x2 = Conv2D(64, kernel_size=(5,5), strides=(1,1), padding="same", activation="relu")(inputs)
+    x3 = Conv2D(64, kernel_size=(7,7), strides=(1,1), padding="same", activation="relu")(inputs)
+    x = Concatenate(axis=-1)([x1,x2,x3])
+    x = Conv2D(96, kernel_size=(1,1), strides=(1,1), padding="same", activation="relu")(x)
+    x = BatchNormalization()(x)
+
+    x1 = Conv2D(64, kernel_size=(3,3), strides=(1,1), padding="same", activation="relu")(x)
+    x2 = Conv2D(64, kernel_size=(5,5), strides=(1,1), padding="same", activation="relu")(x)
+    x3 = Conv2D(64, kernel_size=(7,7), strides=(1,1), padding="same", activation="relu")(x)
+    x = Concatenate(axis=-1)([x1,x2,x3])
+    x = Conv2D(96, kernel_size=(1,1), strides=(1,1), padding="same", activation="relu")(x)
+    x = BatchNormalization()(x)
+
+    x1 = Conv2D(64, kernel_size=(3,3), strides=(1,1), padding="same", activation="relu")(x)
+    x2 = Conv2D(64, kernel_size=(5,5), strides=(1,1), padding="same", activation="relu")(x)
+    x3 = Conv2D(64, kernel_size=(7,7), strides=(1,1), padding="same", activation="relu")(x)
+    x = Concatenate(axis=-1)([x1,x2,x3])
+    x = Conv2D(64, kernel_size=(1,1), strides=(1,1), padding="same", activation="relu")(x)
+
+    outputs = Conv2D(num_classes, kernel_size=(1,1), strides=(1,1), padding="same", activation="softmax")(x)
+    model = Model(inputs=inputs, outputs=outputs)
+    
+    optimizer = Adam(lr=lr)
+
+    if loss == "jaccard":
+        model.compile(loss=jaccard_loss, metrics=["categorical_crossentropy", "accuracy", jaccard_loss], optimizer=optimizer)
+    elif loss == "crossentropy":
+        model.compile(loss="categorical_crossentropy", metrics=["categorical_crossentropy", "accuracy", jaccard_loss], optimizer=optimizer)
+    else:
+        print("Loss function not specified, model not compiled")
+    return model
+
 
 
 def extended2_model_bn_landcover(input_shape, num_classes, lr=0.003, loss=None):
