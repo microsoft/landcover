@@ -199,7 +199,7 @@ var tileLayers = {
             bounds: L.latLngBounds(L.latLng(36.882932, -76.2623637), L.latLng(36.7298842, -76.0249016))
         }),
         "shapes": [
-            {"name": "Grid", "shapes_fn": "shapes/airbus-data-grid-epsg4326.geojson", "zone_name_key": null}
+            {"name": "Grid", "shapes_fn": "shapes/airbus-data-grid-epsg4326.geojson", "zone_name_key": "id"}
         ]
     }
 };
