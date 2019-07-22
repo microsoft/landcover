@@ -173,10 +173,10 @@ DATA_LAYERS = {
     "airbus": {
         "data_layer_type": DataLayerTypes.CUSTOM,
         "shapes": [
-            {"name": "Grid", "shapes_fn": "shapes/airbus-data-grid-epsg4326.geojson", "zone_name_key": None}
+            {"name": "Grid", "shapes_fn": "shapes/airbus-data-grid-epsg4326.geojson", "zone_name_key": "id"}
         ],
-        "data_fn": "tiles/airbus_epsg4326.tif",
-        "padding": 0.003
+        "data_fn": "tiles/airbus_epsg26918.tif",
+        "padding": 150
     }
 }
 
