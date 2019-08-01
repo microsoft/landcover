@@ -28,10 +28,11 @@ def get_blob(container_name, blob_name):
     
     delete_temp_folders()
     
-    if(container_name == 'esri-naip'):
-        block_blob_service = BlockBlobService(account_name=cfg.mslandcoverstorageeast['account_name'], account_key=cfg.mslandcoverstorageeast["account_key"])
+    if(container_name == 'naip'):
+        block_blob_service = BlockBlobService(account_name=cfg.NAIP_ACCOUNT_NAME, sas_token=cfg.NAIP_SAS_TOKEN)
     else:
-        block_blob_service = BlockBlobService(account_name=cfg.modeloutput["account_name"], account_key=cfg.modeloutput["account_key"])
+        block_blob_service = BlockBlobService(account_name=cfg.MODELOUTPUT_ACCOUNT_NAME, 
+                             account_key=cfg.MODELOUTPUT_ACCOUNT_KEY)
 
     file_name = blob_name.split("/").pop(-1)
     temp_sub_folder = str(uuid.uuid4())

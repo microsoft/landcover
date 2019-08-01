@@ -23,6 +23,7 @@ import GeoTools
 
 import logging
 from azure_blob import *
+from flask import abort
 
 class GeoDataTypes(Enum):
     NAIP = 1
@@ -130,7 +131,13 @@ def get_data_by_extent(naip_fn, extent, geo_data_type):
     else:
         raise ValueError("GeoDataType not recognized")
     
-    fn, temp_folder = get_blob("esri-naip", fn.replace("/mnt/blobfuse/esri-naip/", ""))
+    try:
+        fn, temp_folder = get_blob("naip", fn.replace("/mnt/blobfuse/esri-naip/", ""))
+    except Exception as e:
+        print(str(e))
+        log.log_exception('Error reading the images from blob container NAIP: ' + str(e))
+        abort(500, 'Error reading the images: ' + str(e))
+
 
     with rasterio.open(fn) as f:
         #f = rasterio.open(fn, "r")

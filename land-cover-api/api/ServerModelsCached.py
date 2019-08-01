@@ -18,8 +18,13 @@ def run(naip, fn, extent, buffer):
 
 def get_cached_by_extent(fn, extent, buffer):
     fn = fn.replace("esri-naip/", "full-usa-output/1_3_2019/")[:-4] + "_prob.tif"
-
-    fn, temp_folder = get_blob("full-usa-output", fn.replace("/mnt/blobfuse/full-usa-output/", ""))
+    
+    try:
+        fn, temp_folder = get_blob("full-usa-output", fn.replace("/mnt/blobfuse/full-usa-output/", ""))
+    except Exception as e:
+        print(str(e))
+        log.log_exception('Error reading the images from blob container full-usa-output: ' + str(e))
+        abort(500, 'Error reading the images: ' + str(e))
 
     with rasterio.open(fn, "r") as f:
         #f = rasterio.open(fn, "r")

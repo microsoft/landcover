@@ -43,7 +43,7 @@ ENV SERVICE_OWNER=AI4E_Test \
     SERVICE_MODEL_FRAMEOWRK_VERSION=3.6.6 \
     ENVSERVICE_MODEL_VERSION=1.0
 
-ENV API_PREFIX=/v2/landcover
+ENV API_PREFIX=/v2
 
 # Expose the port that is to be used when calling your API
 EXPOSE 80

@@ -47,7 +47,7 @@ class APITest(TestCase):
 
     def test_get_tile_by_extent(self):
         with self.app as client:
-            api_url = self.api_prefix +'/tile_by_extent'
+            api_url = self.api_prefix +'/tilebyextent'
 
             data = get_tile_input_json(Options.tilebyExtent.value, random=False)
            
@@ -58,7 +58,7 @@ class APITest(TestCase):
             
     def test_classify_by_extent(self):
         with self.app as client:
-            api_url = self.api_prefix + '/classify_by_extent'
+            api_url = self.api_prefix + '/classifybyextent'
 
             data = get_tile_input_json(Options.classifybyExtent.value, random=False)
             resp = client.post(api_url, json=data, headers=self.headers)

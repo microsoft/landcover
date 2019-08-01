@@ -59,7 +59,6 @@ validator = InputValidator()
 def enable_cors(response):
     response.headers['Access-Control-Allow-Origin'] = '*'
     response.headers['Access-Control-Allow-Methods'] = 'POST'
-    #response.headers['Access-Control-Allow-Methods'] = 'PUT, GET, POST, DELETE, OPTIONS'
     response.headers['Access-Control-Allow-Headers'] = 'Origin, Accept, Content-Type, X-Requested-With, X-CSRF-Token'
 
     return response
@@ -104,7 +103,7 @@ def get_tile():
                                            data=post_data, 
                                            type=InputType.latlon)
 
-@app.route(api_prefix + '/classify_by_extent', methods=['POST'])
+@app.route(api_prefix + '/classifybyextent', methods=['POST'])
 def classify_extent():
     is_valid, msg = validator.validate_input_data(request.data, InputType.extent,
                                                   RequestType.classify)   
@@ -117,7 +116,7 @@ def classify_extent():
                                            data=post_data, 
                                            type=InputType.extent)
 
-@app.route(api_prefix + '/tile_by_extent', methods=['POST'])
+@app.route(api_prefix + '/tilebyextent', methods=['POST'])
 def get_tile_by_extent():
     is_valid, msg = validator.validate_input_data(request.data, InputType.extent,
                                                   RequestType.tile)   
