@@ -4,7 +4,6 @@ import numpy as np
 
 import sklearn.base
 from sklearn.neural_network import MLPClassifier
-from xgboost import XGBClassifier
 from keras import optimizers
 
 from ServerModelsAbstract import BackendModel
