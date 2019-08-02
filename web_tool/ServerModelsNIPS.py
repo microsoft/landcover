@@ -34,10 +34,16 @@ class KerasDenseFineTune(BackendModel):
 
         self.model_fn = model_fn
         
-        tmodel = keras.models.load_model(self.model_fn, compile=False, custom_objects={
-            "jaccard_loss":keras.metrics.mean_squared_error, 
-            "loss":keras.metrics.mean_squared_error
-        })
+        if self.model_fn.endswith(".h5"):
+            tmodel = keras.models.load_model(self.model_fn, compile=False, custom_objects={
+                "jaccard_loss":keras.metrics.mean_squared_error, 
+                "loss":keras.metrics.mean_squared_error
+            })
+        else:
+            with open(self.model_fn + ".json", "r") as f:
+                model_json = f.read()
+            tmodel = keras.models.model_from_json(model_json)
+            tmodel.load_weights(self.model_fn + "_weights.h5")
 
         feature_layer_idx = None
         if superres:
