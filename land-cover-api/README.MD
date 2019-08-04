@@ -122,7 +122,7 @@ Output example:
 ## Setup
 1.  Copy the files from `//mslandcoverstorageeast.file.core.windows.net/chesapeake/demo_data/` into `api/data/`. This should include: `list_all_naip.txt`, `tile_index.dat`, `tile_index.idx`, `tiles.p`.
 2.  Update azure_config.py file with the SAS token for the NAIP blob container as well as the account key for the modeloutput blob storage
- file with the account key for blob storage 'mslandcoverstorageeast'
+    account
 3.  Navigate to the folder containing the 'DockerFile' then build the image using docker using the following command  (Refer to [AI for Earth API Development tutorial](https://github.com/Microsoft/AIforEarth-API-Development/blob/master/Quickstart.md) for more info):
 
   ```
