@@ -6,7 +6,8 @@ var doRetrain = function(){
         "type": "retrain",
         "dataset": DATASET,
         "experiment": EXP_NAME,
-        "retrainArgs": retrainArgs
+        "retrainArgs": retrainArgs,
+        "SESSION": SESSION_ID
     };
     $.ajax({
         type: "POST",
@@ -57,7 +58,8 @@ var doReset = function(notify=true, initialReset=false){
         "type": "reset",
         "dataset": DATASET,
         "experiment": EXP_NAME,
-        "initialReset": initialReset
+        "initialReset": initialReset,
+        "SESSION": SESSION_ID
     };
     $.ajax({
         type: "POST",
@@ -89,8 +91,6 @@ var doReset = function(notify=true, initialReset=false){
 var doDownloadTile = function(){
 
     if(currentZoneLayerName !== null){
-
-
         if(currentSelection !== null){
             var t = currentSelection._latlngs[0];
             var polygon = [
@@ -121,8 +121,11 @@ var doDownloadTile = function(){
                     }
                 },
                 "classes": classes,
-                "zoneLayerName": currentZoneLayerName
+                "zoneLayerName": currentZoneLayerName,
+                "SESSION": SESSION_ID
             };
+
+            var testLayer = L.imageOverlay("", currentZone.getBounds(), {pane: "labels"}).addTo(map);
 
             $.ajax({
                 type: "POST",
@@ -143,6 +146,9 @@ var doDownloadTile = function(){
                     $("#lblPNG").html("<a href='"+pngURL+"' target='_blank'>Download PNG</a>");
                     $("#lblTIFF").html("<a href='"+tiffURL+"' target='_blank'>Download TIFF</a>");
                     $("#lblStatistics").html("<a href='"+statisticsURL+"' target='_blank'>Download Class Statistics</a>");
+
+                    testLayer.setUrl(pngURL);
+
                 },
                 error: notifyFail,
                 dataType: "json",
@@ -201,7 +207,8 @@ var doSendCorrection = function(polygon, idx){
             }
         },
         "classes": classes,
-        "value" : selectedClassIdx
+        "value" : selectedClassIdx,
+        "SESSION": SESSION_ID
     };
 
 
@@ -230,6 +237,7 @@ var doUndo = function(){
         "type": "undo",
         "dataset": DATASET,
         "experiment": EXP_NAME,
+        "SESSION": SESSION_ID
     };
 
     if(!undoInProgress){
@@ -327,6 +335,7 @@ var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
             }
         },
         "classes": classes,
+        "SESSION": SESSION_ID
     };
     
     $.ajax({
@@ -341,19 +350,25 @@ var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
                 "data:image/png;base64," + resp.output_hard,
             ];
             
-            var img = $("#exampleImage_"+currentImgIdx);
-            img.attr("src", srcs[soft0_hard1]);
-            img.attr("data-name", resp.model_name);                    
-
+            // Display the result on the map if we are the currently selected model
             if(currentImgIdx == currentPatches[idx]["activeImgIdx"]){
-                img.addClass("active");
+                currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
+            }
 
-                if(pred0_naip1 == 0){
-                    //var imageLayer = L.imageOverlay(srcs[soft0_hard1], L.polygon(polygon).getBounds()).addTo(map);
-                    currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
+            // Save the resulting data in all cases
+            currentPatches[idx]["patches"][currentImgIdx]["srcs"] = srcs;
+
+            // Update the right panel if we are the current "last item", we need to check for this because the order we send out requests to the API isn't necessarily the order they will come back
+            if(idx == currentPatches.length-1){
+                var img = $("#exampleImage_"+currentImgIdx);
+                img.attr("src", srcs[soft0_hard1]);
+                img.attr("data-name", resp.model_name);                    
+                
+                if(currentImgIdx == currentPatches[idx]["activeImgIdx"]){
+                    img.addClass("active");
                 }
             }
-            currentPatches[idx]["patches"][currentImgIdx]["srcs"] = srcs;
+
         },
         error: notifyFail,
         dataType: "json",
@@ -384,7 +399,8 @@ var requestInputPatch = function(idx, polygon, serviceURL){
             "spatialReference": {
                 "latestWkid": 3857
             }
-        }
+        },
+        "SESSION": SESSION_ID
     };
 
     $.ajax({
@@ -394,12 +410,12 @@ var requestInputPatch = function(idx, polygon, serviceURL){
         success: function(data, textStatus, jqXHR){
             var resp = data;
             var naipImg = "data:image/png;base64," + resp.input_naip;
-            currentPatches[idx]["naipImg"] = naipImg 
-            $("#inputImage").attr("src", naipImg);
 
-            if(pred0_naip1 == 1){
-                //var imageLayer = L.imageOverlay(naipImg, L.polygon(polygon).getBounds()).addTo(map);
-                currentPatches[idx]["imageLayer"].setUrl(naipImg);
+            currentPatches[idx]["naipImg"] = naipImg
+            
+            // Update the right panel if we are the current "last item", we need to check for this because the order we send out requests to the API isn't necessarily the order they will come back
+            if(idx == currentPatches.length-1){
+                $("#inputImage").attr("src", naipImg);
             }
         },
         error: notifyFail,
@@ -418,7 +434,8 @@ var doLoad = function(cachedModel){
         "type": "load",
         "dataset": DATASET,
         "experiment": EXP_NAME,
-        "cachedModel": cachedModel
+        "cachedModel": cachedModel,
+        "SESSION": SESSION_ID
     };
     $.ajax({
         type: "POST",
