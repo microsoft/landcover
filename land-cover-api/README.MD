@@ -11,15 +11,12 @@
 - 'DockerFile'
   - Contains command line instructions used by docker to build a docker image, it also includes commands for installing packages required
     for the api
-- 'blob_mount.json'
-    - Contains information (account name, account key, container name) that will be mounted on the server when docker run command
-      is executed
 
 ## API
 
 Contains the follwing methods:
 
-### *POST `/classify_by_extent`*
+### *POST `/classifybyextent`*
 
 Input example:
 ```js
@@ -50,7 +47,7 @@ Output example:
 }
 ```
 
-### *POST `/tile_by_extent`*
+### *POST `/tilebyextent`*
 
 Input example:
 ```js
@@ -124,7 +121,8 @@ Output example:
 
 ## Setup
 1.  Copy the files from `//mslandcoverstorageeast.file.core.windows.net/chesapeake/demo_data/` into `api/data/`. This should include: `list_all_naip.txt`, `tile_index.dat`, `tile_index.idx`, `tiles.p`.
-2.  Update blob_mount.json file with the account key for blob storage 'mslandcoverstorageeast'
+2.  Update azure_config.py file with the SAS token for the NAIP blob container as well as the account key for the modeloutput blob storage
+ file with the account key for blob storage 'mslandcoverstorageeast'
 3.  Navigate to the folder containing the 'DockerFile' then build the image using docker using the following command  (Refer to [AI for Earth API Development tutorial](https://github.com/Microsoft/AIforEarth-API-Development/blob/master/Quickstart.md) for more info):
 
   ```
@@ -133,7 +131,7 @@ Output example:
 4.  Run the image by executing the following command (Refer to [AI for Earth API Development tutorial](https://github.com/Microsoft/AIforEarth-API-Development/blob/master/Quickstart.md) for more info):
 
   ```
-  docker run -p 8001:80 --privileged --cap-add=SYS_ADMIN --device=/dev/fuse "your_custom_image_name:1"
+  docker run -p 8001:80 "your_custom_image_name:1"
   ```
   (use a different port number other than 8001 if the port is already in use) 
   
