@@ -32,9 +32,9 @@ import joblib
 from azure.cosmosdb.table.tableservice import TableService
 from azure.cosmosdb.table.models import Entity
 
-import DataLoader
+from DataLoaderNew import warp_data_to_3857, crop_data_by_extent
 from Heatmap import Heatmap
-from TileLayers import DataLayerTypes, DATA_LAYERS
+from Datasets import DATASETS
 from Utils import get_random_string, class_prediction_to_img, get_shape_layer_by_name, AtomicCounter
 
 import ServerModelsNIPS
@@ -250,7 +250,7 @@ def record_correction():
     Heatmap.increment(tile.z, tile.y, tile.x)
 
     #
-    naip_crs, naip_transform, naip_index, padding = Session.current_transform
+    naip_crs, naip_transform, naip_index = Session.current_transform
 
     xs, ys = fiona.transform.transform(origin_crs, naip_crs.to_dict(), [tlon,blon], [tlat,blat])
     
@@ -319,24 +319,12 @@ def pred_patch():
     #   Load the input data sources for the given tile  
     # ------------------------------------------------------
 
-    if dataset not in DATA_LAYERS:
+    if dataset not in DATASETS:
         raise ValueError("Dataset doesn't seem to be valid, do the datasets in js/tile_layers.js correspond to those in TileLayers.py")
 
-    if DATA_LAYERS[dataset]["data_layer_type"] == DataLayerTypes.ESRI_WORLD_IMAGERY:
-        padding = 0.0005
-        naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_esri_data_by_extent(extent, padding=padding)
-    elif DATA_LAYERS[dataset]["data_layer_type"] == DataLayerTypes.USA_NAIP_LIST:
-        padding = 20
-        naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_usa_data_by_extent(extent, padding=padding, geo_data_type=DataLoader.GeoDataTypes.NAIP)
-    elif DATA_LAYERS[dataset]["data_layer_type"] == DataLayerTypes.CUSTOM:
-        if "padding" in DATA_LAYERS[dataset]:
-            padding = DATA_LAYERS[dataset]["padding"]
-        else:
-            padding = 20
-        naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_custom_data_by_extent(extent, padding=padding, data_fn=DATA_LAYERS[dataset]["data_fn"])
-
+    naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DATASETS[dataset]["data_loader"].get_data_from_extent(extent)
     naip_data = np.rollaxis(naip_data, 0, 3) # we do this here instead of get_data_by_extent because not all GeoDataTypes will have a channel dimension
-    Session.current_transform = (naip_crs, naip_transform, naip_index, padding)
+    Session.current_transform = (naip_crs, naip_transform, naip_index)
 
     # ------------------------------------------------------
     # Step 3
@@ -352,8 +340,8 @@ def pred_patch():
     # Step 4
     #   Warp output to EPSG:3857 and crop off the padded area
     # ------------------------------------------------------
-    output, output_bounds = DataLoader.warp_data_to_3857(output, naip_crs, naip_transform, naip_bounds)
-    output = DataLoader.crop_data_by_extent(output, output_bounds, extent)
+    output, output_bounds = warp_data_to_3857(output, naip_crs, naip_transform, naip_bounds)
+    output = crop_data_by_extent(output, output_bounds, extent)
 
     # ------------------------------------------------------
     # Step 5
@@ -387,30 +375,16 @@ def pred_tile():
     dataset = data["dataset"]
     zone_layer_name = data["zoneLayerName"]
    
-
-    if dataset not in DATA_LAYERS:
-        raise ValueError("Dataset doesn't seem to be valid, do the datasets in js/tile_layers.js correspond to those in TileLayers.py")
-
-    shape_area = None
-    if DATA_LAYERS[dataset]["data_layer_type"] == DataLayerTypes.ESRI_WORLD_IMAGERY:
+    if dataset not in DATASETS:
+        raise ValueError("Dataset doesn't seem to be valid, do the datasets in js/tile_layers.js correspond to those in TileLayers.py")    
+    
+    try:
+        naip_data, raster_profile, raster_transform, raster_bounds, raster_crs = DATASETS[dataset]["data_loader"].get_data_from_shape_by_extent(extent, zone_layer_name)
+        naip_data = np.rollaxis(naip_data, 0, 3)
+        shape_area = DATASETS[dataset]["data_loader"].get_area_from_shape_by_extent(extent, zone_layer_name)      
+    except NotImplementedError as e:
         bottle.response.status = 400
-        return json.dumps({"error": "Cannot currently download with ESRI World Imagery"})
-    elif DATA_LAYERS[dataset]["data_layer_type"] == DataLayerTypes.USA_NAIP_LIST:
-        naip_data, raster_profile, raster_transform, raster_bounds, raster_crs = DataLoader.download_usa_data_by_extent(extent, geo_data_type=DataLoader.GeoDataTypes.NAIP)
-    elif DATA_LAYERS[dataset]["data_layer_type"] == DataLayerTypes.CUSTOM:
-        dl = DATA_LAYERS[dataset]
-        layer = get_shape_layer_by_name(dl["shapes"], zone_layer_name)
-
-        if layer is None:
-            bottle.response.status = 400
-            return json.dumps({"error": "You have not selected a set of zones to use"})
-        print("Downloading using shapes from layer: %s" % (layer["name"]))
-        
-        shape_idx, _ = DataLoader.lookup_shape_by_extent(extent, layer["shapes_geoms"], layer["shapes_crs"])
-        shape_area = layer["shapes_areas"][shape_idx]
-        naip_data, raster_profile, raster_transform, raster_bounds, raster_crs = DataLoader.download_custom_data_by_extent(extent, shapes=layer["shapes_geoms"], shapes_crs=layer["shapes_crs"], data_fn=dl["data_fn"])
-
-    naip_data = np.rollaxis(naip_data, 0, 3)
+        return json.dumps({"error": "Cannot currently download imagery with 'Basemap' based datasets"})
 
 
     output = Session.model.run(naip_data, extent, True)
@@ -421,7 +395,6 @@ def pred_tile():
     nodata_mask = np.sum(naip_data == 0, axis=2) == 4
     output_hard[nodata_mask] = 255
     vals, counts = np.unique(output_hard[~nodata_mask], return_counts=True)
-    
 
     # ------------------------------------------------------
     # Step 4
@@ -432,7 +405,7 @@ def pred_tile():
     img_hard = cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGRA)
     img_hard[nodata_mask] = [0,0,0,0]
 
-    img_hard, img_hard_bounds = DataLoader.warp_data_to_3857(img_hard, raster_crs, raster_transform, raster_bounds, resolution=10)
+    img_hard, img_hard_bounds = warp_data_to_3857(img_hard, raster_crs, raster_transform, raster_bounds, resolution=10)
 
     cv2.imwrite(os.path.join(ROOT_DIR, "downloads/%s.png" % (tmp_id)), img_hard)
     data["downloadPNG"] = "downloads/%s.png" % (tmp_id)
@@ -478,35 +451,14 @@ def get_input():
     extent = data["extent"]
     dataset = data["dataset"]
 
-    # ------------------------------------------------------
-    # Step 1
-    #   Transform the input extent into a shapely geometry
-    #   Find the tile assosciated with the geometry
-    # ------------------------------------------------------
-    # ------------------------------------------------------
-    # Step 2
-    #   Load the input data sources for the given tile  
-    # ------------------------------------------------------
-    if dataset not in DATA_LAYERS:
-        raise ValueError("Dataset doesn't seem to be valid, do the datasets in js/tile_layers.js correspond to those in TileLayers.py")
+    if dataset not in DATASETS:
+        raise ValueError("Dataset doesn't seem to be valid, please check Datasets.py")
 
-    if DATA_LAYERS[dataset]["data_layer_type"] == DataLayerTypes.ESRI_WORLD_IMAGERY:
-        padding = 0.0005
-        naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_esri_data_by_extent(extent, padding=padding)
-    elif DATA_LAYERS[dataset]["data_layer_type"] == DataLayerTypes.USA_NAIP_LIST:
-        padding = 20
-        naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_usa_data_by_extent(extent, padding=padding, geo_data_type=DataLoader.GeoDataTypes.NAIP)
-    elif DATA_LAYERS[dataset]["data_layer_type"] == DataLayerTypes.CUSTOM:
-        if "padding" in DATA_LAYERS[dataset]:
-            padding = DATA_LAYERS[dataset]["padding"]
-        else:
-            padding = 20
-        naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DataLoader.get_custom_data_by_extent(extent, padding=padding, data_fn=DATA_LAYERS[dataset]["data_fn"])
+    naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DATASETS[dataset]["data_loader"].get_data_from_extent(extent)
     naip_data = np.rollaxis(naip_data, 0, 3)
     
-
-    naip_data, new_bounds = DataLoader.warp_data_to_3857(naip_data, naip_crs, naip_transform, naip_bounds)
-    naip_data = DataLoader.crop_data_by_extent(naip_data, new_bounds, extent)
+    naip_data, new_bounds = warp_data_to_3857(naip_data, naip_crs, naip_transform, naip_bounds)
+    naip_data = crop_data_by_extent(naip_data, new_bounds, extent)
 
     naip_img = naip_data[:,:,:3].copy().astype(np.uint8) # keep the RGB channels to save as a color image
 
@@ -517,20 +469,40 @@ def get_input():
     bottle.response.status = 200
     return json.dumps(data)
 
+#---------------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------------
 
-@bottle.get("/")
-def root_app():
+def get_root_app():
     return bottle.static_file("index.html", root="./" + ROOT_DIR + "/")
 
-@bottle.get("/favicon.ico")
-def favicon():
+def get_datasets():
+    tile_layers = "var tileLayers = {\n"
+    for dataset_name, dataset in DATASETS.items():
+        tile_layers += '"%s": %s,\n' % (dataset_name, dataset["javascript_string"])
+    tile_layers += "};"
+    
+    interesting_locations = '''var interestingLocations = [
+        L.marker([47.60, -122.15]).bindPopup('Bellevue, WA'),
+        L.marker([39.74, -104.99]).bindPopup('Denver, CO'),
+        L.marker([37.53,  -77.44]).bindPopup('Richmond, VA'),
+        L.marker([39.74, -104.99]).bindPopup('Denver, CO'),
+        L.marker([37.53,  -77.44]).bindPopup('Richmond, VA'),
+        L.marker([33.746526, -84.387522]).bindPopup('Atlanta, GA'),
+        L.marker([32.774250, -96.796122]).bindPopup('Dallas, TX'),
+        L.marker([40.106675, -88.236409]).bindPopup('Champaign, IL'),
+        L.marker([38.679485, -75.874667]).bindPopup('Dorchester County, MD'),
+        L.marker([34.020618, -118.464412]).bindPopup('Santa Monica, CA'),
+        L.marker([37.748517, -122.429771]).bindPopup('San Fransisco, CA'),
+        L.marker([38.601951, -98.329227]).bindPopup('Ellsworth County, KS')
+    ];'''
+
+    return tile_layers + '\n\n' + interesting_locations
+
+def get_favicon():
     return
 
-@bottle.get("/<filepath:re:.*>")
-def everything_else(filepath):
+def get_everything_else(filepath):
     return bottle.static_file(filepath, root="./" + ROOT_DIR + "/")
-
-
 
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
@@ -668,9 +640,10 @@ def main():
 
     app.route("/heatmap/<z>/<y>/<x>", method="GET", callback=do_heatmap)
 
-    app.route("/", method="GET", callback=root_app)
-    app.route("/favicon.ico", method="GET", callback=favicon)
-    app.route("/<filepath:re:.*>", method="GET", callback=everything_else)
+    app.route("/", method="GET", callback=get_root_app)
+    app.route("/js/datasets.js", method="GET", callback=get_datasets)
+    app.route("/favicon.ico", method="GET", callback=get_favicon)
+    app.route("/<filepath:re:.*>", method="GET", callback=get_everything_else)
 
     bottle_server_kwargs = {
         "host": args.host,
