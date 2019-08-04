@@ -4,56 +4,48 @@ import numpy as np
 
 import sklearn.base
 from sklearn.neural_network import MLPClassifier
-from keras import optimizers
+
+import tensorflow as tf
+import keras
+import keras.backend as K
+import keras.models
+import keras.optimizers
 
 from ServerModelsAbstract import BackendModel
-
 from web_tool import ROOT_DIR
 
 AUGMENT_MODEL = MLPClassifier(
-    hidden_layer_sizes=(10),
+    hidden_layer_sizes=(),
     activation='relu',
-    alpha=0.0001,
+    alpha=0.001,
     solver='lbfgs',
-    tol=0.0001,
+    tol=0.1,
     verbose=False,
     validation_fraction=0.0,
     n_iter_no_change=10
 )
 
-
 class KerasDenseFineTune(BackendModel):
 
     def __init__(self, model_fn, gpuid, superres=False, verbose=False):
-        # Load model
-        os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-        os.environ["CUDA_VISIBLE_DEVICES"] = str(gpuid)
-        import keras
-        import keras.models
-        import keras.backend as K
 
         self.model_fn = model_fn
         
-        if self.model_fn.endswith(".h5"):
+        with tf.device('/gpu:%d' % gpuid):
             tmodel = keras.models.load_model(self.model_fn, compile=False, custom_objects={
                 "jaccard_loss":keras.metrics.mean_squared_error, 
                 "loss":keras.metrics.mean_squared_error
             })
-        else:
-            with open(self.model_fn + ".json", "r") as f:
-                model_json = f.read()
-            tmodel = keras.models.model_from_json(model_json)
-            tmodel.load_weights(self.model_fn + "_weights.h5")
 
-        feature_layer_idx = None
-        if superres:
-            feature_layer_idx = -4
-        else:
-            feature_layer_idx = -3
-        
-        self.model = keras.models.Model(inputs=tmodel.inputs, outputs=[tmodel.outputs[0], tmodel.layers[feature_layer_idx].output])
-        self.model.compile("sgd","mse")
-        self.model._make_predict_function()
+            feature_layer_idx = None
+            if superres:
+                feature_layer_idx = -4
+            else:
+                feature_layer_idx = -3
+            
+            self.model = keras.models.Model(inputs=tmodel.inputs, outputs=[tmodel.outputs[0], tmodel.layers[feature_layer_idx].output])
+            self.model.compile("sgd","mse")
+            self.model._make_predict_function()	# have to initialize before threading
 
         self.output_channels = self.model.output_shape[0][3]
         self.output_features = self.model.output_shape[1][3]
@@ -231,6 +223,7 @@ class KerasDenseFineTune(BackendModel):
                 batch_indices.append((y_index, x_index))
                 batch_count+=1
 
+
         model_output = self.model.predict(np.array(batch), batch_size=batch_size, verbose=0)
         
         for i, (y, x) in enumerate(batch_indices):
@@ -341,7 +334,7 @@ class KerasBackPropFineTune(BackendModel):
 
         for i in range(num_layers-last_k_layers, num_layers):
             self.model.layers[i].trainable = True
-        self.model.compile(optimizers.Adam(lr=learning_rate, amsgrad=True), "categorical_crossentropy")
+        self.model.compile(keras.optimizers.Adam(lr=learning_rate, amsgrad=True), "categorical_crossentropy")
 
         if len(self.batch_x) > 0:
 

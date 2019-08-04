@@ -8,7 +8,6 @@ import time
 import datetime
 import collections
 
-#from gevent import monkey; monkey.patch_all()
 import bottle
 
 import argparse
@@ -397,7 +396,7 @@ def pred_tile():
         bottle.response.status = 400
         return json.dumps({"error": "Cannot currently download with ESRI World Imagery"})
     elif DATA_LAYERS[dataset]["data_layer_type"] == DataLayerTypes.USA_NAIP_LIST:
-        naip_data, raster_profile, raster_transform = DataLoader.download_usa_data_by_extent(extent, geo_data_type=DataLoader.GeoDataTypes.NAIP)
+        naip_data, raster_profile, raster_transform, raster_bounds, raster_crs = DataLoader.download_usa_data_by_extent(extent, geo_data_type=DataLoader.GeoDataTypes.NAIP)
     elif DATA_LAYERS[dataset]["data_layer_type"] == DataLayerTypes.CUSTOM:
         dl = DATA_LAYERS[dataset]
         layer = get_shape_layer_by_name(dl["shapes"], zone_layer_name)
@@ -409,7 +408,7 @@ def pred_tile():
         
         shape_idx, _ = DataLoader.lookup_shape_by_extent(extent, layer["shapes_geoms"], layer["shapes_crs"])
         shape_area = layer["shapes_areas"][shape_idx]
-        naip_data, raster_profile, raster_transform = DataLoader.download_custom_data_by_extent(extent, shapes=layer["shapes_geoms"], shapes_crs=layer["shapes_crs"], data_fn=dl["data_fn"])
+        naip_data, raster_profile, raster_transform, raster_bounds, raster_crs = DataLoader.download_custom_data_by_extent(extent, shapes=layer["shapes_geoms"], shapes_crs=layer["shapes_crs"], data_fn=dl["data_fn"])
 
     naip_data = np.rollaxis(naip_data, 0, 3)
 
@@ -423,7 +422,6 @@ def pred_tile():
     output_hard[nodata_mask] = 255
     vals, counts = np.unique(output_hard[~nodata_mask], return_counts=True)
     
-    
 
     # ------------------------------------------------------
     # Step 4
@@ -431,8 +429,11 @@ def pred_tile():
     # ------------------------------------------------------
     tmp_id = get_random_string(8)
     img_hard = np.round(class_prediction_to_img(output, True, color_list)*255,0).astype(np.uint8)
-    img_hard = cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGR)
-    img_hard[nodata_mask] = [0,0,0]
+    img_hard = cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGRA)
+    img_hard[nodata_mask] = [0,0,0,0]
+
+    img_hard, img_hard_bounds = DataLoader.warp_data_to_3857(img_hard, raster_crs, raster_transform, raster_bounds, resolution=10)
+
     cv2.imwrite(os.path.join(ROOT_DIR, "downloads/%s.png" % (tmp_id)), img_hard)
     data["downloadPNG"] = "downloads/%s.png" % (tmp_id)
 
@@ -572,9 +573,12 @@ def main():
         help="Model to use", required=True
     )
     parser.add_argument("--model_fn", action="store", dest="model_fn", type=str, help="Model fn to use", default=None)
-    parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", default=0)
+    parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", default=None)
 
     args = parser.parse_args(sys.argv[1:])
+
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "" if args.gpuid is None else str(args.gpuid)
 
     model = None
     if args.model == "cached":
@@ -589,6 +593,7 @@ def main():
     elif args.model == "nips_sr":
         if args.fine_tune == "last_layer":
             model = ServerModelsNIPS.KerasDenseFineTune(args.model_fn, args.gpuid, superres=True)
+            model1 = ServerModelsNIPS.KerasDenseFineTune(args.model_fn, 1, superres=True)
         elif args.fine_tune == "last_k_layers":
             model = ServerModelsNIPS.KerasBackPropFineTune(args.model_fn, args.gpuid, superres=True)
     elif args.model == "nips_hr":
@@ -630,6 +635,8 @@ def main():
 
     Session.model = model
     Session.storage_type = args.storage_type
+
+
 
     # Setup the bottle server 
     app = bottle.Bottle()
@@ -673,9 +680,10 @@ def main():
         "reloader": False,
         "options": {"threads": 12} # TODO: As of bottle version 0.12.17, the WaitressBackend does not get the **options kwargs
     }
-    app.run(**bottle_server_kwargs)
-    #from waitress import serve
-    #serve(app, host=args.host, port=args.port, threads=12)
+    #app.run(**bottle_server_kwargs)
+    
+    from waitress import serve
+    serve(app, host=args.host, port=args.port, threads=12)
 
 
 if __name__ == "__main__":

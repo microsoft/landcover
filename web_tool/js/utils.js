@@ -29,13 +29,22 @@ var updateClassLabel = function(obj){
 
 var getRandomColor = function(){
     // From https://stackoverflow.com/questions/1484506/random-color-generator
-    var letters = '0123456789ABCDEF';
-    var color = '#';
-    for (var i = 0; i < 6; i++) {
+    let letters = '0123456789ABCDEF';
+    let color = '#';
+    for (let i = 0; i < 6; i++) {
         color += letters[Math.floor(Math.random() * 16)];
     }
     return color;
 };
+
+var getRandomString = function(length=8){
+    let alphabet = "abcdefghijklmnopqrstuvwxyz1234567890";
+    let str = "";
+    for(let i=0; i<length; i++){
+        str += alphabet[Math.floor(Math.random() * alphabet.length)];
+    }
+    return str;
+}
 
 var animateSuccessfulCorrection = function(countdown, time){
     animating = true;
@@ -241,6 +250,21 @@ var getZoneMap = function(zoneSetId, name, url){
                 data.features[k].properties["KEY"] = tileLayers[DATASET]["shapes"][zoneSetId]["zone_name_key"];
             }
             zoneMaps[name].addData(data);
+        }
+    });
+}
+
+var forEachFeatureOnClick = function(feature, layer) {
+    layer.on('click', function (e) {
+        currentZone = layer;
+        for(k in zoneMaps){
+            zoneMaps[k].setStyle(defaultZoneStyle(zoneMapsWeight[k]));
+        }
+        layer.setStyle(highlightedZoneStyle);
+        layer.bringToFront();
+        var nameKey = e.target.feature.properties["KEY"];
+        if (nameKey !== null){
+            $("#lblZoneName").html(e.target.feature.properties[nameKey]);
         }
     });
 }

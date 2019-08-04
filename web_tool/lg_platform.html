@@ -128,109 +128,15 @@
     <script src="js/main.js" type="text/javascript"></script>
     <script src="js/utils.js" type="text/javascript"></script>
     <script src="js/tile_layers.js" type="text/javascript"></script>
+    <script src="js/globals.js" type="text/javascript"></script>
 
     <!-- List of backend URLS to query
     ================================================== -->
-    <script src="endpoints.js" type="text/javascript"></script>
     <script src="endpoints.mine.js" type="text/javascript"></script>
 
     <script type="text/javascript">
-        //----------------------------------------------------------------------
-        // Standard implementation globals
-        //----------------------------------------------------------------------
-        var BACKEND_URL = "";
-        var EXP_NAME = "TEST";
-        var DATASET = null;
-        var START_CENTER = null;
-        var START_ZOOM = null;
+        //'use strict';
 
-        var SELECTION_SIZE = 300; // in meters, probably
-        var CORRECTION_SIZE = 1;
-
-        var selectionBox = null;
-        var currentSelection = null;
-
-        var rightMouseDown = false;
-        var shiftKeyDown = false;
-        var ctrlKeyDown = false;
-
-        var currentPatches = [];
-        var currentZoneLayerName = null;
-        var currentBasemapLayerName = null;
-
-        var visible = true;
-        var opacitySlider;
-        
-        var soft0_hard1 = 1;
-        var pred0_naip1 = 0;
-        var activeImgIdx = 0;
-        
-        var selectedClassIdx = 0;
-        var classes = [
-            {"name": "Water", "color": "#0000FF", "count": 0},
-            {"name": "Tree Canopy", "color": "#008000", "count": 0},
-            {"name": "Field", "color": "#80FF80", "count": 0},
-            {"name": "Built", "color": "#806060", "count": 0},
-        ];
-        
-        var retrainCounts = 0
-        var retrainArgs = {
-        };
-
-        var map = null;
-        var animating = false;
-       
-        var numClicks = 0;
-
-        var userPointList = []
-
-        var heatmap = null;
-        var undoInProgress = false;
-
-
-        var defaultWeights = [
-            5,2,0.7,0.3
-        ]
-        var zoneMapsWeight = {};
-        var zoneMaps = {};
-        var defaultZoneStyle = {
-            "fillOpacity": 0,
-            "color": "#00ff00",
-            "weight": 2,
-            "opacity": 1
-        };
-
-        var defaultZoneStyle = function(w){
-            return  {
-                "fillOpacity": 0,
-                "color": "#00ff00",
-                "weight": 1.5*w,
-                "opacity": 1
-            }
-        };
-
-        var highlightedZoneStyle = {
-            "fillOpacity": 0,
-            "color": "#ff0000",
-            "weight": 4,
-            "opacity": 1
-        }
-
-        var forEachFeatureOnClick = function(feature, layer) {
-            layer.on('click', function (e) {
-                for(k in zoneMaps){
-                    zoneMaps[k].setStyle(defaultZoneStyle(zoneMapsWeight[k]));
-                }
-                layer.setStyle(highlightedZoneStyle);
-                layer.bringToFront();
-                var nameKey = e.target.feature.properties["KEY"];
-                if (nameKey !== null){
-                    $("#lblZoneName").html(e.target.feature.properties[nameKey]);
-                }
-            });
-        }
-
-        
         //----------------------------------------------------------------------
         // Runtime entrance
         //----------------------------------------------------------------------
@@ -247,7 +153,7 @@
             //----------------------------------------------------------------------
             // Parse URL arguments
             //----------------------------------------------------------------------
-            args = getURLArguments()
+            let args = getURLArguments()
             EXP_NAME = args.userID
             BACKEND_URL = BACKEND_ENDPOINTS[args.backendID]["url"];
             
@@ -269,9 +175,13 @@
             if(args.cachedModel !== null){
                 doLoad(args.cachedModel); // load a cached version of the model
             }else{
-                doReset(false, initialReset=true); // reset the backend server
+                doReset(false, true); // reset the backend server
             }
-            
+
+            //----------------------------------------------------------------------
+            // Get a session id to include in all API requests
+            //----------------------------------------------------------------------
+            SESSION_ID = getRandomString(10);
             
             //----------------------------------------------------------------------
             // Start user study if necessary
@@ -290,7 +200,7 @@
                 for(zoneSetId in tileLayers[DATASET]["shapes"]){
                     console.debug("Zonesetid", zoneSetId);
                     var zoneName = tileLayers[DATASET]["shapes"][zoneSetId]["name"];
-                    zoneMapsWeight[zoneName] = defaultWeights[zoneSetId];
+                    zoneMapsWeight[zoneName] = defaultZoneLineWeights[zoneSetId];
                     zoneMaps[zoneName] = L.geoJSON(null, {
                         style: defaultZoneStyle(zoneMapsWeight[zoneName]),
                         onEachFeature: forEachFeatureOnClick
@@ -346,7 +256,10 @@
                 layers: initialLayers
             });
             map.createPane('labels');
-            map.getPane('labels').style.zIndex = 200;
+            map.getPane('labels').style.zIndex = 201;
+
+            map.createPane('downloadOutput');
+            map.getPane('downloadOutput').style.zIndex = 200;
 
             for(var i=0;i<interestingLocations.length;i++){
                 interestingLocations[i].on('click', function(e){
