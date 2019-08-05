@@ -9,7 +9,7 @@ from enum import Enum
 
 from web_tool import ROOT_DIR
 
-from DataLoaderNew import DataLoaderCustom, DataLoaderUSALayer, DataLoaderBasemap
+from DataLoader import DataLoaderCustom, DataLoaderUSALayer, DataLoaderBasemap
 
 class DatasetTypes(Enum):
     CUSTOM = 1

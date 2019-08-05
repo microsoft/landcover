@@ -1,6 +1,4 @@
-import sys
 import os
-import time
 
 import numpy as np
 from enum import Enum
@@ -28,10 +26,8 @@ import mercantile
 
 import cv2
 import pickle
-import glob
 
 from web_tool import ROOT_DIR
-
 from DataLoaderAbstract import DataLoader
 
 # ------------------------------------------------------
@@ -102,10 +98,24 @@ def crop_data_by_extent(src_img, src_bounds, extent):
 # ------------------------------------------------------
 class DataLoaderCustom(DataLoader):
 
+    @property
+    def shapes(self):
+        return self._shapes
+    @shapes.setter
+    def shapes(self, value):
+        self._shapes = value
+
+    @property
+    def padding(self):
+        return self._padding
+    @padding.setter
+    def padding(self, value):
+        self._padding = value
+
     def __init__(self, data_fn, shapes, padding):
         self.data_fn = data_fn
-        self.shapes = shapes
-        self.padding = padding
+        self._shapes = shapes
+        self._padding = padding
 
     def get_data_from_extent(self, extent):
         f = rasterio.open(os.path.join(ROOT_DIR, self.data_fn), "r")
@@ -211,11 +221,23 @@ class USALayerGeoDataTypes(Enum):
 
 class DataLoaderUSALayer(DataLoader):
 
+    @property
+    def shapes(self):
+        return self._shapes
+    @shapes.setter
+    def shapes(self, value):
+        self._shapes = value
+
+    @property
+    def padding(self):
+        return self._padding
+    @padding.setter
+    def padding(self, value):
+        self._padding = value
 
     def __init__(self, shapes, padding):
-        self.shapes = shapes
-        print("Loading US layer with shapes", self.shapes)
-        self.padding = padding
+        self._shapes = shapes
+        self._padding = padding
 
     def get_fn_by_geo_data_type(self, naip_fn, geo_data_type):
         fn = None
@@ -285,9 +307,23 @@ class DataLoaderUSALayer(DataLoader):
 # ------------------------------------------------------
 class DataLoaderBasemap(DataLoader):
 
+    @property
+    def shapes(self):
+        return self._shapes
+    @shapes.setter
+    def shapes(self, value):
+        self._shapes = value
+
+    @property
+    def padding(self):
+        return self._padding
+    @padding.setter
+    def padding(self, value):
+        self._padding = value
+
     def __init__(self, data_url, padding):
         self.data_url = data_url
-        self.padding = padding
+        self._padding = padding
         self.zoom_level = 17
 
     def get_image_by_xyz_from_url(self, tile):
