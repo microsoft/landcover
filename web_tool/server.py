@@ -32,12 +32,12 @@ import joblib
 from azure.cosmosdb.table.tableservice import TableService
 from azure.cosmosdb.table.models import Entity
 
-from DataLoaderNew import warp_data_to_3857, crop_data_by_extent
+from DataLoader import warp_data_to_3857, crop_data_by_extent
 from Heatmap import Heatmap
 from Datasets import DATASETS
 from Utils import get_random_string, class_prediction_to_img, get_shape_layer_by_name, AtomicCounter
 
-import ServerModelsNIPS
+from ServerModelsKerasDense import KerasDenseFineTune
 
 from web_tool import ROOT_DIR
 
@@ -59,7 +59,6 @@ class Session():
     current_request_counter = AtomicCounter()
     request_list = []
 
-    @staticmethod
     def reset(soft=False, from_cached=None):
         if not soft:
             Session.model.reset() # can't fail, so don't worry about it
@@ -79,7 +78,6 @@ class Session():
                 "base_model": from_cached
             })
 
-    @staticmethod
     def load(encoded_model_fn):
         model_fn = base64.b64decode(encoded_model_fn).decode('utf-8')
 
@@ -88,7 +86,6 @@ class Session():
         del Session.model
         Session.model = joblib.load(model_fn)
 
-    @staticmethod
     def save(model_name):
 
         if Session.storage_type is not None:
@@ -116,7 +113,6 @@ class Session():
         else:
             return None
     
-    @staticmethod
     def add_entry(data):
         client_ip = bottle.request.environ.get('HTTP_X_FORWARDED_FOR') or bottle.request.environ.get('REMOTE_ADDR')
         data = data.copy()
@@ -456,7 +452,7 @@ def get_input():
 
     naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DATASETS[dataset]["data_loader"].get_data_from_extent(extent)
     naip_data = np.rollaxis(naip_data, 0, 3)
-    
+
     naip_data, new_bounds = warp_data_to_3857(naip_data, naip_crs, naip_transform, naip_bounds)
     naip_data = crop_data_by_extent(naip_data, new_bounds, extent)
 
@@ -524,13 +520,7 @@ def main():
     parser.add_argument("--port", action="store", dest="port", type=int, help="Port to listen on", default=4444)
     parser.add_argument("--model", action="store", dest="model",
         choices=[
-            "cached",
-            "iclr_keras",
-            "iclr_cntk",
-            "nips_sr",
-            "existing",
-            "nips_hr",
-            "group_norm",
+            "keras_dense"
         ],
         help="Model to use", required=True
     )
@@ -544,6 +534,9 @@ def main():
         ],
         help="Model to use", required=True
     )
+    parser.add_argument("--fine_tune_layer", action="store", dest="fine_tune_layer", type=int, help="Layer of model to fine tune", default=-2)
+
+
     parser.add_argument("--model_fn", action="store", dest="model_fn", type=str, help="Model fn to use", default=None)
     parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", default=None)
 
@@ -553,40 +546,10 @@ def main():
     os.environ["CUDA_VISIBLE_DEVICES"] = "" if args.gpuid is None else str(args.gpuid)
 
     model = None
-    if args.model == "cached":
-        if args.model_fn not in ["7_10_2018","1_3_2019"]:
-            print("When using `cached` model you must specify either '7_10_2018', or '1_3_2019'. Exiting...")
-            return
-        model = ServerModelsCachedFormat.CachedModel(args.model_fn)
-    elif args.model == "iclr_keras":
-        model = ServerModelsICLRDynamicFormat.KerasModel(args.model_fn, args.gpuid)
-    elif args.model == "iclr_cntk":
-        model = ServerModelsICLRFormat.CNTKModel(args.model_fn, args.gpuid)
-    elif args.model == "nips_sr":
-        if args.fine_tune == "last_layer":
-            model = ServerModelsNIPS.KerasDenseFineTune(args.model_fn, args.gpuid, superres=True)
-            model1 = ServerModelsNIPS.KerasDenseFineTune(args.model_fn, 1, superres=True)
-        elif args.fine_tune == "last_k_layers":
-            model = ServerModelsNIPS.KerasBackPropFineTune(args.model_fn, args.gpuid, superres=True)
-    elif args.model == "nips_hr":
-        if args.fine_tune == "last_layer":
-            model = ServerModelsNIPS.KerasDenseFineTune(args.model_fn, args.gpuid, superres=False)
-        elif args.fine_tune == "last_k_layers":
-            model = ServerModelsNIPS.KerasBackPropFineTune(args.model_fn, args.gpuid, superres=False)
-    elif args.model == "group_norm":
-        if args.fine_tune == "last_k_layers":
-            model = ServerModelsNIPSGroupNorm.LastKLayersFineTune(args.model_fn, args.gpuid, last_k_layers=1)
-        elif args.fine_tune == "group_params":
-            model = ServerModelsNIPSGroupNorm.UnetgnFineTune(args.model_fn, args.gpuid)
-        elif args.fine_tune == "last_k_plus_group_params":
-            model = ServerModelsNIPSGroupNorm.GroupParamsLastKLayersFineTune(args.model_fn, args.gpuid, last_k_layers=2)
-        elif args.fine_tune == "group_params_then_last_k":
-            model = ServerModelsNIPSGroupNorm.GroupParamsThenLastKLayersFineTune(args.model_fn, args.gpuid, last_k_layers=2)
-    elif args.model == "existing":
-        model = joblib.load(args.model_fn)
+    if args.model == "keras_dense":
+        model = KerasDenseFineTune(args.model_fn, args.gpuid, args.fine_tune_layer)
     else:
-        print("Model isn't implemented, aborting")
-        return
+        raise NotImplementedError("The given model type is not implemented yet.")
 
     if args.storage_type == "file":
         assert args.storage_path is not None, "You must specify a storage path if you select the 'path' storage type"

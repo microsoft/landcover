@@ -2,15 +2,15 @@ from abc import ABC, abstractmethod
 
 class DataLoader(ABC):
 
-    # @property
-    # @abstractmethod
-    # def padding(self):
-    #     pass
+    @property
+    @abstractmethod
+    def padding(self):
+        pass
 
-    # @property
-    # @abstractmethod
-    # def shapes(self):
-    #     pass
+    @property
+    @abstractmethod
+    def shapes(self):
+        pass
 
     @abstractmethod
     def get_shape_by_extent(self, extent, shape_layer):
