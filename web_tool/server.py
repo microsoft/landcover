@@ -544,6 +544,7 @@ def main():
 
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"] = "" if args.gpuid is None else str(args.gpuid)
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
     model = None
     if args.model == "keras_dense":
