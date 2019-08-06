@@ -236,7 +236,7 @@ DATASET_DEFINITIONS = {
             }
         },
         "shape_layers": [
-            {"name": "Grid", "shapes_fn": "shapes/airbus-data-grid-epsg4326.geojson", "zone_name_key": None}
+            {"name": "Grid", "shapes_fn": "shapes/airbus-data-grid-epsg4326.geojson", "zone_name_key": "id"}
         ],
         "location": {
             "center": [36.80, -76.12],
