@@ -9,6 +9,8 @@ import numpy as numpy
 import cv2
 import mercantile
 
+import numpy as np
+
 class Heatmap():
     count_dict = collections.defaultdict(int)
     cmap = matplotlib.cm.get_cmap("Reds")
