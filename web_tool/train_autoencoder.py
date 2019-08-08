@@ -78,6 +78,12 @@ def main():
     f = rasterio.open(args.input_fn,"r")
     data = np.rollaxis(f.read(), 0, 3)
     f.close()
+
+    data = np.concatenate([
+        data,
+        data[:,:,0][:,:,np.newaxis]
+    ], axis=2)
+
     assert data.shape[2] == 4
     print("Loaded data with shape:", data.shape)
 
