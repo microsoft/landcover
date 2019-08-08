@@ -39,6 +39,7 @@ class KerasDenseFineTune(BackendModel):
             })
 
             feature_layer_idx = fine_tune_layer
+            tmodel.summary()
             
             self.model = keras.models.Model(inputs=tmodel.inputs, outputs=[tmodel.outputs[0], tmodel.layers[feature_layer_idx].output])
             self.model.compile("sgd","mse")
@@ -68,23 +69,27 @@ class KerasDenseFineTune(BackendModel):
 
         self.undo_stack = []
 
-        # seed_x_fn = ""
-        # seed_y_fn = ""
-        # if superres:
-        #     seed_x_fn = ROOT_DIR + "/data/seed_data_hr+sr_x.npy"
-        #     seed_y_fn = ROOT_DIR + "/data/seed_data_hr+sr_y.npy"
-        # else:
-        #     seed_x_fn = ROOT_DIR + "/data/seed_data_hr_x.npy"
-        #     seed_y_fn = ROOT_DIR + "/data/seed_data_hr_y.npy"
-        # for row in np.load(seed_x_fn):
-        #     self.augment_base_x_train.append(row)
-        # for row in np.load(seed_y_fn):
-        #     self.augment_base_y_train.append(row)
+        seed_x_fn = ""
+        seed_y_fn = ""
+
+        # seed_x_fn = ROOT_DIR + "/data/seed_data_hr+sr_x.npy"
+        # seed_y_fn = ROOT_DIR + "/data/seed_data_hr+sr_y.npy"
+
+        seed_x_fn = "data/augment_x_train.npy"
+        seed_y_fn = "data/augment_y_train.npy"
+
+        
+        for row in np.load(seed_x_fn):
+            self.augment_base_x_train.append(row)
+        for row in np.load(seed_y_fn):
+            self.augment_base_y_train.append(row)
 
         for row in self.augment_base_x_train:
             self.augment_x_train.append(row)
         for row in self.augment_base_y_train:
             self.augment_y_train.append(row)
+
+        self.retrain()
         
 
     def run(self, naip_data, extent, on_tile=False):
@@ -192,6 +197,8 @@ class KerasDenseFineTune(BackendModel):
             self.augment_x_train.append(row)
         for row in self.augment_base_y_train:
             self.augment_y_train.append(row)
+
+        self.retrain()
 
     def run_model_on_tile(self, naip_tile, batch_size=32):
         ''' Expects naip_tile to have shape (height, width, channels) and have values in the [0, 1] range.

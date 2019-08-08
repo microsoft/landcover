@@ -59,6 +59,7 @@ class Session():
     current_request_counter = AtomicCounter()
     request_list = []
 
+    @staticmethod
     def reset(soft=False, from_cached=None):
         if not soft:
             Session.model.reset() # can't fail, so don't worry about it
@@ -78,6 +79,7 @@ class Session():
                 "base_model": from_cached
             })
 
+    @staticmethod
     def load(encoded_model_fn):
         model_fn = base64.b64decode(encoded_model_fn).decode('utf-8')
 
@@ -86,6 +88,7 @@ class Session():
         del Session.model
         Session.model = joblib.load(model_fn)
 
+    @staticmethod
     def save(model_name):
 
         if Session.storage_type is not None:
@@ -113,6 +116,7 @@ class Session():
         else:
             return None
     
+    @staticmethod
     def add_entry(data):
         client_ip = bottle.request.environ.get('HTTP_X_FORWARDED_FOR') or bottle.request.environ.get('REMOTE_ADDR')
         data = data.copy()
