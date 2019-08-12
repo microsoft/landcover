@@ -26,7 +26,8 @@ pip install --user --upgrade bottle mercantile rasterio
 conda deactivate
 ```
 - Log out and log back in
-  - Download the [`mount_remotes_deployment.sh`](https://mslandcoverstorageeast.file.core.windows.net/vm-fileshare/web-tool/mount_remotes_deployment.sh?st=2019-08-12T22%3A12%3A42Z&se=2030-08-13T22%3A12%3A00Z&sp=rl&sv=2018-03-28&sr=f&sig=eST31CgAdLoTSvgcoj3SOIcflnCZMg%2FRT9MzBFvbOtQ%3D) and [`new_repo_install.sh`](https://mslandcoverstorageeast.file.core.windows.net/vm-fileshare/web-tool/new_repo_install.sh?st=2019-08-12T22%3A10%3A03Z&se=2030-08-13T22%3A10%3A00Z&sp=rl&sv=2018-03-28&sr=f&sig=5ol0egiaHbSlfENYoy4MjRf95ZMAh7b7sky8puTen64%3D) scripts to the home directory
+- Visit the Microsoft AI for Earth [Azure storage account](https://ms.portal.azure.com/#blade/Microsoft_Azure_Storage/FileShareMenuBlade/overview/storageAccountId/%2Fsubscriptions%2Fc9726640-cf74-4111-92f5-0d1c87564b93%2FresourceGroups%2FLandcover2%2Fproviders%2FMicrosoft.Storage%2FstorageAccounts%2Fmslandcoverstorageeast/path/vm-fileshare) (your account will need to be given access first)
+  - Download the `web-tool/mount_remotes_deployment.sh` and `web-tool/new_repo_install.sh` scripts to the home directory
   - Run the `mount_remotes_deployment.sh` script to mount the necessary blob storage containers (note: you will need to run this script every time you restart the VM)
 
 ### Repository setup instructions
