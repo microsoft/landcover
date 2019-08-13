@@ -27,18 +27,18 @@ conda deactivate
 ```
 - Log out and log back in
 - Visit the Microsoft AI for Earth [Azure storage account](https://ms.portal.azure.com/#blade/Microsoft_Azure_Storage/FileShareMenuBlade/overview/storageAccountId/%2Fsubscriptions%2Fc9726640-cf74-4111-92f5-0d1c87564b93%2FresourceGroups%2FLandcover2%2Fproviders%2FMicrosoft.Storage%2FstorageAccounts%2Fmslandcoverstorageeast/path/vm-fileshare) (your account will need to be given access first)
-  - Download the `web-tool/mount_remotes_deployment.sh` and `web-tool/new_repo_install.sh` scripts to the home directory
-  - Run the `mount_remotes_deployment.sh` script to mount the necessary blob storage containers (note: you will need to run this script every time you restart the VM)
+  - Download the `web-tool/mount_remotes_for_deployment.sh` and `web-tool/web_tool_data_install.sh` scripts to the home directory
+  - Run the `mount_remotes_for_deployment.sh` script to mount the necessary blob storage containers (note: you will need to run this script every time you restart the VM)
 
 ### Repository setup instructions
 
 - SSH into the VM using a desktop SSH client
 - `git clone git@github.com:microsoft/landcover.git` (clone this repository)
-- `mv new_repo_install.sh landcover/`
+- `mv web_tool_data_install.sh landcover/`
 - `cd landcover`
-- Edit `new_repo_install.sh` as appropriate. This script will copy the necessary data files from the `web-tool-data` blob container to the project directory,  however you probably don't need _all_ the data in `web-tool-data/web_tool/tiles/` as these files can be large and are project instance specific.
-- `./new_repo_install.sh`
-- `rm new_repo_install.sh` (to keep the project directory clean!)
+- Edit `web_tool_data_install.sh` as appropriate. This script will copy the necessary data files from the `web-tool-data` blob container to the project directory,  however you probably don't need _all_ the data in `web-tool-data/web_tool/tiles/` as these files can be large and are project instance specific.
+- `./web_tool_data_install.sh`
+- `rm web_tool_data_install.sh` (to keep the project directory clean!)
 - Edit `web_tool/endpoints.mine.js` and replace "msrcalebubuntu.eastus.cloudapp.azure.com" with the address of your VM (find/change your VM's host name or IP address in the Azure portal).
 
 
