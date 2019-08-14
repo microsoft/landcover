@@ -528,16 +528,7 @@ def main():
         ],
         help="Model to use", required=True
     )
-    parser.add_argument("--fine_tune", action="store", dest="fine_tune",
-        choices=[
-            "last_layer",
-            "last_k_layers",
-            "group_params",
-            "last_k_plus_group_params",
-            "group_params_then_last_k"
-        ],
-        help="Model to use", required=True
-    )
+    parser.add_argument("--fine_tune_seed_data_fn", action="store", dest="fine_tune_seed_data_fn", type=str, help="Path to npz containing seed data to use", default=None)
     parser.add_argument("--fine_tune_layer", action="store", dest="fine_tune_layer", type=int, help="Layer of model to fine tune", default=-2)
 
 
@@ -552,7 +543,7 @@ def main():
 
     model = None
     if args.model == "keras_dense":
-        model = KerasDenseFineTune(args.model_fn, args.gpuid, args.fine_tune_layer)
+        model = KerasDenseFineTune(args.model_fn, args.gpuid, args.fine_tune_layer, args.fine_tune_seed_data_fn)
     else:
         raise NotImplementedError("The given model type is not implemented yet.")
 
