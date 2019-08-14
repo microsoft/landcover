@@ -21,12 +21,6 @@ var updateClassColor = function(obj){
     classes[classIdx]["color"] = '#' + obj;
 };
 
-var updateClassLabel = function(obj){
-    var className = $(obj.targetElement).attr("data-class-name");
-    var classIdx = findClassByName(className);
-    classes[classIdx]["color"] = '#' + obj;
-};
-
 var getRandomColor = function(){
     // From https://stackoverflow.com/questions/1484506/random-color-generator
     let letters = '0123456789ABCDEF';

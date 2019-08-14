@@ -643,9 +643,13 @@
                 var newName = prompt("New label name for '"+oldName+"'");
                 $(this).siblings(".className").html(newName);
                 $(this).siblings(".radNewClass").val(newName);
+                
+                $(this).parent().siblings(".jscolor").attr("data-class-name", newName);
 
                 var classIdx = findClassByName(oldName)
                 classes[classIdx]["name"] = newName;
+
+
             });
             
             //----------------------------------------------------------------------
