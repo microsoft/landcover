@@ -24,3 +24,5 @@ models/
 
 setup/
 setup_new/
+setup_table_storage.sh
+web_tool_data_install.sh

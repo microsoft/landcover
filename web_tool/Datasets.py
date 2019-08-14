@@ -16,31 +16,6 @@ class DatasetTypes(Enum):
     USA_LAYER = 2
     BASEMAP = 3
 
-'''
-This dictionary defines how the backend tool will return data to the frontend.
-
-An entry is formated like below:
-
-"LAYER NAME": {
-    "data_layer_type": DatasetTypes.ESRI_WORLD_IMAGERY,
-    "shapes_fn": None,
-    "data_fn": None,
-    "shapes": None,  # NOTE: this is always `None` and populated automatically when this file loads (see code at bottom of file)
-    "shapes_crs": None  # NOTE: this is always `None` and populated automatically when this file loads (see code at bottom of file)
-    "padding": None # NOTE: this is optional and only used in DatasetTypes.CUSTOM
-}
-
-LAYER_NAME - should correspond to an entry in js/tile_layers.js
-data_layer_type -  should be an item from the DatasetTypes enum and describes where the data comes from.
-  - If ESRI_WORLD_IMAGERY then the backend will lookup imagery from the ESRI World Imagery basemap and not respond to requests for downloading
-  - If USA_NAIP_LIST then the backend will lookup imagery from the full USA tile_index (i.e. how we usually do it) and requests for downloading will be executed on the same tiles
-  - If CUSTOM then the backend will query the "shapes_fn" and "data_fn" files for how/what to download, downloading will happen similarlly
-shapes_fn - should be a path, relative to `frontend_server.ROOT_DIR`, of a geojson defining shapes over which the data_fn file is valid. When a "download" happens the raster specified by "data_fn" will be masked with one of these shapes.
-data_fn - should be a path, relative to `frontend_server.ROOT_DIR`, of a raster file defining the imagery to use
-shapes - list of `shapely.geometry.shape` objects created from the shapes in "shapes_fn".
-shapes_crs - the CRS of the shapes_fn
-padding - NOTE: Optional, only used in DatasetTypes.CUSTOM - defines the padding used in raster extraction, used to get the required 240x240 input
-'''
 DATASETS = {} # This dictionary should be the only thing imported from other files
 DATASET_DEFINITIONS = {
     "esri_world_imagery": {

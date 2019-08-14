@@ -15,12 +15,13 @@ import keras.optimizers
 from ServerModelsAbstract import BackendModel
 from web_tool import ROOT_DIR
 
+
 AUGMENT_MODEL = MLPClassifier(
     hidden_layer_sizes=(),
     activation='relu',
-    alpha=0.001,
+    alpha=0.0001,
     solver='lbfgs',
-    tol=0.1,
+    tol=0.0001,
     verbose=False,
     validation_fraction=0.0,
     n_iter_no_change=10
@@ -28,11 +29,18 @@ AUGMENT_MODEL = MLPClassifier(
 
 class KerasDenseFineTune(BackendModel):
 
-    def __init__(self, model_fn, gpuid, fine_tune_layer, verbose=False):
+    def __init__(self, model_fn, gpuid, fine_tune_layer, fine_tune_seed_data_fn, verbose=False):
 
         self.model_fn = model_fn
         
-        with tf.device('/gpu:%d' % gpuid):
+
+        device_name = ""
+        if gpuid is None:
+            device_name = "/cpu:0"
+        else:
+            device_name = '/gpu:%d' % gpuid
+
+        with tf.device(device_name):
             tmodel = keras.models.load_model(self.model_fn, compile=False, custom_objects={
                 "jaccard_loss":keras.metrics.mean_squared_error, 
                 "loss":keras.metrics.mean_squared_error
@@ -69,28 +77,28 @@ class KerasDenseFineTune(BackendModel):
 
         self.undo_stack = []
 
-        seed_x_fn = ""
-        seed_y_fn = ""
+        self.use_seed_data = None
+        if fine_tune_seed_data_fn is not None:
+            self.use_seed_data = True
 
-        # seed_x_fn = ROOT_DIR + "/data/seed_data_hr+sr_x.npy"
-        # seed_y_fn = ROOT_DIR + "/data/seed_data_hr+sr_y.npy"
+            data  = np.load(fine_tune_seed_data_fn)
+            seed_x = data["seed_x"]
+            seed_y = data["seed_y"]
 
-        seed_x_fn = "data/augment_x_train.npy"
-        seed_y_fn = "data/augment_y_train.npy"
+            for row in seed_x:
+                self.augment_base_x_train.append(row)
+            for row in seed_y:
+                self.augment_base_y_train.append(row)
 
-        
-        for row in np.load(seed_x_fn):
-            self.augment_base_x_train.append(row)
-        for row in np.load(seed_y_fn):
-            self.augment_base_y_train.append(row)
+            for row in self.augment_base_x_train:
+                self.augment_x_train.append(row)
+            for row in self.augment_base_y_train:
+                self.augment_y_train.append(row) 
 
-        for row in self.augment_base_x_train:
-            self.augment_x_train.append(row)
-        for row in self.augment_base_y_train:
-            self.augment_y_train.append(row)
+        else:
+            self.use_seed_data = False
 
-        self.retrain()
-        
+     
 
     def run(self, naip_data, extent, on_tile=False):
         ''' Expects naip_data to have shape (height, width, channels) and have values in the [0, 255] range.
@@ -198,7 +206,8 @@ class KerasDenseFineTune(BackendModel):
         for row in self.augment_base_y_train:
             self.augment_y_train.append(row)
 
-        self.retrain()
+        if self.use_seed_data:
+            self.retrain()
 
     def run_model_on_tile(self, naip_tile, batch_size=32):
         ''' Expects naip_tile to have shape (height, width, channels) and have values in the [0, 1] range.
