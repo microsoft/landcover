@@ -1,0 +1,251 @@
+body{
+    background:#0B0B31;
+}
+.navbar{
+  margin-top:-10px;
+  padding-right:0px;
+}
+.navbar-brand 
+{
+    font-size: 16px;
+}
+.nav-link
+{
+    color:white !important;
+}
+nav
+{
+  height:60px;
+}
+.nav-item
+{
+  background-color: rgba(11, 11, 49, 0.5);
+  background-color:black;
+
+  padding:10px;
+}
+.logo-divider{
+    padding-left:4px;
+    padding-right:4px;
+}
+.logo
+{
+    margin-right:1px;
+    margin-top:-3px;
+}
+
+.display-none
+{
+    display: none
+}
+.navbar-brand 
+{
+    color:white !important;
+}
+
+.content-container
+{
+    background-color:rgba(11, 11, 49, 0.3);
+    color:#fff;
+    padding:20px;
+    border-radius:5px;
+    width: 436px;
+    font-size: 14px;
+    /*margin-top: 18%;
+    margin-left:15%;*/
+    height:240px;
+    letter-spacing:2px;
+    text-align: left;
+    font-family: 'Segoe UI';
+}
+.submit-container {
+    clear:both;
+    text-align:right;
+
+}
+.submit-button{
+  margin-top:20px;
+  height: 33.71px;	
+  width: 118px;	
+  border-radius: 40px;	
+  background-color: #FFFFFF;
+  color: #0C0A33;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.88px;
+  line-height: 18px;
+  text-align: center;
+
+} 
+.error
+{
+    color:red;
+    letter-spacing:0px;
+    text-align:center;
+}
+
+.logged-in-container {
+    margin-top:180px;
+    margin-left:150px;
+    width: 500px;
+    height: 150px;
+    padding:20px;
+    color:#FFFFFF
+}
+.logged-out-container
+{
+    width: 500px;
+    height: 150px;
+    padding:20px;
+}
+.not-authorized-container {
+    width: 400px;
+    height: auto;
+}
+
+@media only screen and (max-width: 600px) {
+    body {
+        background-image: url(/css/images/bg-map.png);
+        background-position: top center;
+        font-family: 'Montserrat';
+        background-attachment: fixed;
+        background-size:cover;
+        height: 100vh;
+      }
+      .content-container
+      {
+        position: fixed;
+        top:50%;
+        left: 50%;
+        margin-left:-218px;
+        margin-top:-120px;
+        background-color:rgba(11, 11, 49, 0.5);
+      }
+      .navbar-inverse
+      {
+        background-color:black;
+      }
+} 
+
+@media only screen and (min-width: 600px) {
+    body {
+        background-image: url(/css/images/bg-map.png);
+        background-position: top center;
+        font-family: 'Montserrat';
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+        background-size:cover;
+        height: 100vh;
+      }
+      .content-container
+      {
+          position: fixed;
+          top:50%;
+          left: 50%;
+          margin-left:-218px;
+          margin-top:-120px;
+          background-color:rgba(11, 11, 49, 0.5);
+        }
+      .navbar-inverse
+      {
+        background-color:black;
+      }
+} 
+
+@media only screen and (min-width: 768px) {
+    body {
+        background-image: url(/css/images/bg-map.png);
+        background-position: top center;
+        font-family: 'Montserrat';
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+        background-size:cover;
+        height: 100vh;
+      }
+      .content-container
+      {
+          position: fixed;
+          top:50%;
+          left: 50%;
+          margin-left:-218px;
+          margin-top:-120px;
+          background-color:rgba(11, 11, 49, 0.5);
+        }
+      .navbar-inverse
+      {
+        background-color:rgba(11, 11, 49, 0.5);
+      }
+} 
+
+@media only screen and (min-width: 992px) {
+    body {
+        background:#0B0B31;
+        background-image: url(/css/images/bg-map-widescreen.png);
+        background-repeat: no-repeat;
+        background-position: 80% 0%;
+        font-family: 'Montserrat';
+        background-attachment: fixed;
+        background-size: cover;
+        min-height: 100%;
+      }
+      .navbar-inverse
+      {
+        background-color:transparent;
+      }
+      .content-container
+      {
+        top:50%;
+        left: 40%;
+        margin-left:-218px;
+        margin-top:-120px;
+      }
+} 
+
+@media only screen and (min-width: 1200px) {
+    body {
+        background:#0B0B31;
+        background-image: url(/css/images/bg-map-widescreen.png);
+        background-repeat: no-repeat;
+        background-position: 80% 0%;
+        font-family: 'Montserrat';
+        background-attachment: fixed;
+        background-size: cover;
+        min-height: 100%;
+      }
+      .navbar-inverse
+      {
+        background-color:transparent;
+      }
+      .content-container
+      {
+        top:50%;
+        left: 30%;
+        margin-left:-218px;
+        margin-top:-120px;
+      }
+}
+@media only screen and (min-width: 1900px) {
+    body {
+        background:#0B0B31;
+        background-image: url(/css/images/bg-map-widescreen.png);
+        background-repeat: no-repeat;
+        background-position: 80% 0%;
+        font-family: 'Montserrat';
+        background-attachment: fixed;
+        background-size: cover;
+        min-height: 100%;
+      }
+      .navbar-inverse
+      {
+        background-color:transparent;
+      }
+      .content-container
+      {
+        top:50%;
+        left: 35%;
+        margin-left:-218px;
+        margin-top:-120px;
+      }
+}
+
+
