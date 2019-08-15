@@ -2,8 +2,10 @@ web_tool/shapes/
 web_tool/downloads/
 web_tool/data/
 web_tool/tiles/
+web_tool/ssl/
 web_tool/login_config.py
 output/
+logs/
 __pycache__/
 .ipynb_checkpoints/
 *.ipynb
