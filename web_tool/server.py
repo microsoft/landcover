@@ -41,6 +41,18 @@ from ServerModelsKerasDense import KerasDenseFineTune
 
 from web_tool import ROOT_DIR
 
+import requests
+from beaker.middleware import SessionMiddleware
+import login
+import login_config
+from log import Log
+
+import tornado
+from tornado.wsgi import WSGIContainer
+from tornado.ioloop import IOLoop
+from tornado.web import FallbackHandler, RequestHandler, Application
+from tornado.httpserver import HTTPServer
+
 
 class Session():
     ''' Currently this is a totally static class, however this is what needs to change if we are to support multiple sessions.
@@ -473,7 +485,11 @@ def get_input():
 #---------------------------------------------------------------------------------------
 
 def get_root_app():
-    return bottle.static_file("index.html", root="./" + ROOT_DIR + "/")
+    if 'logged_in' in bottle.request.session:
+        print("in session")
+        return bottle.static_file("lg_platform.html", root="./" + ROOT_DIR + "/")
+    else:
+        return bottle.template("landing_page.tpl")
 
 def get_datasets():
     tile_layers = "var tileLayers = {\n"
@@ -568,11 +584,33 @@ def main():
     Session.storage_type = args.storage_type
 
 
+    login.manage_session_folders()
+    session_opts = {
+        'session.type': 'file',
+        'session.cookie_expires': 3000,
+        'session.data_dir': login.session_folder,
+        'session.auto': True
+    }
+    bottle.TEMPLATE_PATH.insert(0, "./" + ROOT_DIR + "/views")
+
+
 
     # Setup the bottle server 
     app = bottle.Bottle()
 
     app.add_hook("after_request", enable_cors)
+    app.add_hook("before_request", login.setup_request)
+
+    # Login paths
+    app.route("/authorized", method="GET", callback=login.load_authorized)
+    app.route("/error", method="GET", callback=login.load_error)
+    app.route("/notauthorized", method="GET", callback=login.not_authorized)
+    app.route("/login", method="GET", callback=login.do_login)
+    app.route("/login", method="POST", callback=login.do_login)
+    app.route("/logout", method="GET", callback=login.do_logout)
+    app.route("/checkAccess", method="POST", callback=login.get_accesstoken)
+
+    # API paths
     app.route("/predPatch", method="OPTIONS", callback=do_options)
     app.route('/predPatch', method="POST", callback=pred_patch)
 
@@ -599,10 +637,13 @@ def main():
 
     app.route("/heatmap/<z>/<y>/<x>", method="GET", callback=do_heatmap)
 
+    # Content paths
     app.route("/", method="GET", callback=get_root_app)
     app.route("/js/datasets.js", method="GET", callback=get_datasets)
     app.route("/favicon.ico", method="GET", callback=get_favicon)
     app.route("/<filepath:re:.*>", method="GET", callback=get_everything_else)
+
+    app = SessionMiddleware(app, session_opts)
 
     bottle_server_kwargs = {
         "host": args.host,
@@ -614,8 +655,20 @@ def main():
     }
     #app.run(**bottle_server_kwargs)
     
-    from waitress import serve
-    serve(app, host=args.host, port=args.port, threads=12)
+    tr = WSGIContainer(app)
+
+    application = Application([
+            #(r"/tornado", MainHandler),
+            (r".*", FallbackHandler, dict(fallback=tr)),
+    ])
+        
+    http_server = HTTPServer(application, ssl_options={'certfile':login_config.CERT_FILE, 'keyfile': login_config.KEY_FILE})
+
+    http_server.listen(args.port, address=args.host)
+    IOLoop.instance().start()
+
+    #from waitress import serve
+    #serve(app, host=args.host, port=args.port, threads=12)
 
 
 if __name__ == "__main__":
