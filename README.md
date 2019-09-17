@@ -1,7 +1,7 @@
 # Land Cover Mapping Tool
 
 This repository holds both the "frontend" web-application and "backend" web API server that make up our "Land Cover Mapping" tool.
-An instance of this tool may be live, [here](http://msrcalebubuntu.eastus.cloudapp.azure.com:4040/).
+An instance of this tool may be live [here](http://aka.ms/landcoverdemo).
 
 
 # Setup
