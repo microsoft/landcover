@@ -1,7 +1,7 @@
 # Land Cover Mapping Tool
 
 This repository holds both the "frontend" web-application and "backend" web API server that make up our "Land Cover Mapping" tool.
-An instance of this tool may be live, [here](http://msrcalebubuntu.eastus.cloudapp.azure.com:4040/).
+An instance of this tool may be live [here](http://aka.ms/landcoverdemo).
 
 
 # Setup
@@ -9,11 +9,11 @@ An instance of this tool may be live, [here](http://msrcalebubuntu.eastus.clouda
 
 ## Azure VM setup instructions
 
-We develop / use the tool on Data Science Virtual Machines for Linux (Ubuntu) images on Azure (see the [Azure Portal](https://ms.portal.azure.com/)), so these setup instructions are tailored for that environment, however there is no reason that this project cannot be run on any machine (see "Local setup instructions below").
+We develop / use the tool on Data Science Virtual Machines for Linux (Ubuntu) images on Azure (see the [Azure Portal](https://portal.azure.com/)), so these setup instructions are tailored for that environment, however there is no reason that this project cannot be run on any machine (see "Local setup instructions below").
 
 ### Initial machine setup
 
-- Create a new VM with the Data Science Virtual Machine for Linux (Ubuntu) image via the [Azure Portal](https://ms.portal.azure.com/)
+- Create a new VM with the Data Science Virtual Machine for Linux (Ubuntu) image via the [Azure Portal](https://portal.azure.com/)
 - Open the incoming ports 4040 and 4444 to the VM through the Azure Portal (these ports will be used by the web tool)
 - SSH into the VM using a desktop SSH client
 - Run the following commands to install the additional necessary Python packages:
@@ -26,7 +26,7 @@ pip install --user --upgrade bottle mercantile rasterio
 conda deactivate
 ```
 - Log out and log back in
-- Visit the Microsoft AI for Earth [Azure storage account](https://ms.portal.azure.com/#blade/Microsoft_Azure_Storage/FileShareMenuBlade/overview/storageAccountId/%2Fsubscriptions%2Fc9726640-cf74-4111-92f5-0d1c87564b93%2FresourceGroups%2FLandcover2%2Fproviders%2FMicrosoft.Storage%2FstorageAccounts%2Fmslandcoverstorageeast/path/vm-fileshare) (your account will need to be given access first)
+- Visit the Microsoft AI for Earth [Azure storage account](https://portal.azure.com/#blade/Microsoft_Azure_Storage/FileShareMenuBlade/overview/storageAccountId/%2Fsubscriptions%2Fc9726640-cf74-4111-92f5-0d1c87564b93%2FresourceGroups%2FLandcover2%2Fproviders%2FMicrosoft.Storage%2FstorageAccounts%2Fmslandcoverstorageeast/path/vm-fileshare) (your account will need to be given access first)
   - Download the `web-tool/mount_remotes_for_deployment.sh` and `web-tool/web_tool_data_install.sh` scripts to the home directory
   - Run the `mount_remotes_for_deployment.sh` script to mount the necessary blob storage containers (note: you will need to run this script every time you restart the VM)
 
