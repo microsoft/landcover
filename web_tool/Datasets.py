@@ -139,6 +139,33 @@ DATASET_DEFINITIONS = {
             "bounds": None
         }
     },
+    "hcmc_sentinel_2017": {
+        "name": "Hồ Chí Minh City, Vietnam",
+        "imagery_metadata": "Sentinel Imagery",
+        "data_layer_type": DatasetTypes.CUSTOM,
+        "data_fn": "tiles/hcmc_sentinel_2017_01_08.tif",
+        "data_padding": 1100,
+        "leafletTileLayer": {
+            "url": 'tiles/hcmc_sentinel_2017_01_08/{z}/{x}/{y}.png',
+            "args": {
+                "tms": True,
+                "minZoom": 10,
+                "maxNativeZoom": 16,
+                "maxZoom": 20,
+                "attribution": 'Georeferenced Image'
+            }
+        },
+        "shape_layers": [
+            {"name": "Provinces", "shapes_fn": "shapes/hcmc_sentinel_admin_1_clipped.geojson", "zone_name_key": "NAME_1"},
+            {"name": "Districts", "shapes_fn": "shapes/hcmc_sentinel_admin_2_clipped.geojson", "zone_name_key": "NAME_2"},
+            {"name": "Wards", "shapes_fn": "shapes/hcmc_sentinel_admin_3_clipped.geojson", "zone_name_key": "NAME_3"}
+        ],
+        "location": {
+            "center": [10.682, 106.752],
+            "initialZoom": 11,
+            "bounds": None
+        }
+    },
     "yangon_lidar": {
         "name": "Yangon, Myanmar",
         "imagery_metadata": "LiDAR Imagery",
