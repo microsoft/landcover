@@ -1,5 +1,4 @@
 import sys, os, time, copy
-
 import numpy as np
 
 import sklearn.base
@@ -41,6 +40,11 @@ class KerasDenseFineTune(BackendModel):
             device_name = '/gpu:%d' % gpuid
 
         with tf.device(device_name):
+
+            gpu_options = tf.GPUOptions(allow_growth=True)
+            sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+            K.tensorflow_backend.set_session(sess)
+
             tmodel = keras.models.load_model(self.model_fn, compile=False, custom_objects={
                 "jaccard_loss":keras.metrics.mean_squared_error, 
                 "loss":keras.metrics.mean_squared_error
@@ -57,7 +61,7 @@ class KerasDenseFineTune(BackendModel):
         self.output_features = self.model.output_shape[1][3]
         self.input_size = self.model.input_shape[1]
 
-        self.down_weight_padding = 40
+        self.down_weight_padding = 10
 
         self.stride_x = self.input_size - self.down_weight_padding*2
         self.stride_y = self.input_size - self.down_weight_padding*2
@@ -97,7 +101,6 @@ class KerasDenseFineTune(BackendModel):
 
         else:
             self.use_seed_data = False
-
      
 
     def run(self, naip_data, extent, on_tile=False):
