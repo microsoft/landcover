@@ -47,13 +47,6 @@ import login
 import login_config
 from log import Log
 
-import tornado
-from tornado.wsgi import WSGIContainer
-from tornado.ioloop import IOLoop
-from tornado.web import FallbackHandler, RequestHandler, Application
-from tornado.httpserver import HTTPServer
-
-
 class Session():
     ''' Currently this is a totally static class, however this is what needs to change if we are to support multiple sessions.
     '''
@@ -649,26 +642,12 @@ def main():
         "host": args.host,
         "port": args.port,
         "debug": args.verbose,
-        "server": "tornado",
+        "server": "cheroot", # we have switched to the "cheroot" backend, this depends on the development bottle build for some reason 
         "reloader": False,
-        "options": {"threads": 12} # TODO: As of bottle version 0.12.17, the WaitressBackend does not get the **options kwargs
+        "certfile": login_config.CERT_FILE,
+        "keyfile": login_config.KEY_FILE,
     }
-    #app.run(**bottle_server_kwargs)
-    
-    tr = WSGIContainer(app)
-
-    application = Application([
-            #(r"/tornado", MainHandler),
-            (r".*", FallbackHandler, dict(fallback=tr)),
-    ])
-        
-    http_server = HTTPServer(application, ssl_options={'certfile':login_config.CERT_FILE, 'keyfile': login_config.KEY_FILE})
-
-    http_server.listen(args.port, address=args.host)
-    IOLoop.instance().start()
-
-    #from waitress import serve
-    #serve(app, host=args.host, port=args.port, threads=12)
+    bottle.run(app, **bottle_server_kwargs)
 
 
 if __name__ == "__main__":
