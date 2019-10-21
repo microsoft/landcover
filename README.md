@@ -21,7 +21,8 @@ sudo apt-get update
 sudo apt-get install blobfuse
 conda activate py35
 conda install rasterio fiona shapely rtree
-pip install --user --upgrade bottle mercantile rasterio
+pip install --user --upgrade mercantile rasterio cherrypy
+pip install --user git+https://github.com/bottlepy/bottle.git
 conda deactivate
 ```
 - Log out and log back in
@@ -70,8 +71,9 @@ conda create -y -n ai4e python=3.6
 ## make sure `which python` points to the python installation in our new environment
 conda deactivate
 conda activate ai4e
-conda install -y -c conda-forge keras gdal rasterio fiona shapely scikit-learn matplotlib utm mercantile bottle opencv rtree
-pip install azure waitress
+conda install -y -c conda-forge keras gdal rasterio fiona shapely scikit-learn matplotlib utm mercantile opencv rtree
+pip install azure waitress cherrypy
+pip3 install --user git+https://github.com/bottlepy/bottle.git
 ```
 
 ### Repository setup instructions
