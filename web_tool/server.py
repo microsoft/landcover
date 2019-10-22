@@ -8,8 +8,6 @@ import time
 import datetime
 import collections
 
-import bottle
-
 import argparse
 import base64
 import json
@@ -44,11 +42,15 @@ from ServerModelsKerasDense import KerasDenseFineTune
 
 from web_tool import ROOT_DIR
 
+import bottle 
+bottle.TEMPLATE_PATH.insert(0, "./" + ROOT_DIR + "/views") # let bottle know where we are storing the template files
+
 import requests
 from beaker.middleware import SessionMiddleware
 import login
 import login_config
-from log import Log
+
+from log import setup_logging, LOGGER
 
 class Session():
     ''' Currently this is a totally static class, however this is what needs to change if we are to support multiple sessions.
@@ -159,6 +161,16 @@ class Session():
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
 
+SESSION_MAP = dict() # each entry will be a Session ID
+
+#---------------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------------
+
+def setup_sessions():
+    '''Adds the beaker SessionMiddleware on as request.session
+    '''
+    bottle.request.session = bottle.request.environ['beaker.session']
+
 def enable_cors():
     '''From https://gist.github.com/richard-flosi/3789163
 
@@ -173,14 +185,6 @@ def do_options():
     '''
     bottle.response.status = 204
     return
-
-#---------------------------------------------------------------------------------------
-#---------------------------------------------------------------------------------------
-
-def do_heatmap(z,y,x):
-    bottle.response.content_type = 'image/jpeg'
-    x = x.split("?")[0]
-    return Heatmap.get(int(z),int(y),int(x))
 
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
@@ -503,7 +507,6 @@ def get_input_metadata():
 
 def get_root_app():
     if 'logged_in' in bottle.request.session:
-        print("in session")
         return bottle.static_file("lg_platform.html", root="./" + ROOT_DIR + "/")
     else:
         return bottle.template("landing_page.tpl")
@@ -518,7 +521,7 @@ def get_everything_else(filepath):
 #---------------------------------------------------------------------------------------
 
 def main():
-    parser = argparse.ArgumentParser(description="Backend Server")
+    parser = argparse.ArgumentParser(description="AI for Earth Land Cover")
 
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debugging", default=False)
 
@@ -532,6 +535,7 @@ def main():
 
     parser.add_argument("--host", action="store", dest="host", type=str, help="Host to bind to", default="0.0.0.0")
     parser.add_argument("--port", action="store", dest="port", type=int, help="Port to listen on", default=4444)
+    
     parser.add_argument("--model", action="store", dest="model",
         choices=[
             "keras_dense"
@@ -549,7 +553,7 @@ def main():
 
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"] = "" if args.gpuid is None else str(args.gpuid)
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
     model = None
     if args.model == "keras_dense":
@@ -577,28 +581,21 @@ def main():
     Session.model = model
     Session.storage_type = args.storage_type
 
-
-    login.manage_session_folders()
-    session_opts = {
-        'session.type': 'file',
-        'session.cookie_expires': 3000,
-        'session.data_dir': login.session_folder,
-        'session.auto': True
-    }
-    bottle.TEMPLATE_PATH.insert(0, "./" + ROOT_DIR + "/views")
-
+    # Setup logging
+    log_path = os.getcwd() + "/logs"
+    setup_logging(log_path)
 
 
     # Setup the bottle server 
     app = bottle.Bottle()
 
     app.add_hook("after_request", enable_cors)
-    app.add_hook("before_request", login.setup_request)
+    app.add_hook("before_request", setup_sessions)
 
     # Login paths
     app.route("/authorized", method="GET", callback=login.load_authorized)
     app.route("/error", method="GET", callback=login.load_error)
-    app.route("/notauthorized", method="GET", callback=login.not_authorized)
+    app.route("/notAuthorized", method="GET", callback=login.not_authorized)
     app.route("/login", method="GET", callback=login.do_login)
     app.route("/login", method="POST", callback=login.do_login)
     app.route("/logout", method="GET", callback=login.do_logout)
@@ -632,13 +629,21 @@ def main():
     app.route("/doLoad", method="OPTIONS", callback=do_options)
     app.route("/doLoad", method="POST", callback=do_load)
 
-    app.route("/heatmap/<z>/<y>/<x>", method="GET", callback=do_heatmap)
+    #app.route("/heatmap/<z>/<y>/<x>", method="GET", callback=do_heatmap)
 
     # Content paths
     app.route("/", method="GET", callback=get_root_app)
     app.route("/favicon.ico", method="GET", callback=get_favicon)
     app.route("/<filepath:re:.*>", method="GET", callback=get_everything_else)
 
+
+    login.manage_session_folders()
+    session_opts = {
+        'session.type': 'file',
+        'session.cookie_expires': 3000,
+        'session.data_dir': login.session_folder,
+        'session.auto': True
+    }
     app = SessionMiddleware(app, session_opts)
 
     bottle_server_kwargs = {
