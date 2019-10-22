@@ -12,6 +12,7 @@ import numpy as np
 
 import pickle
 import joblib
+import pika
 
 from Utils import get_random_string, AtomicCounter
 
@@ -21,16 +22,18 @@ from log import LOGGER
 
 
 class Session():
-    ''' Currently this is a totally static class, however this is what needs to change if we are to support multiple sessions.
-    '''
 
-    def __init__(self, gpuid=0):
+    def __init__(self, session_id):
         LOGGER.info("Instantiating a new session object")
         self.storage_type = None # this will be "table" or "file"
         self.storage_path = None # this will be a file path
         self.table_service = None # this will be an instance of TableService
 
-        self.gpuid = gpuid
+        self.connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+        self.channel = self.connection.channel()
+
+        self.channel.queue_declare(queue='rpc_queue')
+
 
         self.model = KerasDenseFineTune("web_tool/data/sentinel_demo_model.h5", gpuid, -2, None)
         self.current_transform = ()
