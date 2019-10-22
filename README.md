@@ -41,6 +41,12 @@ conda deactivate
 - `rm web_tool_data_install.sh` (to keep the project directory clean!)
 - Edit `web_tool/endpoints.mine.js` and replace "msrcalebubuntu.eastus.cloudapp.azure.com" with the address of your VM (find/change your VM's host name or IP address in the Azure portal).
 
+### RabbitMQ setup instructions
+
+- Install following the script from https://www.rabbitmq.com/install-debian.html#apt-bintray-quick-start
+  - Replace "bionic" with "xenial" in the "deb https://dl.bintray.com/rabbitmq-erlang/debian bionic erlang-21.x" and "deb https://dl.bintray.com/rabbitmq/debian bionic main" lines (as the DSVM is "xenial")
+- For management `rabbitmq-plugins enable rabbitmq_management`
+  - For port forwarding `ssh -L 15672:localhost:15672 HOSTNAME`, then visit http://localhost:15672
 
 
 ## Local setup instructions
