@@ -1,62 +1,53 @@
 import os
-import logging
 import time
-
 from datetime import datetime
+
 from pytz import timezone, utc
+
+import logging
 from logging.handlers import TimedRotatingFileHandler
 
-class Log():
-    def __init__(self, log_path, name='log', level=logging.DEBUG):
-        self.log_path = log_path
+DEFAULT_LOGGER_NAME = "logs"
+LOGGER = logging.getLogger(DEFAULT_LOGGER_NAME)
+
+def setup_logging(log_path, level=logging.DEBUG):
+     
+    if not os.path.exists(log_path):
+        os.makedirs(log_path)
+
+    # remove_old_logs(log_path) #TODO: reenable after `remove_old_logs()` is fixed 
+
+    log_format = "%(asctime)s - %(levelname)s - %(message)s"
+    formatter = logging.Formatter(log_format)
+    
+    logging.Formatter.converter = custom_time
+    logger = logging.getLogger(DEFAULT_LOGGER_NAME)
+    logger.setLevel(level)
+    
+    fileHandler = TimedRotatingFileHandler(log_path + "/log.log", when='midnight', interval=1)
+    fileHandler.suffix = "%Y%m%d"
+    fileHandler.setFormatter(formatter)
+    logger.addHandler(fileHandler)
+    
+    printHandler = logging.StreamHandler()
+    printHandler.setFormatter(formatter)
+    logger.addHandler(printHandler)
+
+
+def custom_time(*args):
+    utc_dt = utc.localize(datetime.utcnow())
+    my_tz = timezone("US/Pacific")
+    converted = utc_dt.astimezone(my_tz)
+    return converted.timetuple()
+
+def remove_old_logs(log_path):
+    try:
+        now = time.time()
+        for filename in os.listdir(log_path):
+            if os.path.getmtime(os.path.join(log_path, filename)) < now - 7 * 86400: # TODO: this needs to check to make sure `filename` is a log file so it doesn't accidentally delete everything
+                if os.path.isfile(os.path.join(log_path, filename)):
+                    os.remove(os.path.join(log_path, filename))
         
-        if not os.path.exists(self.log_path):
-            print(self.log_path)
-            os.mkdir(self.log_path)
-
-        self.remove_old_logs()
-
-        handler = TimedRotatingFileHandler(self.log_path + "/log.log", when='midnight', interval=1)
-        handler.suffix = "%Y%m%d"
-
-        log_format = "%(asctime)s - %(levelname)s - %(message)s"
-        formatter = logging.Formatter(log_format)
-        handler.setFormatter(formatter)
-
-        self.logger = logging.getLogger(name)
-        self.logger.addHandler(handler)
-        self.logger.setLevel(level)
-        logging.Formatter.converter = self.customTime
-
-
-    def debug(self, msg):
-        self.logger.debug(msg)
-
-    def info(self, msg):
-        self.logger.info(msg)
-
-    def warning(self, msg):
-        self.logger.warning(msg)
-
-    def error(self, msg):
-        self.logger.error(msg)
-
-    def customTime(self, *args):
-        utc_dt = utc.localize(datetime.utcnow())
-        my_tz = timezone("US/Pacific")
-        converted = utc_dt.astimezone(my_tz)
-        return converted.timetuple()
-
-    def remove_old_logs(self):
-        try:
-            now = time.time()
-
-            for filename in os.listdir(self.log_path):
-                if os.path.getmtime(os.path.join(self.log_path, filename)) < now - 7 * 86400:
-                    if os.path.isfile(os.path.join(self.log_path, filename)):
-                        print(filename)
-                        os.remove(os.path.join(self.log_path, filename))
-            
-        except Exception as e:
-            print(str(e))
+    except Exception as e: #TODO: this needs to not capture all exceptions
+        print(str(e))
             

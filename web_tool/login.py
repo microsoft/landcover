@@ -6,13 +6,11 @@ import shutil
 import requests
 import login_config as cfg
 
-from log import Log
-from login_helper import *
+from login_helper import * # TODO: don't import *
 from datetime import datetime
 from bottle import request, redirect, template
 
-log_path = os.getcwd() + "/logs"
-log = Log(log_path)
+from log import LOGGER
 
 session_base_path = './data/session'
 session_folder = session_base_path + "/" + datetime.now().strftime('%Y-%m-%d')
@@ -25,11 +23,17 @@ def manage_session_folders():
         shutil.rmtree(session_base_path)
         os.makedirs(session_folder)
 
-def setup_request():
-    request.session = request.environ['beaker.session']
+def authenticated(func):
+    def wrapped(*args, **kwargs):
+        try:
+            name = request.session['logged_in']
+            return func(*args, **kwargs)
+        except:
+            redirect('/login')
+
+    return wrapped
 
 def load_authorized():
-    print('loading authorized')
     return template('redirecting.tpl')
 
 def load_error():
@@ -61,7 +65,6 @@ def do_logout():
     return template('landing_page.tpl')
 
 def get_accesstoken():
-    print('in checkaccess')
     access_token = request.forms.get("token").split("#")[1].split("&")[0]
     access_token = access_token.replace("access_token=", '')
 
@@ -78,17 +81,17 @@ def get_accesstoken():
             redirect("/")
         else:
             if(cfg.LOG_TOKEN):
-                log.debug("Not authorized")
-                log.debug(graphdata)
-                log.debug("access_token="+access_token)
-                log.debug("JWToken=" + jwt_token)
+                LOGGER.debug("Not authorized")
+                LOGGER.debug(graphdata)
+                LOGGER.debug("access_token="+access_token)
+                LOGGER.debug("JWToken=" + jwt_token)
             
-            redirect("/notauthorized")
+            redirect("/notAuthorized")
     else:
-        log.debug("Error- No graph data")
+        LOGGER.debug("Error- No graph data")
         if(access_token):
-            log.debug("Accesstoken=" + access_token)
+            LOGGER.debug("Accesstoken=" + access_token)
         if(jwt_token):
-            log.debug("JWToken=" + jwt_token)
+            LOGGER.debug("JWToken=" + jwt_token)
 
         redirect("/error")
