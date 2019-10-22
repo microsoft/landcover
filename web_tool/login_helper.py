@@ -3,14 +3,16 @@ import jwt #(pip install pyjwt)
 import login_config as cfg
 import base64
 
-from azure.cosmosdb.table.tableservice import TableService
-
-table_service = TableService(account_name=cfg.ACCOUNT_NAME, account_key=cfg.ACCOUNT_KEY)
+from azure.cosmosdb.table.tableservice import TableService # TODO: find out if these objects can be created everytime a connection is needed, or if they should only be created once
 
 def found_user(emailaddress):
-    user = table_service.query_entities('landcoverdemousers', 
-           filter="PartitionKey eq 'user' and RowKey eq '{}'".format(emailaddress), 
-           num_results=1)
+    table_service = TableService(account_name=cfg.ACCOUNT_NAME, account_key=cfg.ACCOUNT_KEY)
+
+    user = table_service.query_entities( # TODO: find out if this is the best way to check for existence of a key
+        'landcoverdemousers', 
+        filter="PartitionKey eq 'user' and RowKey eq '{}'".format(emailaddress), 
+        num_results=1
+    )
     
     if len(user.items) > 0:
         return True
