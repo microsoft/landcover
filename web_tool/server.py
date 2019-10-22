@@ -38,8 +38,6 @@ DATASETS = load_datasets()
 
 from Utils import get_random_string, class_prediction_to_img, get_shape_layer_by_name, AtomicCounter
 
-from ServerModelsKerasDense import KerasDenseFineTune
-
 from web_tool import ROOT_DIR
 
 import bottle 
@@ -52,115 +50,10 @@ import login_config
 
 from log import setup_logging, LOGGER
 
-class Session():
-    ''' Currently this is a totally static class, however this is what needs to change if we are to support multiple sessions.
-    '''
-    storage_type = None # this will be "table" or "file"
-    storage_path = None # this will be a file path
-    table_service = None # this will be an instance of TableService
-
-    gpuid = None
-
-    model = None
-    current_transform = ()
-
-    current_snapshot_string = get_random_string(8)
-    current_snapshot_idx = 0
-    current_request_counter = AtomicCounter()
-    request_list = []
-
-    @staticmethod
-    def reset(soft=False, from_cached=None):
-        if not soft:
-            Session.model.reset() # can't fail, so don't worry about it
-        Session.current_snapshot_string = get_random_string(8)
-        Session.current_snapshot_idx = 0
-        Session.current_request_counter = AtomicCounter()
-        Session.request_list = []
-
-        if Session.storage_type == "table":
-            Session.table_service.insert_entity("webtoolsessions",
-            {
-                "PartitionKey": str(np.random.randint(0,8)),
-                "RowKey": str(uuid.uuid4()),
-                "session_id": Session.current_snapshot_string,
-                "server_hostname": os.uname()[1],
-                "server_sys_argv": ' '.join(sys.argv),
-                "base_model": from_cached
-            })
-
-    @staticmethod
-    def load(encoded_model_fn):
-        model_fn = base64.b64decode(encoded_model_fn).decode('utf-8')
-
-        print(model_fn)
-
-        del Session.model
-        Session.model = joblib.load(model_fn)
-
-    @staticmethod
-    def save(model_name):
-
-        if Session.storage_type is not None:
-            assert Session.storage_path is not None # we check for this when starting the program
-
-            snapshot_id = "%s_%d" % (model_name, Session.current_snapshot_idx)
-            
-            print("Saving state for %s" % (snapshot_id))
-            base_dir = os.path.join(Session.storage_path, Session.current_snapshot_string)
-            if not os.path.exists(base_dir):
-                os.makedirs(base_dir, exist_ok=False)
-            
-            model_fn = os.path.join(base_dir, "%s_model.p" % (snapshot_id))
-            joblib.dump(Session.model, model_fn, protocol=pickle.HIGHEST_PROTOCOL)
-
-            if Session.storage_type == "file":
-                request_list_fn = os.path.join(base_dir, "%s_request_list.p" % (snapshot_id))
-                joblib.dump(Session.request_list, request_list_fn, protocol=pickle.HIGHEST_PROTOCOL)
-            elif Session.storage_type == "table":
-                # We don't serialize the request list when saving to table storage
-                pass
-
-            Session.current_snapshot_idx += 1
-            return base64.b64encode(model_fn.encode('utf-8')).decode('utf-8') # this is super dumb
-        else:
-            return None
-    
-    @staticmethod
-    def add_entry(data):
-        client_ip = bottle.request.environ.get('HTTP_X_FORWARDED_FOR') or bottle.request.environ.get('REMOTE_ADDR')
-        data = data.copy()
-        data["time"] = datetime.datetime.now()
-        data["remote_address"] = client_ip
-        data["current_snapshot_index"] = Session.current_snapshot_idx
-        current_request_counter = Session.current_request_counter.increment()
-        data["current_request_index"] = current_request_counter
-
-        assert "experiment" in data
-
-        if Session.storage_type == "file":
-            Session.request_list.append(data)
-        
-        elif Session.storage_type == "table":
-
-            data["PartitionKey"] = Session.current_snapshot_string
-            data["RowKey"] = "%s_%d" % (data["experiment"], current_request_counter)
-
-            for k in data.keys():
-                if isinstance(data[k], dict) or isinstance(data[k], list):
-                    data[k] = json.dumps(data[k])
-            
-            try:
-                Session.table_service.insert_entity("webtoolinteractions", data)
-            except Exception as e:
-                print(e)
-        else:
-            # The storage_type / --storage_path command line args were not set
-            pass
-
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
 
+from Session import Session
 SESSION_MAP = dict() # each entry will be a Session ID
 
 #---------------------------------------------------------------------------------------
@@ -189,14 +82,15 @@ def do_options():
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
 
+@login.authenticated
 def do_load():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
     
     cached_model = data["cachedModel"]
 
-    Session.reset(False, from_cached=cached_model)
-    Session.load(cached_model)
+    SESSION_MAP[bottle.request.session.id].reset(False, from_cached=cached_model)
+    SESSION_MAP[bottle.request.session.id].load(cached_model)
 
     data["message"] = "Loaded new model from %s" % (cached_model)
     data["success"] = True
@@ -204,17 +98,21 @@ def do_load():
     bottle.response.status = 200
     return json.dumps(data)
 
+
+@login.authenticated
 def reset_model():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
+    client_ip = bottle.request.environ.get('HTTP_X_FORWARDED_FOR') or bottle.request.environ.get('REMOTE_ADDR')
+
     
     initial_reset = data.get("initialReset", False)
     if not initial_reset:
-        Session.add_entry(data) # record this interaction
-        Session.save(data["experiment"])
+        SESSION_MAP[bottle.request.session.id].add_entry(data, client_ip) # record this interaction
+        SESSION_MAP[bottle.request.session.id].save(data["experiment"])
 
-    Heatmap.reset()
-    Session.reset()
+    #Heatmap.reset()
+    SESSION_MAP[bottle.request.session.id].reset()
 
     data["message"] = "Reset model"
     data["success"] = True
@@ -222,17 +120,20 @@ def reset_model():
     bottle.response.status = 200
     return json.dumps(data)
 
+
+@login.authenticated
 def retrain_model():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
+    client_ip = bottle.request.environ.get('HTTP_X_FORWARDED_FOR') or bottle.request.environ.get('REMOTE_ADDR')
     
-    success, message = Session.model.retrain(**data["retrainArgs"])
+    success, message = SESSION_MAP[bottle.request.session.id].model.retrain(**data["retrainArgs"])
     
     if success:
         bottle.response.status = 200
-        encoded_model_fn = Session.save(data["experiment"])
+        encoded_model_fn = SESSION_MAP[bottle.request.session.id].save(data["experiment"])
         data["cached_model"] = encoded_model_fn 
-        Session.add_entry(data) # record this interaction
+        SESSION_MAP[bottle.request.session.id].add_entry(data, client_ip) # record this interaction
     else:
         data["error"] = message
         bottle.response.status = 500
@@ -242,10 +143,14 @@ def retrain_model():
 
     return json.dumps(data)
 
+
+@login.authenticated
 def record_correction():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
-    Session.add_entry(data) # record this interaction
+    client_ip = bottle.request.environ.get('HTTP_X_FORWARDED_FOR') or bottle.request.environ.get('REMOTE_ADDR')
+
+    SESSION_MAP[bottle.request.session.id].add_entry(data, client_ip) # record this interaction
 
     #
     tlat, tlon = data["extent"]["ymax"], data["extent"]["xmin"]
@@ -259,10 +164,10 @@ def record_correction():
     # Add a click to the heatmap
     xs, ys = fiona.transform.transform(origin_crs, "epsg:4326", [tlon], [tlat])
     tile = mercantile.tile(xs[0], -ys[0], 17)
-    Heatmap.increment(tile.z, tile.y, tile.x)
+    #Heatmap.increment(tile.z, tile.y, tile.x)
 
     #
-    naip_crs, naip_transform, naip_index = Session.current_transform
+    naip_crs, naip_transform, naip_index = SESSION_MAP[bottle.request.session.id].current_transform
 
     xs, ys = fiona.transform.transform(origin_crs, naip_crs.to_dict(), [tlon,blon], [tlat,blat])
     
@@ -281,7 +186,7 @@ def record_correction():
     tdst_row, bdst_row = min(tdst_row, bdst_row), max(tdst_row, bdst_row)
     tdst_col, bdst_col = min(tdst_col, bdst_col), max(tdst_col, bdst_col)
 
-    Session.model.add_sample(tdst_row, bdst_row, tdst_col, bdst_col, class_idx)
+    SESSION_MAP[bottle.request.session.id].model.add_sample(tdst_row, bdst_row, tdst_col, bdst_col, class_idx)
     num_corrected = (bdst_row-tdst_row) * (bdst_col-tdst_col)
 
     data["message"] = "Successfully submitted correction"
@@ -291,15 +196,19 @@ def record_correction():
     bottle.response.status = 200
     return json.dumps(data)
 
+
+@login.authenticated
 def do_undo():
     ''' Method called for POST `/doUndo`
     '''
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
-    Session.add_entry(data) # record this interaction
+    client_ip = bottle.request.environ.get('HTTP_X_FORWARDED_FOR') or bottle.request.environ.get('REMOTE_ADDR')
+
+    SESSION_MAP[bottle.request.session.id].add_entry(data, client_ip) # record this interaction
 
     # Forward the undo command to the backend model
-    success, message, num_undone = Session.model.undo()
+    success, message, num_undone = SESSION_MAP[bottle.request.session.id].model.undo()
     data["message"] = message
     data["success"] = success
     data["count"] = num_undone
@@ -307,11 +216,15 @@ def do_undo():
     bottle.response.status = 200
     return json.dumps(data)
 
+
+@login.authenticated
 def pred_patch():
     ''' Method called for POST `/predPatch`'''
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
-    Session.add_entry(data) # record this interaction
+    client_ip = bottle.request.environ.get('HTTP_X_FORWARDED_FOR') or bottle.request.environ.get('REMOTE_ADDR')
+
+    SESSION_MAP[bottle.request.session.id].add_entry(data, client_ip) # record this interaction
 
     # Inputs
     extent = data["extent"]
@@ -336,7 +249,7 @@ def pred_patch():
 
     naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DATASETS[dataset]["data_loader"].get_data_from_extent(extent)
     naip_data = np.rollaxis(naip_data, 0, 3) # we do this here instead of get_data_by_extent because not all GeoDataTypes will have a channel dimension
-    Session.current_transform = (naip_crs, naip_transform, naip_index)
+    SESSION_MAP[bottle.request.session.id].current_transform = (naip_crs, naip_transform, naip_index)
 
     # ------------------------------------------------------
     # Step 3
@@ -344,7 +257,7 @@ def pred_patch():
     #   Apply reweighting
     #   Fix padding
     # ------------------------------------------------------
-    output = Session.model.run(naip_data, extent, False)
+    output = SESSION_MAP[bottle.request.session.id].model.run(naip_data, extent, False)
     assert len(output.shape) == 3, "The model function should return an image shaped as (height, width, num_classes)"
     assert (output.shape[2] < output.shape[0] and output.shape[2] < output.shape[1]), "The model function should return an image shaped as (height, width, num_classes)" # assume that num channels is less than img dimensions
 
@@ -372,11 +285,15 @@ def pred_patch():
     bottle.response.status = 200
     return json.dumps(data)
 
+
+@login.authenticated
 def pred_tile():
     ''' Method called for POST `/predTile`'''
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
-    Session.add_entry(data) # record this interaction
+    client_ip = bottle.request.environ.get('HTTP_X_FORWARDED_FOR') or bottle.request.environ.get('REMOTE_ADDR')
+
+    SESSION_MAP[bottle.request.session.id].add_entry(data, client_ip) # record this interaction
 
     # Inputs
     geom = data["polygon"]
@@ -397,8 +314,7 @@ def pred_tile():
         bottle.response.status = 400
         return json.dumps({"error": "Cannot currently download imagery with 'Basemap' based datasets"})
 
-
-    output = Session.model.run(naip_data, geom, True)
+    output = SESSION_MAP[bottle.request.session.id].model.run(naip_data, geom, True)
     output_hard = output.argmax(axis=2)
     print("Finished, output dimensions:", output.shape)
 
@@ -451,12 +367,15 @@ def pred_tile():
     return json.dumps(data)
 
 
+@login.authenticated
 def get_input():
     ''' Method called for POST `/getInput`
     '''
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
-    Session.add_entry(data) # record this interaction
+    client_ip = bottle.request.environ.get('HTTP_X_FORWARDED_FOR') or bottle.request.environ.get('REMOTE_ADDR')
+
+    SESSION_MAP[bottle.request.session.id].add_entry(data, client_ip) # record this interaction
 
     # Inputs
     extent = data["extent"]
@@ -481,26 +400,9 @@ def get_input():
     return json.dumps(data)
 
 
-def get_input_metadata():
-    ''' Method called for POST `/getInputMetadata`
-    '''
-    bottle.response.content_type = 'application/json'
-    data = bottle.request.json
-    #Session.add_entry(data) # record this interaction
-
-    # Inputs
-    extent = data["extent"]
-    dataset = data["dataset"]
-
-    if dataset not in DATASETS:
-        raise ValueError("Dataset doesn't seem to be valid, please check Datasets.py")
-
-    naip_fn = DATASETS[dataset]["data_loader"].get_metadata_from_extent(extent)
-    
-    data["input_fn"] = naip_fn
-
-    bottle.response.status = 200
-    return json.dumps(data)
+@login.authenticated
+def do_test():
+    return str(bottle.request.session) + " " + str(bottle.request.session.id)
 
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
@@ -551,36 +453,6 @@ def main():
 
     args = parser.parse_args(sys.argv[1:])
 
-    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ["CUDA_VISIBLE_DEVICES"] = "" if args.gpuid is None else str(args.gpuid)
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
-    model = None
-    if args.model == "keras_dense":
-        model = KerasDenseFineTune(args.model_fn, args.gpuid, args.fine_tune_layer, args.fine_tune_seed_data_fn)
-    else:
-        raise NotImplementedError("The given model type is not implemented yet.")
-
-    if args.storage_type == "file":
-        assert args.storage_path is not None, "You must specify a storage path if you select the 'path' storage type"
-        Session.storage_path = args.storage_path
-    elif args.storage_type == "table":
-        assert args.storage_path is not None, "You must specify a storage path if you select the 'table' storage type"
-        Session.storage_path = args.storage_path
-
-        assert "AZURE_ACCOUNT_NAME" in os.environ
-        assert "AZURE_ACCOUNT_KEY" in os.environ
-
-        Session.table_service = TableService(
-            account_name=os.environ['AZURE_ACCOUNT_NAME'],
-            account_key=os.environ['AZURE_ACCOUNT_KEY']
-        )
-    elif args.storage_type is None:
-        assert args.storage_path is None, "You cannot specify a storage path if you do not select a storage type"
-
-    Session.model = model
-    Session.storage_type = args.storage_type
-
     # Setup logging
     log_path = os.getcwd() + "/logs"
     setup_logging(log_path)
@@ -599,10 +471,10 @@ def main():
     app.route("/login", method="GET", callback=login.do_login)
     app.route("/login", method="POST", callback=login.do_login)
     app.route("/logout", method="GET", callback=login.do_logout)
-    app.route("/checkAccess", method="POST", callback=login.get_accesstoken)
+    app.route("/checkAccess", method="POST", callback=lambda :login.get_accesstoken(SESSION_MAP))
 
     # API paths
-    app.route("/predPatch", method="OPTIONS", callback=do_options)
+    app.route("/predPatch", method="OPTIONS", callback=do_options)  # TODO: all of our web requests from index.html fire an OPTIONS call because of https://stackoverflow.com/questions/1256593/why-am-i-getting-an-options-request-instead-of-a-get-request, we should fix this 
     app.route('/predPatch', method="POST", callback=pred_patch)
 
     app.route("/predTile", method="OPTIONS", callback=do_options)
@@ -629,7 +501,7 @@ def main():
     app.route("/doLoad", method="OPTIONS", callback=do_options)
     app.route("/doLoad", method="POST", callback=do_load)
 
-    #app.route("/heatmap/<z>/<y>/<x>", method="GET", callback=do_heatmap)
+    app.route("/doTest", method="GET", callback=do_test)
 
     # Content paths
     app.route("/", method="GET", callback=get_root_app)

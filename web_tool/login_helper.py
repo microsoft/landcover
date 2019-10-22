@@ -20,22 +20,22 @@ def found_user(emailaddress):
 
 def check_user_access(graphdata, jwt_token):
     if found_user(graphdata['userPrincipalName']):
-        return True
+        return graphdata['userPrincipalName']
     elif found_user(graphdata['mail']):
-        return True
+        return graphdata['mail']
     else:
         jwt_token_decoded = jwt.decode(jwt_token, verify=False)
         
         if 'email' in jwt_token_decoded:
             email_address = str(jwt_token_decoded["email"]).strip("[]'")
             if found_user(email_address):
-                return True
+                return email_address
         if 'verified_primary_email' in jwt_token_decoded:
             email_address = str(jwt_token_decoded["verified_primary_email"]).strip("[]'")
             if found_user(email_address):
-                return True
+                return email_address
         
-    return False
+    return None
 
 def get_token_from_querystring(query_string):
     for item in query_string:
