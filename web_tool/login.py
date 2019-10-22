@@ -6,9 +6,10 @@ import shutil
 import requests
 import login_config as cfg
 
-from login_helper import * # TODO: don't import *
+from login_helper import * # TODO: don't import *; can we combine login.py and login_helper.py?
+from Session import Session
 from datetime import datetime
-from bottle import request, redirect, template
+import bottle
 
 from log import LOGGER
 
@@ -24,23 +25,26 @@ def manage_session_folders():
         os.makedirs(session_folder)
 
 def authenticated(func):
+    '''Based on suggestion from https://stackoverflow.com/questions/11698473/bottle-hooks-with-beaker-session-middleware-and-checking-logins
+    '''
     def wrapped(*args, **kwargs):
         try:
-            name = request.session['logged_in']
-            return func(*args, **kwargs)
+            if 'logged_in' in bottle.request.session:
+                return func(*args, **kwargs)
+            else:
+                bottle.redirect('/login')
         except:
-            redirect('/login')
-
+            bottle.redirect('/login')
     return wrapped
 
 def load_authorized():
-    return template('redirecting.tpl')
+    return bottle.template('redirecting.tpl')
 
 def load_error():
-    return template('error.tpl')
+    return bottle.template('error.tpl')
 
 def not_authorized():
-    return template('not_authorized.tpl')
+    return bottle.template('not_authorized.tpl')
 
 def do_login():
     auth_state = str(uuid.uuid4())
@@ -59,39 +63,43 @@ def do_login():
     return bottle.redirect(url + params)
 
 def do_logout():
-    request.session['logged_in'] = None
-    request.session.delete()
-   
-    return template('landing_page.tpl')
+    bottle.request.session.delete()   
+    return bottle.template('landing_page.tpl')
 
-def get_accesstoken():
-    access_token = request.forms.get("token").split("#")[1].split("&")[0]
-    access_token = access_token.replace("access_token=", '')
-
-    query_string =  request.forms.get("token").split("#")[1].split("&")
-    jwt_token = get_token_from_querystring(query_string)
-
-    endpoint = cfg.RESOURCE + cfg.API_VERSION + '/me'
-    http_headers = {'Authorization': 'Bearer {}'.format(access_token)}
-    graphdata = requests.get(endpoint, headers=http_headers, stream=False).json()
-        
-    if graphdata.get('userPrincipalName'):
-        if check_user_access(graphdata, jwt_token):
-            request.session['logged_in'] = "yes"
-            redirect("/")
-        else:
-            if(cfg.LOG_TOKEN):
-                LOGGER.debug("Not authorized")
-                LOGGER.debug(graphdata)
-                LOGGER.debug("access_token="+access_token)
-                LOGGER.debug("JWToken=" + jwt_token)
-            
-            redirect("/notAuthorized")
+def get_accesstoken(SESSION_MAP):
+    if "logged_in" in bottle.request.session:
+        bottle.redirect("/")
     else:
-        LOGGER.debug("Error- No graph data")
-        if(access_token):
-            LOGGER.debug("Accesstoken=" + access_token)
-        if(jwt_token):
-            LOGGER.debug("JWToken=" + jwt_token)
+        access_token = bottle.request.forms.get("token").split("#")[1].split("&")[0]
+        access_token = access_token.replace("access_token=", '')
 
-        redirect("/error")
+        query_string =  bottle.request.forms.get("token").split("#")[1].split("&")
+        jwt_token = get_token_from_querystring(query_string)
+
+        endpoint = cfg.RESOURCE + cfg.API_VERSION + '/me'
+        http_headers = {'Authorization': 'Bearer {}'.format(access_token)}
+        graphdata = requests.get(endpoint, headers=http_headers, stream=False).json()
+            
+        if graphdata.get('userPrincipalName'):
+            name = check_user_access(graphdata, jwt_token) 
+            if name is not None:
+                bottle.request.session['logged_in'] = True
+                bottle.request.session['name'] = str(name)
+                SESSION_MAP[bottle.request.session.id] = Session()
+                bottle.redirect("/")
+            else:
+                if(cfg.LOG_TOKEN):
+                    LOGGER.debug("Not authorized")
+                    LOGGER.debug(graphdata)
+                    LOGGER.debug("access_token="+access_token)
+                    LOGGER.debug("JWToken=" + jwt_token)
+                
+                bottle.redirect("/notAuthorized")
+        else:
+            LOGGER.debug("Error- No graph data")
+            if(access_token):
+                LOGGER.debug("Accesstoken=" + access_token)
+            if(jwt_token):
+                LOGGER.debug("JWToken=" + jwt_token)
+
+            bottle.redirect("/error")

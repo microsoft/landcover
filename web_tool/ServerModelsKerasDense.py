@@ -41,7 +41,7 @@ class KerasDenseFineTune(BackendModel):
 
         with tf.device(device_name):
 
-            gpu_options = tf.GPUOptions(allow_growth=True)
+            gpu_options = tf.GPUOptions(allow_growth=True, per_process_gpu_memory_fraction=0.333)
             sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
             K.tensorflow_backend.set_session(sess)
 
