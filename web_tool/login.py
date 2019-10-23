@@ -28,13 +28,12 @@ def authenticated(func):
     '''Based on suggestion from https://stackoverflow.com/questions/11698473/bottle-hooks-with-beaker-session-middleware-and-checking-logins
     '''
     def wrapped(*args, **kwargs):
-        try:
-            if 'logged_in' in bottle.request.session:
-                return func(*args, **kwargs)
-            else:
-                bottle.redirect('/login')
-        except:
-            bottle.redirect('/login')
+        if 'logged_in' in bottle.request.session:
+            return func(*args, **kwargs)
+        else:
+            LOGGER.info("User not logged in")
+            bottle.abort(401, "Sorry, access denied.")
+            #bottle.redirect('/login')
     return wrapped
 
 def load_authorized():
@@ -85,7 +84,7 @@ def get_accesstoken(SESSION_MAP):
             if name is not None:
                 bottle.request.session['logged_in'] = True
                 bottle.request.session['name'] = str(name)
-                SESSION_MAP[bottle.request.session.id] = Session()
+                SESSION_MAP[bottle.request.session.id] = Session(bottle.request.session.id)
                 bottle.redirect("/")
             else:
                 if(cfg.LOG_TOKEN):

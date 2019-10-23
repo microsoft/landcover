@@ -60,6 +60,7 @@ def setup_sessions():
     '''Adds the beaker SessionMiddleware on as request.session
     '''
     bottle.request.session = bottle.request.environ['beaker.session']
+    bottle.request.client_ip = bottle.request.environ.get('HTTP_X_FORWARDED_FOR') or bottle.request.environ.get('REMOTE_ADDR')
 
 def enable_cors():
     '''From https://gist.github.com/richard-flosi/3789163
@@ -100,12 +101,11 @@ def do_load():
 def reset_model():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
-    client_ip = bottle.request.environ.get('HTTP_X_FORWARDED_FOR') or bottle.request.environ.get('REMOTE_ADDR')
-
+    data["remote_address"] = bottle.request.client_ip
     
     initial_reset = data.get("initialReset", False)
     if not initial_reset:
-        SESSION_MAP[bottle.request.session.id].add_entry(data, client_ip) # record this interaction
+        SESSION_MAP[bottle.request.session.id].add_entry(data) # record this interaction
         SESSION_MAP[bottle.request.session.id].save(data["experiment"])
 
     #Heatmap.reset()
@@ -122,7 +122,7 @@ def reset_model():
 def retrain_model():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
-    client_ip = bottle.request.environ.get('HTTP_X_FORWARDED_FOR') or bottle.request.environ.get('REMOTE_ADDR')
+    data["remote_address"] = bottle.request.client_ip
     
     success, message = SESSION_MAP[bottle.request.session.id].model.retrain(**data["retrainArgs"])
     
@@ -130,7 +130,7 @@ def retrain_model():
         bottle.response.status = 200
         encoded_model_fn = SESSION_MAP[bottle.request.session.id].save(data["experiment"])
         data["cached_model"] = encoded_model_fn 
-        SESSION_MAP[bottle.request.session.id].add_entry(data, client_ip) # record this interaction
+        SESSION_MAP[bottle.request.session.id].add_entry(data) # record this interaction
     else:
         data["error"] = message
         bottle.response.status = 500
@@ -145,9 +145,9 @@ def retrain_model():
 def record_correction():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
-    client_ip = bottle.request.environ.get('HTTP_X_FORWARDED_FOR') or bottle.request.environ.get('REMOTE_ADDR')
+    data["remote_address"] = bottle.request.client_ip
 
-    SESSION_MAP[bottle.request.session.id].add_entry(data, client_ip) # record this interaction
+    SESSION_MAP[bottle.request.session.id].add_entry(data) # record this interaction
 
     #
     tlat, tlon = data["extent"]["ymax"], data["extent"]["xmin"]
@@ -200,9 +200,9 @@ def do_undo():
     '''
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
-    client_ip = bottle.request.environ.get('HTTP_X_FORWARDED_FOR') or bottle.request.environ.get('REMOTE_ADDR')
+    data["remote_address"] = bottle.request.client_ip
 
-    SESSION_MAP[bottle.request.session.id].add_entry(data, client_ip) # record this interaction
+    SESSION_MAP[bottle.request.session.id].add_entry(data) # record this interaction
 
     # Forward the undo command to the backend model
     success, message, num_undone = SESSION_MAP[bottle.request.session.id].model.undo()
@@ -219,9 +219,9 @@ def pred_patch():
     ''' Method called for POST `/predPatch`'''
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
-    client_ip = bottle.request.environ.get('HTTP_X_FORWARDED_FOR') or bottle.request.environ.get('REMOTE_ADDR')
+    data["remote_address"] = bottle.request.client_ip
 
-    SESSION_MAP[bottle.request.session.id].add_entry(data, client_ip) # record this interaction
+    SESSION_MAP[bottle.request.session.id].add_entry(data) # record this interaction
 
     # Inputs
     extent = data["extent"]
@@ -288,9 +288,9 @@ def pred_tile():
     ''' Method called for POST `/predPatch`'''
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
-    client_ip = bottle.request.environ.get('HTTP_X_FORWARDED_FOR') or bottle.request.environ.get('REMOTE_ADDR')
+    data["remote_address"] = bottle.request.client_ip
 
-    SESSION_MAP[bottle.request.session.id].add_entry(data, client_ip) # record this interaction
+    SESSION_MAP[bottle.request.session.id].add_entry(data) # record this interaction
 
     # Inputs
     extent = data["extent"]
@@ -371,9 +371,9 @@ def get_input():
     '''
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
-    client_ip = bottle.request.environ.get('HTTP_X_FORWARDED_FOR') or bottle.request.environ.get('REMOTE_ADDR')
+    data["remote_address"] = bottle.request.client_ip
 
-    SESSION_MAP[bottle.request.session.id].add_entry(data, client_ip) # record this interaction
+    SESSION_MAP[bottle.request.session.id].add_entry(data) # record this interaction
 
     # Inputs
     extent = data["extent"]
@@ -399,7 +399,7 @@ def get_input():
 
 
 @login.authenticated
-def do_test():
+def whoami():
     return str(bottle.request.session) + " " + str(bottle.request.session.id)
 
 #---------------------------------------------------------------------------------------
@@ -519,7 +519,7 @@ def main():
     app.route("/doLoad", method="OPTIONS", callback=do_options)
     app.route("/doLoad", method="POST", callback=do_load)
 
-    app.route("/doTest", method="GET", callback=do_test)
+    app.route("/whoami", method="GET", callback=whoami)
 
     # Content paths
     app.route("/", method="GET", callback=get_root_app)
