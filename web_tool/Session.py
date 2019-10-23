@@ -3,6 +3,7 @@ import os
 import time
 import datetime
 import collections
+import subprocess
 
 import base64
 import json
@@ -43,10 +44,20 @@ class Session():
         self.last_interaction_time = self.creation_time
 
     def spawn_worker(self):
-        pass
+    
+        command = [
+            "/usr/bin/env", "python", "web_tool/worker.py",
+            "--model", "keras_dense",
+            "--model_fn", "web_tool/data/sentinel_demo_model.h5",
+            "--fine_tune_layer", "-2",
+            "--gpu", "0",
+            "--session-id", self.session_id
+        ]
+        process = subprocess.Popen(command, shell=False)
+        self.worker = process
 
     def kill_worker(self):
-        pass
+        self.worker.kill()
 
     def reset(self, soft=False, from_cached=None):
         if not soft:

@@ -24,7 +24,10 @@ def main():
 
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debugging", default=False)
 
+
     # TODO: add support for consuming work for a single sessionID
+    parser.add_argument("--session-id", action="store", type=str, help="Name of session we are listenning to", default="*")
+
     parser.add_argument("--host", action="store", dest="host", type=str, help="RabbitMQ server", default="localhost")
     parser.add_argument("--user",  action="store", type=str, help="RabbitMQ server username", default="guest")
     parser.add_argument("--password",  action="store", type=str, help="RabbitMQ server password", default="guest")
@@ -67,7 +70,11 @@ def main():
 
     channel = connection.channel()
 
-    channel.queue_declare(queue='rpc_queue')
+    channel.exchange_declare(exchange='rpc_exchange', exchange_type='direct')
+
+    result = channel.queue_declare(queue=args.session_id, exclusive=False)
+    queue_name = result.method.queue
+    channel.queue_bind(exchange='rpc_exchange', queue=queue_name, routing_key=args.session_id)
 
     def on_request(ch, method, props, body):
         method_name, args = pickle.loads(body)
@@ -89,20 +96,28 @@ def main():
             raise ValueError("Invalid request received")
 
         if response is None: # For some reason I don't understand, if we don't return actual data then "process_data_events()" in ServerModelsRPC.py will hang
-            response = 1 
+            response = 1
+
+        LOGGER.info("Before publish")
 
         ch.basic_publish(
-            exchange='',
+            exchange='rpc_exchange',
             routing_key=props.reply_to,
             properties=pika.BasicProperties(
                 correlation_id=props.correlation_id
             ),
             body=pickle.dumps(response)
         )
+
+        LOGGER.info("After publish")
+
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
+        LOGGER.info("After ack")
+
+
     channel.basic_qos(prefetch_count=1)
-    channel.basic_consume(queue='rpc_queue', on_message_callback=on_request)
+    channel.basic_consume(queue=queue_name, on_message_callback=on_request)
 
     LOGGER.info("Awaiting requests")
     channel.start_consuming()
