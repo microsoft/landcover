@@ -11,6 +11,7 @@ import argparse
 import base64
 import json
 import uuid
+import threading
 
 import numpy as np
 import cv2
@@ -45,19 +46,54 @@ import login_config
 from log import setup_logging, LOGGER
 
 #---------------------------------------------------------------------------------------
+# Session handling code
 #---------------------------------------------------------------------------------------
 
 from Session import Session
-SESSION_MAP = dict() # each entry will be a Session ID
-
-#---------------------------------------------------------------------------------------
-#---------------------------------------------------------------------------------------
+SESSION_MAP = dict() # keys are bottle.request.session.id and values are corresponding Session() objects
+EXPIRED_SESSION_SET = set()
 
 def setup_sessions():
     '''Adds the beaker SessionMiddleware on as request.session
     '''
     bottle.request.session = bottle.request.environ['beaker.session']
     bottle.request.client_ip = bottle.request.environ.get('HTTP_X_FORWARDED_FOR') or bottle.request.environ.get('REMOTE_ADDR')
+
+def manage_sessions():
+
+    if bottle.request.session.id in EXPIRED_SESSION_SET:
+        bottle.request.session.delete()
+        EXPIRED_SESSION_SET.remove(bottle.request.session.id)
+    
+    if "logged_in" in bottle.request.session:
+        if bottle.request.session.id in SESSION_MAP:
+            LOGGER.info("Updating last_interaction_time")
+            SESSION_MAP[bottle.request.session.id].last_interaction_time = time.time()
+        else:
+            LOGGER.warning("I don't expect this to happen - someone is logged in but they do not have a `Session` object in SESSION_MAP")
+    else:
+        pass # not logged in, we don't care about this
+
+def session_monitor():
+    ''' This is a `Thread()` that is starting when the program is run. It is responsible for finding which of the `Session()` objects
+    in `SESSION_MAP` haven't been used recently and killing them.
+    '''
+    LOGGER.info("Starting session monitor thread")
+    while True:
+        session_ids_to_delete = []
+        for session_id, session in SESSION_MAP.items():
+            LOGGER.info("SESSION MONITOR - Checking session (%s) for activity" % (session_id))
+            time_inactive = time.time() - session.last_interaction_time
+            if time_inactive > 30:
+                LOGGER.info("SESSION MONITOR - Session (%s) has been inactive for over 30 seconds" % (session_id))
+                EXPIRED_SESSION_SET.add(session_id)
+                session_ids_to_delete.append(session_id) 
+        for session_id in session_ids_to_delete:
+            del SESSION_MAP[session_id]
+        time.sleep(5)
+
+#---------------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------------
 
 def enable_cors():
     '''From https://gist.github.com/richard-flosi/3789163
@@ -444,6 +480,7 @@ def main():
 
     app.add_hook("after_request", enable_cors)
     app.add_hook("before_request", setup_sessions)
+    app.add_hook("before_request", manage_sessions)
 
     # Login paths
     app.route("/authorized", method="GET", callback=login.load_authorized)
@@ -498,6 +535,10 @@ def main():
         'session.auto': True
     }
     app = SessionMiddleware(app, session_opts)
+
+    session_monitor_thread = threading.Thread(target=session_monitor)
+    session_monitor_thread.setDaemon(True)
+    session_monitor_thread.start()
 
     bottle_server_kwargs = {
         "host": args.host,
