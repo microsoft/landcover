@@ -10,7 +10,7 @@ from logging.handlers import TimedRotatingFileHandler
 DEFAULT_LOGGER_NAME = "logs"
 LOGGER = logging.getLogger(DEFAULT_LOGGER_NAME)
 
-def setup_logging(log_path, level=logging.DEBUG):
+def setup_logging(log_path, log_name, level=logging.DEBUG):
      
     if not os.path.exists(log_path):
         os.makedirs(log_path)
@@ -24,7 +24,7 @@ def setup_logging(log_path, level=logging.DEBUG):
     logger = logging.getLogger(DEFAULT_LOGGER_NAME)
     logger.setLevel(level)
     
-    fileHandler = TimedRotatingFileHandler(log_path + "/log.log", when='midnight', interval=1)
+    fileHandler = TimedRotatingFileHandler(log_path + "/%s.txt" % (log_name), when='midnight', interval=1)
     fileHandler.suffix = "%Y%m%d"
     fileHandler.setFormatter(formatter)
     logger.addHandler(fileHandler)
