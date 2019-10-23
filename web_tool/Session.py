@@ -16,7 +16,7 @@ import pika
 
 from Utils import get_random_string, AtomicCounter
 
-from ServerModelsKerasDense import KerasDenseFineTune
+from ServerModelsRPC import ModelRPC
 
 from log import LOGGER
 
@@ -24,18 +24,12 @@ from log import LOGGER
 class Session():
 
     def __init__(self, session_id):
-        LOGGER.info("Instantiating a new session object")
+        LOGGER.info("Instantiating a new session object with id: %s" % (session_id))
         self.storage_type = None # this will be "table" or "file"
         self.storage_path = None # this will be a file path
         self.table_service = None # this will be an instance of TableService
 
-        self.connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
-        self.channel = self.connection.channel()
-
-        self.channel.queue_declare(queue='rpc_queue')
-
-
-        self.model = KerasDenseFineTune("web_tool/data/sentinel_demo_model.h5", gpuid, -2, None)
+        self.model = ModelRPC(session_id)
         self.current_transform = ()
 
         self.current_snapshot_string = get_random_string(8)
@@ -98,10 +92,9 @@ class Session():
         else:
             return None
     
-    def add_entry(self, data, client_ip):
+    def add_entry(self, data):
         data = data.copy()
         data["time"] = datetime.datetime.now()
-        data["remote_address"] = client_ip
         data["current_snapshot_index"] = self.current_snapshot_idx
         current_request_counter = self.current_request_counter.increment()
         data["current_request_index"] = current_request_counter
