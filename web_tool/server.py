@@ -439,6 +439,7 @@ def main():
 
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debugging", default=False)
 
+    # TODO: make sure the storage type is passed onto the Session objects
     parser.add_argument(
         '--storage_type',
         action="store", dest="storage_type", type=str,
@@ -449,19 +450,8 @@ def main():
 
     parser.add_argument("--host", action="store", dest="host", type=str, help="Host to bind to", default="0.0.0.0")
     parser.add_argument("--port", action="store", dest="port", type=int, help="Port to listen on", default=4444)
-    
-    parser.add_argument("--model", action="store", dest="model",
-        choices=[
-            "keras_dense"
-        ],
-        help="Model to use", required=True
-    )
-    parser.add_argument("--fine_tune_seed_data_fn", action="store", dest="fine_tune_seed_data_fn", type=str, help="Path to npz containing seed data to use", default=None)
-    parser.add_argument("--fine_tune_layer", action="store", dest="fine_tune_layer", type=int, help="Layer of model to fine tune", default=-2)
-
-
-    parser.add_argument("--model_fn", action="store", dest="model_fn", type=str, help="Model fn to use", default=None)
     parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", default=None)
+
 
     args = parser.parse_args(sys.argv[1:])
 
