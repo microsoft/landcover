@@ -88,6 +88,7 @@ def get_accesstoken(SESSION_MAP):
                 bottle.request.session['logged_in'] = True
                 bottle.request.session['name'] = str(name)
                 SESSION_MAP[bottle.request.session.id] = Session(bottle.request.session.id)
+                SESSION_MAP[bottle.request.session.id].spawn_worker()
                 bottle.redirect("/")
             else:
                 if(cfg.LOG_TOKEN):

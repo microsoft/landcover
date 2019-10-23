@@ -71,7 +71,7 @@ def manage_sessions():
     else:
         pass # not logged in, we don't care about this
 
-def session_monitor():
+def session_monitor(session_timeout_seconds=30):
     ''' This is a `Thread()` that is starting when the program is run. It is responsible for finding which of the `Session()` objects
     in `SESSION_MAP` haven't been used recently and killing them.
     '''
@@ -81,11 +81,13 @@ def session_monitor():
         for session_id, session in SESSION_MAP.items():
             LOGGER.info("SESSION MONITOR - Checking session (%s) for activity" % (session_id))
             time_inactive = time.time() - session.last_interaction_time
-            if time_inactive > 30:
-                LOGGER.info("SESSION MONITOR - Session (%s) has been inactive for over 30 seconds" % (session_id))
+            if time_inactive > session_timeout_seconds:
+                LOGGER.info("SESSION MONITOR - Session (%s) has been inactive for over %d seconds, destroying" % (session_id, session_timeout_seconds))
                 EXPIRED_SESSION_SET.add(session_id)
                 session_ids_to_delete.append(session_id) 
+        
         for session_id in session_ids_to_delete:
+            SESSION_MAP[session_id].kill_worker()
             del SESSION_MAP[session_id]
         time.sleep(5)
 
