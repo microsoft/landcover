@@ -48,10 +48,19 @@ class ModelRPC(BackendModel):
 
         self.thread_ids.add(thread_id)
 
+    def _check_thread_connection(self, thread_id):
+        try:
+            #self.connections[thread_id].sleep(0)
+            self.connections[thread_id].process_data_events(0)
+            return True
+        except pika.exceptions.StreamLostError as e:
+            LOGGER.info("Thread (%d) died because %s, remaking it" % (thread_id, str(e)))
+            return False
+
     def _call(self, method_name, args):
 
         thread_id = threading.get_ident()
-        if thread_id not in self.thread_ids:
+        if thread_id not in self.thread_ids or not self._check_thread_connection(thread_id):
             LOGGER.info("Registering new connection for thread (%d)" % (thread_id))
             self._register_new_thread(thread_id)
 
