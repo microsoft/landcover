@@ -25,6 +25,7 @@ class Session():
 
     def __init__(self, session_id):
         LOGGER.info("Instantiating a new session object with id: %s" % (session_id))
+
         self.storage_type = None # this will be "table" or "file"
         self.storage_path = None # this will be a file path
         self.table_service = None # this will be an instance of TableService
@@ -36,7 +37,16 @@ class Session():
         self.current_snapshot_idx = 0
         self.current_request_counter = AtomicCounter()
         self.request_list = []
-        
+
+        self.session_id = session_id
+        self.creation_time = time.time()
+        self.last_interaction_time = self.creation_time
+
+    def spawn_worker(self):
+        pass
+
+    def kill_worker(self):
+        pass
 
     def reset(self, soft=False, from_cached=None):
         if not soft:
