@@ -21,7 +21,9 @@ class ModelRPC(BackendModel):
         self.callback_queues = dict()
 
         self.correlation_ids = set()
-        self.responses = dict()     
+        self.responses = dict()
+
+        self.session_id = session_id
 
     def _on_response(self, ch, method, props, body):
         if props.correlation_id in self.correlation_ids:
@@ -35,10 +37,16 @@ class ModelRPC(BackendModel):
             pika.ConnectionParameters(host='localhost')
         )
 
+
         self.channels[thread_id] = self.connections[thread_id].channel()
+        self.channels[thread_id].exchange_declare(exchange='rpc_exchange', exchange_type='direct')
 
         result = self.channels[thread_id].queue_declare(queue='', exclusive=True)
         self.callback_queues[thread_id] = result.method.queue
+        self.channels[thread_id].queue_bind(exchange='rpc_exchange', queue=self.callback_queues[thread_id], routing_key=self.callback_queues[thread_id])
+
+        self.channels[thread_id].queue_declare(self.session_id, exclusive=False)
+        self.channels[thread_id].queue_bind(exchange='rpc_exchange', queue=self.session_id, routing_key=self.session_id)
 
         self.channels[thread_id].basic_consume(
             queue=self.callback_queues[thread_id],
@@ -71,8 +79,8 @@ class ModelRPC(BackendModel):
         LOGGER.info("Publishing %s with %s" % (method_name, correlation_id))
 
         self.channels[thread_id].basic_publish(
-            exchange='',
-            routing_key='rpc_queue',
+            exchange='rpc_exchange',
+            routing_key='%s' % (self.session_id),
             properties=pika.BasicProperties(
                 reply_to=self.callback_queues[thread_id],
                 correlation_id=correlation_id,
