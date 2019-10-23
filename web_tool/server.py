@@ -7,7 +7,6 @@ import os
 import time
 import datetime
 import collections
-
 import argparse
 import base64
 import json
@@ -22,16 +21,11 @@ import fiona.transform
 import rasterio
 import rasterio.warp
 
-import mercantile
-
 import pickle
 import joblib
 
-from azure.cosmosdb.table.tableservice import TableService
-from azure.cosmosdb.table.models import Entity
-
 from DataLoader import warp_data_to_3857, crop_data_by_extent
-#from Heatmap import Heatmap #TODO: figure out how the current heatmap implementation fits in with the new refactoring
+
 from Datasets import DATASETS
 from Utils import get_random_string, class_prediction_to_img, get_shape_layer_by_name, AtomicCounter
 
@@ -42,9 +36,9 @@ bottle.TEMPLATE_PATH.insert(0, "./" + ROOT_DIR + "/views") # let bottle know whe
 
 import requests
 from beaker.middleware import SessionMiddleware
+
 import login
 import login_config
-
 from log import setup_logging, LOGGER
 
 #---------------------------------------------------------------------------------------
@@ -108,7 +102,6 @@ def reset_model():
         SESSION_MAP[bottle.request.session.id].add_entry(data) # record this interaction
         SESSION_MAP[bottle.request.session.id].save(data["experiment"])
 
-    #Heatmap.reset()
     SESSION_MAP[bottle.request.session.id].reset()
 
     data["message"] = "Reset model"
@@ -158,10 +151,8 @@ def record_correction():
     class_idx = data["value"] # what we want to switch the class to
     origin_crs = "epsg:%d" % (data["extent"]["spatialReference"]["latestWkid"])
 
-    # Add a click to the heatmap
+    # record points in lat/lon
     xs, ys = fiona.transform.transform(origin_crs, "epsg:4326", [tlon], [tlat])
-    tile = mercantile.tile(xs[0], -ys[0], 17)
-    #Heatmap.increment(tile.z, tile.y, tile.x)
 
     #
     naip_crs, naip_transform, naip_index = SESSION_MAP[bottle.request.session.id].current_transform
@@ -476,7 +467,7 @@ def main():
 
     # Setup logging
     log_path = os.getcwd() + "/logs"
-    setup_logging(log_path)
+    setup_logging(log_path, "server")
 
 
     # Setup the bottle server 
