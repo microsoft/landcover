@@ -25,6 +25,7 @@ class ModelRPC(BackendModel):
 
     def _on_response(self, ch, method, props, body):
         if props.correlation_id in self.correlation_ids:
+            LOGGER.info("Finished %s" % (props.correlation_id))
             self.responses[props.correlation_id] = pickle.loads(body, encoding="bytes")
             self.correlation_ids.remove(props.correlation_id)
 
@@ -54,10 +55,11 @@ class ModelRPC(BackendModel):
             LOGGER.info("Registering new connection for thread (%d)" % (thread_id))
             self._register_new_thread(thread_id)
 
-
         correlation_id = str(uuid.uuid4()) 
         self.correlation_ids.add(correlation_id)
         self.responses[correlation_id] = None
+
+        LOGGER.info("Publishing %s with %s" % (method_name, correlation_id))
 
         self.channels[thread_id].basic_publish(
             exchange='',
@@ -75,6 +77,7 @@ class ModelRPC(BackendModel):
         local = self.responses[correlation_id] 
         del self.responses[correlation_id]
 
+        LOGGER.info("Exiting _call %s (%d active)" % (correlation_id, len(self.responses)))
         return local
 
 

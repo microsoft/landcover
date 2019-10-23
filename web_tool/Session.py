@@ -120,21 +120,3 @@ class Session():
         else:
             # The storage_type / --storage_path command line args were not set
             pass
-
-
-# if args.storage_type == "file":
-#     assert args.storage_path is not None, "You must specify a storage path if you select the 'path' storage type"
-#     Session.storage_path = args.storage_path
-# elif args.storage_type == "table":
-#     assert args.storage_path is not None, "You must specify a storage path if you select the 'table' storage type"
-#     Session.storage_path = args.storage_path
-
-#     assert "AZURE_ACCOUNT_NAME" in os.environ
-#     assert "AZURE_ACCOUNT_KEY" in os.environ
-
-#     Session.table_service = TableService(
-#         account_name=os.environ['AZURE_ACCOUNT_NAME'],
-#         account_key=os.environ['AZURE_ACCOUNT_KEY']
-#     )
-# elif args.storage_type is None:
-#     assert args.storage_path is None, "You cannot specify a storage path if you do not select a storage type"
