@@ -166,6 +166,60 @@ DATASET_DEFINITIONS = {
             "bounds": None
         }
     },
+    "hcmc_spot_2019": {
+        "name": "Hồ Chí Minh City, Vietnam",
+        "imagery_metadata": "SPOT Imagery",
+        "data_layer_type": DatasetTypes.CUSTOM,
+        "data_fn": "tiles/spot6_2019_02_10.tif",
+        "data_padding": 1100,
+        "leafletTileLayer": {
+            "url": 'tiles/spot6_2019_02_10/{z}/{x}/{y}.png',
+            "args": {
+                "tms": True,
+                "minZoom": 13,
+                "maxNativeZoom": 16,
+                "maxZoom": 20,
+                "attribution": 'Georeferenced Image'
+            }
+        },
+        "shape_layers": [
+            {"name": "Provinces", "shapes_fn": "shapes/hcmc_sentinel_admin_1_clipped.geojson", "zone_name_key": "NAME_1"},
+            {"name": "Districts", "shapes_fn": "shapes/hcmc_sentinel_admin_2_clipped.geojson", "zone_name_key": "NAME_2"},
+            {"name": "Wards", "shapes_fn": "shapes/hcmc_sentinel_admin_3_clipped.geojson", "zone_name_key": "NAME_3"}
+        ],
+        "location": {
+            "center": [10.682, 106.752],
+            "initialZoom": 13,
+            "bounds": None
+        }
+    },
+    "hcmc_spot_2017": {
+        "name": "Hồ Chí Minh City, Vietnam",
+        "imagery_metadata": "SPOT Imagery",
+        "data_layer_type": DatasetTypes.CUSTOM,
+        "data_fn": "tiles/spot6_2017_02_12.tif",
+        "data_padding": 1100,
+        "leafletTileLayer": {
+            "url": 'tiles/spot6_2017_02_12/{z}/{x}/{y}.png',
+            "args": {
+                "tms": True,
+                "minZoom": 13,
+                "maxNativeZoom": 16,
+                "maxZoom": 20,
+                "attribution": 'Georeferenced Image'
+            }
+        },
+        "shape_layers": [
+            {"name": "Provinces", "shapes_fn": "shapes/hcmc_sentinel_admin_1_clipped.geojson", "zone_name_key": "NAME_1"},
+            {"name": "Districts", "shapes_fn": "shapes/hcmc_sentinel_admin_2_clipped.geojson", "zone_name_key": "NAME_2"},
+            {"name": "Wards", "shapes_fn": "shapes/hcmc_sentinel_admin_3_clipped.geojson", "zone_name_key": "NAME_3"}
+        ],
+        "location": {
+            "center": [10.682, 106.752],
+            "initialZoom": 13,
+            "bounds": None
+        }
+    },
     "yangon_lidar": {
         "name": "Yangon, Myanmar",
         "imagery_metadata": "LiDAR Imagery",
