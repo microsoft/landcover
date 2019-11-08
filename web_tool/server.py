@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
-# pylint: disable=E1137,E1136,E0110
+# pylint: disable=E1137,E1136,E0110,E1101
 import sys
 import os
 import time
@@ -535,7 +535,7 @@ def main():
     session_opts = {
         'session.type': 'file',
         'session.cookie_expires': 3000,
-        'session.data_dir': login.session_folder,
+        'session.data_dir': login.SESSION_FOLDER,
         'session.auto': True
     }
     app = SessionMiddleware(app, session_opts)

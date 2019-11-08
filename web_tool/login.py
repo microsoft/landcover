@@ -1,31 +1,31 @@
-import sys
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+# vim:fenc=utf-8
+# pylint: disable=E1101
 import os
-import time
-
+import datetime
 import uuid
 import urllib
-import bottle
 import shutil
 import requests
-import login_config as cfg
 
-from login_helper import * # TODO: don't import *; can we combine login.py and login_helper.py?
+import login_config
 from Session import Session
-from datetime import datetime
-import bottle
-
+from login_helper import check_user_access, get_token_from_querystring
 from log import LOGGER
 
-session_base_path = './data/session'
-session_folder = session_base_path + "/" + datetime.now().strftime('%Y-%m-%d')
+import bottle
+
+SESSION_BASE_PATH = './data/session'
+SESSION_FOLDER = SESSION_BASE_PATH + "/" + datetime.datetime.now().strftime('%Y-%m-%d')
 
 def manage_session_folders():
-    if not os.path.exists(session_base_path):
-        os.makedirs(session_base_path)
+    if not os.path.exists(SESSION_BASE_PATH):
+        os.makedirs(SESSION_BASE_PATH)
 
-    if not os.path.exists(session_folder):
-        shutil.rmtree(session_base_path)
-        os.makedirs(session_folder)
+    if not os.path.exists(SESSION_FOLDER):
+        shutil.rmtree(SESSION_BASE_PATH)
+        os.makedirs(SESSION_FOLDER)
 
 def authenticated(func):
     '''Based on suggestion from https://stackoverflow.com/questions/11698473/bottle-hooks-with-beaker-session-middleware-and-checking-logins
@@ -49,20 +49,23 @@ def not_authorized():
     return bottle.template('not_authorized.tpl')
 
 def do_login():
-    auth_state = str(uuid.uuid4())
+    if "logged_in" in bottle.request.session:
+        bottle.redirect("/")
+    else:
+        auth_state = str(uuid.uuid4())
 
-    nonce = uuid.uuid4().hex + uuid.uuid1().hex
+        nonce = uuid.uuid4().hex + uuid.uuid1().hex
 
-    url = cfg.AUTHORITY_URL + '/oauth2/v2.0/authorize?response_type=id_token+token&'
+        url = login_config.AUTHORITY_URL + '/oauth2/v2.0/authorize?response_type=id_token+token&'
 
-    params = urllib.parse.urlencode({'client_id': cfg.CLIENT_ID,
-                                     'redirect_uri': cfg.REDIRECT_URI,
-                                     'state': auth_state,
-                                     'nonce': nonce,
-                                     'prompt': 'select_account',
-                                     'scope': 'user.read openid profile'})
+        params = urllib.parse.urlencode({'client_id': login_config.CLIENT_ID,
+                                        'redirect_uri': login_config.REDIRECT_URI,
+                                        'state': auth_state,
+                                        'nonce': nonce,
+                                        'prompt': 'select_account',
+                                        'scope': 'user.read openid profile'})
 
-    return bottle.redirect(url + params)
+        return bottle.redirect(url + params)
 
 def do_logout():
     bottle.request.session.delete()   
@@ -78,7 +81,7 @@ def get_accesstoken(SESSION_MAP):
         query_string =  bottle.request.forms.get("token").split("#")[1].split("&")
         jwt_token = get_token_from_querystring(query_string)
 
-        endpoint = cfg.RESOURCE + cfg.API_VERSION + '/me'
+        endpoint = login_config.RESOURCE + login_config.API_VERSION + '/me'
         http_headers = {'Authorization': 'Bearer {}'.format(access_token)}
         graphdata = requests.get(endpoint, headers=http_headers, stream=False).json()
             
@@ -91,7 +94,7 @@ def get_accesstoken(SESSION_MAP):
                 SESSION_MAP[bottle.request.session.id].spawn_worker()
                 bottle.redirect("/")
             else:
-                if(cfg.LOG_TOKEN):
+                if(login_config.LOG_TOKEN):
                     LOGGER.debug("Not authorized")
                     LOGGER.debug(graphdata)
                     LOGGER.debug("access_token="+access_token)

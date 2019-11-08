@@ -1,7 +1,6 @@
-import ast
-import jwt #(pip install pyjwt)
+# TODO: can we combine login.py and login_helper.py?
+import jwt
 import login_config as cfg
-import base64
 
 from azure.cosmosdb.table.tableservice import TableService # TODO: find out if these objects can be created everytime a connection is needed, or if they should only be created once
 
@@ -43,20 +42,3 @@ def get_token_from_querystring(query_string):
             jwt_token = item.replace('id_token=','')
             return jwt_token
     return None
-
-def decode_token(jwt_token):
-    if '.' in jwt_token:
-        base64Url = jwt_token.split('.')[1]
-    else:
-        base64Url = jwt_token
-
-    base64_str = base64Url.replace(r'/-/g', '+').replace(r'/_/g', '/')
-    decoded_str = base64.b64decode(base64_str+"==")
-    try:
-        decoded_str =  str(decoded_str, 'utf-8')
-    except:
-        decoded_str = str(decoded_str, 'latin-1')
-    decoded_str = decoded_str.replace(chr(0), '')
-    decoded = ast.literal_eval(decoded_str) # TODO: can we use something else here
-    return decoded
-
