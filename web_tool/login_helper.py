@@ -56,7 +56,7 @@ def decode_token(jwt_token):
         decoded_str =  str(decoded_str, 'utf-8')
     except:
         decoded_str = str(decoded_str, 'latin-1')
-    decoded_str = decoded_str.replace(chr(0), '');
-    decoded = ast.literal_eval(decoded_str)
+    decoded_str = decoded_str.replace(chr(0), '')
+    decoded = ast.literal_eval(decoded_str) # TODO: can we use something else here
     return decoded
 
