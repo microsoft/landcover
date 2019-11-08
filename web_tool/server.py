@@ -37,6 +37,8 @@ bottle.TEMPLATE_PATH.insert(0, "./" + ROOT_DIR + "/views") # let bottle know whe
 
 import requests
 from beaker.middleware import SessionMiddleware
+from cheroot import wsgi
+from cheroot.ssl import builtin
 
 import login
 import login_config
@@ -561,17 +563,18 @@ def main():
     session_monitor_thread.setDaemon(True)
     session_monitor_thread.start()
 
-    bottle_server_kwargs = {
-        "host": args.host,
-        "port": args.port,
-        "debug": args.verbose,
-        "server": "cheroot", # we have switched to the "cheroot" backend, this depends on the development bottle build for some reason 
-        "reloader": False,
-        "certfile": login_config.CERT_FILE,
-        "keyfile": login_config.KEY_FILE,
-    }
-    bottle.run(app, **bottle_server_kwargs)
-
+    server = wsgi.Server(
+        (args.host, args.port), # bind_addr
+        app # wsgi_app
+    )
+    server.max_request_header_size = 2**13
+    server.max_request_body_size = 2**27
+    if login_config.CERT_FILE and login_config.KEY_FILE:
+        server.ssl_adapter = builtin.BuiltinSSLAdapter(login_config.CERT_FILE, login_config.KEY_FILE, None)
+    try:
+        server.start()
+    finally:
+        server.stop()
 
 if __name__ == "__main__":
     main()
