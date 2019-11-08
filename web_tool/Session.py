@@ -8,10 +8,10 @@ import subprocess
 import base64
 import json
 import uuid
+import pickle
 
 import numpy as np
 
-import pickle
 import joblib
 import pika
 
