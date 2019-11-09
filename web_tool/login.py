@@ -58,18 +58,20 @@ def do_login():
 
         url = login_config.AUTHORITY_URL + '/oauth2/v2.0/authorize?response_type=id_token+token&'
 
-        params = urllib.parse.urlencode({'client_id': login_config.CLIENT_ID,
-                                        'redirect_uri': login_config.REDIRECT_URI,
-                                        'state': auth_state,
-                                        'nonce': nonce,
-                                        'prompt': 'select_account',
-                                        'scope': 'user.read openid profile'})
+        params = urllib.parse.urlencode({
+            'client_id': login_config.CLIENT_ID,
+            'redirect_uri': login_config.REDIRECT_URI,
+            'state': auth_state,
+            'nonce': nonce,
+            'prompt': 'select_account',
+            'scope': 'user.read openid profile'
+        })
 
         return bottle.redirect(url + params)
 
 def do_logout():
     bottle.request.session.delete()   
-    return bottle.template('landing_page.tpl')
+    return bottle.template('front_page.tpl')
 
 def get_accesstoken(SESSION_MAP):
     if "logged_in" in bottle.request.session:

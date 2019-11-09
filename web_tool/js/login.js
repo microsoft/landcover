@@ -13,5 +13,5 @@ function CheckAccessToken()
     var hash = window.location.hash;
     console.log(hash)
     $("#token").val(hash)
-    $( "form" ).submit();
+    $("form").submit();
 }

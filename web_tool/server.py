@@ -53,14 +53,16 @@ SESSION_MAP = dict() # keys are bottle.request.session.id and values are corresp
 EXPIRED_SESSION_SET = set()
 
 def setup_sessions():
-    '''Adds the beaker SessionMiddleware on as request.session
+    '''This method is called before every request. Adds the beaker SessionMiddleware on as request.session.
     '''
     bottle.request.session = bottle.request.environ['beaker.session']
     bottle.request.client_ip = bottle.request.environ.get('HTTP_X_FORWARDED_FOR') or bottle.request.environ.get('REMOTE_ADDR')
 
 def manage_sessions():
-
-    if bottle.request.session.id in EXPIRED_SESSION_SET:
+    '''This method is called before every request. Checks to see if there a session assosciated with the current request.
+    If there is then update the last interaction time on that session.
+    '''
+    if bottle.request.session.id in EXPIRED_SESSION_SET: # Someone is trying to use a session that we have deleted due to inactivity
         bottle.request.session.delete()
         EXPIRED_SESSION_SET.remove(bottle.request.session.id)
     
@@ -436,11 +438,17 @@ def whoami():
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
 
+def get_landing_page():
+    if 'logged_in' in bottle.request.session:
+        return bottle.static_file("landing_page.html", root="./" + ROOT_DIR + "/")
+    else:
+        return bottle.template("front_page.tpl")
+
 def get_root_app():
     if 'logged_in' in bottle.request.session:
         return bottle.static_file("lg_platform.html", root="./" + ROOT_DIR + "/")
     else:
-        return bottle.template("landing_page.tpl")
+        return bottle.template("front_page.tpl")
 
 def get_datasets():
     tile_layers = "var tileLayers = {\n"
@@ -505,16 +513,15 @@ def main():
 
     app.add_hook("after_request", enable_cors)
     app.add_hook("before_request", setup_sessions)
-    app.add_hook("before_request", manage_sessions)
+    app.add_hook("before_request", manage_sessions) # before every request we want to check to make sure there are no session issues
 
     # Login paths
     app.route("/authorized", method="GET", callback=login.load_authorized)
     app.route("/error", method="GET", callback=login.load_error)
     app.route("/notAuthorized", method="GET", callback=login.not_authorized)
     app.route("/login", method="GET", callback=login.do_login)
-    app.route("/login", method="POST", callback=login.do_login)
     app.route("/logout", method="GET", callback=login.do_logout)
-    app.route("/checkAccess", method="POST", callback=lambda :login.get_accesstoken(SESSION_MAP))
+    app.route("/checkAccess", method="POST", callback=lambda: login.get_accesstoken(SESSION_MAP))
 
     # API paths
     app.route("/predPatch", method="OPTIONS", callback=do_options)  # TODO: all of our web requests from index.html fire an OPTIONS call because of https://stackoverflow.com/questions/1256593/why-am-i-getting-an-options-request-instead-of-a-get-request, we should fix this 
@@ -544,7 +551,8 @@ def main():
     app.route("/whoami", method="GET", callback=whoami)
 
     # Content paths
-    app.route("/", method="GET", callback=get_root_app)
+    app.route("/", method="GET", callback=get_landing_page)
+    app.route("/app", method="GET", callback=get_root_app)
     app.route("/js/datasets.js", method="GET", callback=get_datasets)
     app.route("/favicon.ico", method="GET", callback=get_favicon)
     app.route("/<filepath:re:.*>", method="GET", callback=get_everything_else)

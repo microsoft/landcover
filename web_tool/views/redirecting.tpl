@@ -7,11 +7,11 @@
 		</div>
 	</div>
 </div>
-<form action="/checkAccess" method="post">
+<form action="/checkAccess" method="POST">
  <input id="token" name="token" type="hidden" value=""/>
 </form>
-</body>
-</html>
 <script>
 	CheckAccessToken()
 </script>
+</body>
+</html>
