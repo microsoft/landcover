@@ -89,6 +89,7 @@ DATASET_DEFINITIONS = {
         "imagery_metadata": "Sentinel Imagery",
         "data_layer_type": DatasetTypes.CUSTOM,
         "data_fn": "tiles/yangon.tif",
+        "preview_fn": "images/yangon.jpg",
         "data_padding": 1100,
         "leafletTileLayer": {
             "url": 'tiles/yangon/{z}/{x}/{y}.png',
@@ -117,6 +118,7 @@ DATASET_DEFINITIONS = {
         "imagery_metadata": "Sentinel Imagery",
         "data_layer_type": DatasetTypes.CUSTOM,
         "data_fn": "tiles/hcmc_sentinel.tif",
+        "preview_fn": "images/hcmc_sentinel.jpg",
         "data_padding": 1100,
         "leafletTileLayer": {
             "url": 'tiles/hcmc_sentinel_tiles/{z}/{x}/{y}.png',
@@ -144,6 +146,7 @@ DATASET_DEFINITIONS = {
         "imagery_metadata": "Sentinel Imagery",
         "data_layer_type": DatasetTypes.CUSTOM,
         "data_fn": "tiles/hcmc_sentinel_2017_01_08.tif",
+        "preview_fn": "images/hcmc_sentinel_2017_01_08.jpg",
         "data_padding": 1100,
         "leafletTileLayer": {
             "url": 'tiles/hcmc_sentinel_2017_01_08/{z}/{x}/{y}.png',
@@ -220,11 +223,68 @@ DATASET_DEFINITIONS = {
             "bounds": None
         }
     },
+    "hcmc_pleadies_2019": {
+        "name": "Hồ Chí Minh City, Vietnam",
+        "imagery_metadata": "Pleadies Imagery",
+        "data_layer_type": DatasetTypes.CUSTOM,
+        "data_fn": "tiles/pleadies_2019_02_10.tif",
+        "preview_fn": "images/pleadies_2019_02_10.jpg",
+        "data_padding": 1100,
+        "leafletTileLayer": {
+            "url": 'tiles/pleadies_2019_02_10/{z}/{x}/{y}.png',
+            "args": {
+                "tms": True,
+                "minZoom": 13,
+                "maxNativeZoom": 16,
+                "maxZoom": 20,
+                "attribution": 'Georeferenced Image'
+            }
+        },
+        "shape_layers": [
+            {"name": "Provinces", "shapes_fn": "shapes/hcmc_sentinel_admin_1_clipped.geojson", "zone_name_key": "NAME_1"},
+            {"name": "Districts", "shapes_fn": "shapes/hcmc_sentinel_admin_2_clipped.geojson", "zone_name_key": "NAME_2"},
+            {"name": "Wards", "shapes_fn": "shapes/hcmc_sentinel_admin_3_clipped.geojson", "zone_name_key": "NAME_3"}
+        ],
+        "location": {
+            "center": [10.682, 106.752],
+            "initialZoom": 13,
+            "bounds": None
+        }
+    },
+    "hcmc_pleadies_2017": {
+        "name": "Hồ Chí Minh City, Vietnam",
+        "imagery_metadata": "Pleadies Imagery",
+        "data_layer_type": DatasetTypes.CUSTOM,
+        "data_fn": "tiles/pleadies_2017_06_15.tif",
+        "preview_fn": "images/pleadies_2017_06_15.jpg",
+        "data_padding": 1100,
+        "leafletTileLayer": {
+            "url": 'tiles/pleadies_2017_06_15/{z}/{x}/{y}.png',
+            "args": {
+                "tms": True,
+                "minZoom": 13,
+                "maxNativeZoom": 16,
+                "maxZoom": 20,
+                "attribution": 'Georeferenced Image'
+            }
+        },
+        "shape_layers": [
+            {"name": "Provinces", "shapes_fn": "shapes/hcmc_sentinel_admin_1_clipped.geojson", "zone_name_key": "NAME_1"},
+            {"name": "Districts", "shapes_fn": "shapes/hcmc_sentinel_admin_2_clipped.geojson", "zone_name_key": "NAME_2"},
+            {"name": "Wards", "shapes_fn": "shapes/hcmc_sentinel_admin_3_clipped.geojson", "zone_name_key": "NAME_3"}
+        ],
+        "location": {
+            "center": [10.682, 106.752],
+            "initialZoom": 13,
+            "bounds": None
+        }
+    },
     "yangon_lidar": {
         "name": "Yangon, Myanmar",
         "imagery_metadata": "LiDAR Imagery",
         "data_layer_type": DatasetTypes.CUSTOM,
         "data_fn": "tiles/yangon_lidar.tif",
+        "preview_fn": "images/yangon_lidar.jpg",
         "data_padding": 20,
         "leafletTileLayer": {
             "url": 'tiles/yangon_lidar/{z}/{x}/{y}.png',
@@ -253,6 +313,7 @@ DATASET_DEFINITIONS = {
         "imagery_metadata": "Digital Globe Imagery",
         "data_layer_type": DatasetTypes.CUSTOM,
         "data_fn": "tiles/HCMC.tif",
+        "preview_fn": "images/HCMC.jpg",
         "data_padding": 0,
         "leafletTileLayer": {
             "url": 'tiles/HCMC/{z}/{x}/{y}.png',
@@ -280,6 +341,7 @@ DATASET_DEFINITIONS = {
         "data_layer_type": DatasetTypes.CUSTOM,
         "imagery_metadata": "Airbus Imagery",
         "data_fn": "tiles/airbus_epsg4326.tif",
+        "preview_fn": "images/airbus_epsg4326.jpg",
         "data_padding": 0.003,
         "leafletTileLayer": {
             "url": 'tiles/airbus/{z}/{x}/{y}.png',
@@ -354,6 +416,7 @@ def get_javascript_string_from_dataset(dataset):
     outputs = {
         "center": dataset["location"]["center"],
         "initialZoom": dataset["location"]["initialZoom"],
+        "previewFn": dataset["preview_fn"] if "preview_fn" in dataset else "",
         "name": dataset["name"],
         "imageMetadata": dataset["imagery_metadata"],
         "url": dataset["leafletTileLayer"]["url"],
@@ -364,7 +427,10 @@ def get_javascript_string_from_dataset(dataset):
     }
 
     return '''{{
-        "location": [{center}, {initialZoom}, "{name}", "{imageMetadata}"],
+        "name" : "{name}",
+        "imageMetadata" : "{imageMetadata}",
+        "previewFn" : "{previewFn}",
+        "location": [{center}, {initialZoom}],
         "tileObject": L.tileLayer("{url}", {kwargs}),
         "shapes": {shapes}
     }}'''.format(**outputs)

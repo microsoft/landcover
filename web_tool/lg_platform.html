@@ -271,7 +271,7 @@
             // Setup layer picker
             //----------------------------------------------------------------------
 
-            var baseMapString = tileLayers[DATASET]["location"][3];
+            var baseMapString = tileLayers[DATASET]["imageMetadata"];
             currentBasemapLayerName = baseMapString;
 
             var baseMaps = {};
@@ -305,11 +305,11 @@
             logoControl.append("<br/>");
             logoControl.append("<span class='logo-text-small'>Version: 0.9</span>");
             logoControl.append("<br/>");
-            logoControl.append("<span class='logo-text-small'>Location: "+tileLayers[DATASET]["location"][2]+"</span>");
+            logoControl.append("<span class='logo-text-small'>Location: "+tileLayers[DATASET]["name"]+"</span>");
             
             $(".leaflet-top.leaflet-left").append(logoControl)
 
-            $("#lblModelInput").html(tileLayers[DATASET]["location"][3]);
+            $("#lblModelInput").html(tileLayers[DATASET]["imageMetadata"]);
             
             //----------------------------------------------------------------------
             // Custom initialization of the map zoom controls so that we can 
@@ -471,7 +471,7 @@
                     // Run the add sample path
                     if(currentSelection !== null){
                         if(isPointInsidePolygon(e.latlng, currentSelection)){
-                            if(currentBasemapLayerName == tileLayers[DATASET]["location"][3]){
+                            if(currentBasemapLayerName == tileLayers[DATASET]["imageMetadata"]){
                                 curSelPoly = getPolyAround(e.latlng, CORRECTION_SIZE);
                                 var idx = currentPatches.length-1;
                                 doSendCorrection(curSelPoly, idx);
@@ -496,7 +496,7 @@
                                     }
                                 }, 700);
                             }else{
-                                notifyFailMessage("Please add corrections using the '"+tileLayers[DATASET]["location"][3]+"' imagery layer.")
+                                notifyFailMessage("Please add corrections using the '"+tileLayers[DATASET]["imageMetadata"]+"' imagery layer.")
                             }
                         }else{
                             console.debug("Click not in selection");
