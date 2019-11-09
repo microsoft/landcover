@@ -21,6 +21,5 @@
 <body>
 <nav class="navbar navbar-expand-lg navbar-inverse">
   <a class="navbar-brand" href="#"><img class="logo" src="/css/images/Microsoft_logo.png"> Microsoft  
-  <span class="logo-divider">|</span>  AI for Earth</a>
- 
+  <span class="logo-divider">|</span>  AI for Earth <span class="logo-divider">|</span> Land Cover Mapping</a>
 </nav>
