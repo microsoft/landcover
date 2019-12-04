@@ -220,6 +220,33 @@ DATASET_DEFINITIONS = {
             "bounds": None
         }
     },
+    "hcmc_pleadies_2019": {
+        "name": "Hồ Chí Minh City, Vietnam",
+        "imagery_metadata": "Pleadies Imagery",
+        "data_layer_type": DatasetTypes.CUSTOM,
+        "data_fn": "tiles/pleadies_2019_02_10.tif",
+        "data_padding": 0,
+        "leafletTileLayer": {
+            "url": 'tiles/pleadies_2019_02_10/{z}/{x}/{y}.png',
+            "args": {
+                "tms": True,
+                "minZoom": 13,
+                "maxNativeZoom": 16,
+                "maxZoom": 20,
+                "attribution": 'Georeferenced Image'
+            }
+        },
+        "shape_layers": [
+            {"name": "Provinces", "shapes_fn": "shapes/hcmc_sentinel_admin_1_clipped.geojson", "zone_name_key": "NAME_1"},
+            {"name": "Districts", "shapes_fn": "shapes/hcmc_sentinel_admin_2_clipped.geojson", "zone_name_key": "NAME_2"},
+            {"name": "Wards", "shapes_fn": "shapes/hcmc_sentinel_admin_3_clipped.geojson", "zone_name_key": "NAME_3"}
+        ],
+        "location": {
+            "center": [10.682, 106.752],
+            "initialZoom": 13,
+            "bounds": None
+        }
+    },
     "yangon_lidar": {
         "name": "Yangon, Myanmar",
         "imagery_metadata": "LiDAR Imagery",
@@ -320,8 +347,86 @@ DATASET_DEFINITIONS = {
             "center": [38.11437, -75.99980],
             "initialZoom": 10,
         }
+    },
+    # "florida_keys_2013": {
+    #     "name": "Florida Keys, 2013",
+    #     "imagery_metadata": "NAIP 2013",
+    #     "data_layer_type": DatasetTypes.CUSTOM,
+    #     "data_fn": "tiles/florida_keys.vrt",
+    #     "data_padding": 20,
+    #     "leafletTileLayer": {
+    #         "wms": True,
+    #         "url": 'http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?',
+    #         "args": {
+    #             "layers": "local:florida_keys_2013_rgb",
+    #             "styles": "raster",
+    #             "tileSize": 1024,
+    #             "transparent": True,
+    #             "EXCEPTIONS": "SE_XML",
+    #             "GWC_SEED_INTERCEPT": True,
+    #             "minZoom": 10,
+    #             "maxNativeZoom": 18,
+    #             "maxZoom": 20,
+    #             "attribution": 'Georeferenced Image'
+    #         }
+    #     },
+    #     "shape_layers": None,
+    #     "location": {
+    #         "center": [24.7007, -81.3847],
+    #         "initialZoom": 10,
+    #         "bounds": None
+    #     }
+    # },
+    "florida_keys_2010_wmts": {
+        "name": "Florida Keys, 2010",
+        "imagery_metadata": "NAIP 2010",
+        "data_layer_type": DatasetTypes.CUSTOM,
+        "data_fn": "tiles/florida_keys_2010.vrt",
+        "data_padding": 20,
+        "leafletTileLayer": {
+            "wms": False,
+            "url": 'http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:florida_keys_2010_rgb&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}',
+            "args": {
+                "tms": False,
+                "minZoom": 8,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "attribution": 'Georeferenced Image',
+            }
+        },
+        "shape_layers": None,
+        "location": {
+            "center": [24.7007, -81.3847],
+            "initialZoom": 10,
+            "bounds": None
+        }
+    },
+    "florida_keys_2013_wmts": {
+        "name": "Florida Keys, 2013",
+        "imagery_metadata": "NAIP 2013",
+        "data_layer_type": DatasetTypes.CUSTOM,
+        "data_fn": "tiles/florida_keys_2013.vrt",
+        "data_padding": 20,
+        "leafletTileLayer": {
+            "wms": False,
+            "url": 'http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:florida_keys_2013_rgb&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}',
+            "args": {
+                "tms": False,
+                "minZoom": 8,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "attribution": 'Georeferenced Image',
+            }
+        },
+        "shape_layers": None,
+        "location": {
+            "center": [24.7007, -81.3847],
+            "initialZoom": 10,
+            "bounds": None
+        }
     }
 }
+
 
 def load_geojson_as_list(fn):
     shapes = []
@@ -357,17 +462,24 @@ def get_javascript_string_from_dataset(dataset):
         "name": dataset["name"],
         "imageMetadata": dataset["imagery_metadata"],
         "url": dataset["leafletTileLayer"]["url"],
-        "kwargs": str(dataset["leafletTileLayer"]["args"]).replace("True","true"),
+        "kwargs": str(dataset["leafletTileLayer"]["args"]).replace("True","true").replace("False","false"),
         "shapes": str([
             {"name": shape_layer["name"], "shapes_fn": shape_layer["shapes_fn"], "zone_name_key": shape_layer["zone_name_key"]} for shape_layer in dataset["shape_layers"]
         ]).replace("None", "null") if dataset["shape_layers"] is not None else "null"
     }
 
-    return '''{{
-        "location": [{center}, {initialZoom}, "{name}", "{imageMetadata}"],
-        "tileObject": L.tileLayer("{url}", {kwargs}),
-        "shapes": {shapes}
-    }}'''.format(**outputs)
+    if "wms" in dataset["leafletTileLayer"] and dataset["leafletTileLayer"]["wms"]:
+        return '''{{
+            "location": [{center}, {initialZoom}, "{name}", "{imageMetadata}"],
+            "tileObject": L.tileLayer.wms("{url}", {kwargs}),
+            "shapes": {shapes}
+        }}'''.format(**outputs)
+    else:
+        return '''{{
+            "location": [{center}, {initialZoom}, "{name}", "{imageMetadata}"],
+            "tileObject": L.tileLayer("{url}", {kwargs}),
+            "shapes": {shapes}
+        }}'''.format(**outputs)
 
 
 
