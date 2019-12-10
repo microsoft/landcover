@@ -136,6 +136,9 @@ class DataLoaderCustom(DataLoader):
 
         return src_image, src_crs, src_transform, buffed_geom.bounds, src_index
 
+    def get_metadata_from_extent(self, extent):
+        raise NotImplementedError()
+
     def get_area_from_shape_by_extent(self, extent, shape_layer):
         i, shape = self.get_shape_by_extent(extent, shape_layer)
         return self.shapes[shape_layer]["areas"][i]
@@ -284,6 +287,11 @@ class DataLoaderUSALayer(DataLoader):
 
         return src_image, src_crs, src_transform, buffed_geom.bounds, src_index
 
+    def get_metadata_from_extent(self, extent, geo_data_type=USALayerGeoDataTypes.NAIP):
+        naip_fn = NAIPTileIndex.lookup(extent)
+        fn = self.get_fn_by_geo_data_type(naip_fn, geo_data_type)
+        return fn
+
     def get_area_from_shape_by_extent(self, extent, shape_layer):
         raise NotImplementedError()
 
@@ -407,6 +415,9 @@ class DataLoaderBasemap(DataLoader):
         out_image = np.stack([r,g,b,r])
         
         return out_image, dst_crs, out_transform, (minx, miny, maxx, maxy), dst_index
+
+    def get_metadata_from_extent(self, extent):
+        raise NotImplementedError()
 
     def get_area_from_shape_by_extent(self, extent, shape_layer):
         raise NotImplementedError()

@@ -21,6 +21,10 @@ class DataLoader(ABC):
         raise NotImplementedError()
 
     @abstractmethod
+    def get_metadata_from_extent(self, extent, shape_layer):
+        raise NotImplementedError()
+
+    @abstractmethod
     def get_area_from_shape_by_extent(self, extent, shape_layer):
         raise NotImplementedError()
 

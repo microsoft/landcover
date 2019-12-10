@@ -405,7 +405,7 @@ def pred_tile():
     img_hard = cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGRA)
     img_hard[nodata_mask] = [0,0,0,0]
 
-    img_hard, img_hard_bounds = warp_data_to_3857(img_hard, raster_crs, raster_transform, raster_bounds, resolution=10)
+    img_hard, img_hard_bounds = warp_data_to_3857(img_hard, raster_crs, raster_transform, raster_bounds, resolution=1)
 
     cv2.imwrite(os.path.join(ROOT_DIR, "downloads/%s.png" % (tmp_id)), img_hard)
     data["downloadPNG"] = "downloads/%s.png" % (tmp_id)
@@ -465,6 +465,28 @@ def get_input():
     naip_img = cv2.imencode(".png", cv2.cvtColor(naip_img, cv2.COLOR_RGB2BGR))[1].tostring()
     naip_img = base64.b64encode(naip_img).decode("utf-8")
     data["input_naip"] = naip_img
+
+    bottle.response.status = 200
+    return json.dumps(data)
+
+
+def get_input_metadata():
+    ''' Method called for POST `/getInputMetadata`
+    '''
+    bottle.response.content_type = 'application/json'
+    data = bottle.request.json
+    #Session.add_entry(data) # record this interaction
+
+    # Inputs
+    extent = data["extent"]
+    dataset = data["dataset"]
+
+    if dataset not in DATASETS:
+        raise ValueError("Dataset doesn't seem to be valid, please check Datasets.py")
+
+    naip_fn = DATASETS[dataset]["data_loader"].get_metadata_from_extent(extent)
+    
+    data["input_fn"] = naip_fn
 
     bottle.response.status = 200
     return json.dumps(data)
@@ -581,6 +603,9 @@ def main():
     
     app.route("/getInput", method="OPTIONS", callback=do_options)
     app.route('/getInput', method="POST", callback=get_input)
+
+    app.route("/getInputMetadata", method="OPTIONS", callback=do_options)
+    app.route('/getInputMetadata', method="POST", callback=get_input_metadata)
 
     app.route("/recordCorrection", method="OPTIONS", callback=do_options)
     app.route('/recordCorrection', method="POST", callback=record_correction)
