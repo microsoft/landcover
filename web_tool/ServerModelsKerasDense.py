@@ -23,7 +23,7 @@ AUGMENT_MODEL = MLPClassifier(
     tol=0.0001,
     verbose=False,
     validation_fraction=0.0,
-    n_iter_no_change=10
+    n_iter_no_change=50
 )
 
 class KerasDenseFineTune(BackendModel):
@@ -165,10 +165,10 @@ class KerasDenseFineTune(BackendModel):
         return success, message
         
     def add_sample(self, tdst_row, bdst_row, tdst_col, bdst_col, class_idx):
-        x_samples = self.current_features[tdst_row:bdst_row+1, tdst_col:bdst_col+1, :].copy().reshape(-1, self.current_features.shape[2])
-        y_samples = np.zeros((x_samples.shape[0]), dtype=np.uint8)
+        x_features = self.current_features[tdst_row:bdst_row+1, tdst_col:bdst_col+1, :].copy().reshape(-1, self.current_features.shape[2])
+        y_samples = np.zeros((x_features.shape[0]), dtype=np.uint8)
         y_samples[:] = class_idx
-        self.augment_x_train.append(x_samples)
+        self.augment_x_train.append(x_features)
         self.augment_y_train.append(y_samples)
         self.undo_stack.append("sample")
 
