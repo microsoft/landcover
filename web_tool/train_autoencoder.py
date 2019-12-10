@@ -24,9 +24,31 @@ from keras.losses import categorical_crossentropy, mean_squared_error
 
 from sklearn.cluster import MiniBatchKMeans
 
-def basic_model(input_shape, num_classes, lr=0.003):
-    inputs = Input(input_shape)
+import scipy.spatial.distance
 
+def manual_kmeans_predict(x_all, cluster_centers, step_size=100000):
+    ''' Faster inference of cluster membership than default sklearn model.predict().
+    If you have fit a sklearn.cluster algorithm (like KMeans or MiniBatchKMeans) on a subset of your data
+    (or fit with `compute_labels=False`), then you can use this method to more quickly predict the cluster
+    memberships than calling `.predict()`.
+    Example:
+    ```
+    kmeans = MiniBatchKMeans(n_clusters=9, compute_labels=False)
+    kmeans.fit(x_all[::100,])
+    labels = utils.manual_kmeans_predict(x_all, kmeans.cluster_centers_)
+    ```
+    '''
+    print("Manual predict")
+    y_all = np.zeros((x_all.shape[0]), dtype=np.uint8)
+    for i in range(0, x_all.shape[0], step_size):
+        if (i // step_size) % 50 == 0:
+            print(i // step_size, x_all.shape[0]//step_size)
+        l = scipy.spatial.distance.cdist(x_all[i:i+step_size], cluster_centers).argmin(axis=1)
+        y_all[i:i+step_size] = l
+    return y_all
+
+
+def basic_model(input_shape, num_classes, lr=0.003):
     inputs = Input(input_shape)
 
     x1 = Conv2D(128, kernel_size=(3,3), strides=(1,1), padding="same", activation="relu")(inputs)
@@ -34,7 +56,6 @@ def basic_model(input_shape, num_classes, lr=0.003):
     x3 = Conv2D(128, kernel_size=(7,7), strides=(1,1), padding="same", activation="relu")(inputs)
     x = Concatenate(axis=-1)([x1,x2,x3])
     x = Conv2D(128, kernel_size=(1,1), strides=(1,1), padding="same", activation="relu")(x)
-    x = BatchNormalization()(x)
 
     x1 = Conv2D(128, kernel_size=(3,3), strides=(1,1), padding="same", activation="relu")(x)
     x2 = Conv2D(128, kernel_size=(5,5), strides=(1,1), padding="same", activation="relu")(x)
@@ -46,6 +67,29 @@ def basic_model(input_shape, num_classes, lr=0.003):
     x2 = Conv2D(128, kernel_size=(5,5), strides=(1,1), padding="same", activation="relu")(x)
     x3 = Conv2D(128, kernel_size=(7,7), strides=(1,1), padding="same", activation="relu")(x)
     x = Concatenate(axis=-1)([x1,x2,x3])
+    x = Conv2D(128, kernel_size=(1,1), strides=(1,1), padding="same", activation="relu")(x)
+
+    outputs = Conv2D(num_classes, kernel_size=(1,1), strides=(1,1), padding="same", activation="softmax")(x)
+    model = Model(inputs=inputs, outputs=outputs)
+    
+    optimizer = Adam(lr=lr)
+    model.compile(loss=categorical_crossentropy, optimizer=optimizer)
+    
+    return model
+
+
+def basic_model(input_shape, num_classes, lr=0.003):
+    inputs = Input(input_shape)
+
+    x = Conv2D(128, kernel_size=(3,3), strides=(1,1), padding="same", activation="relu")(inputs)
+    x = BatchNormalization()(x)
+    x = Conv2D(128, kernel_size=(3,3), strides=(1,1), padding="same", activation="relu")(x)
+    x = BatchNormalization()(x)
+    x = Conv2D(128, kernel_size=(3,3), strides=(1,1), padding="same", activation="relu")(x)
+    x = BatchNormalization()(x)
+    x = Conv2D(128, kernel_size=(3,3), strides=(1,1), padding="same", activation="relu")(x)
+    x = BatchNormalization()(x)
+
     x = Conv2D(128, kernel_size=(1,1), strides=(1,1), padding="same", activation="relu")(x)
 
     outputs = Conv2D(num_classes, kernel_size=(1,1), strides=(1,1), padding="same", activation="softmax")(x)
@@ -88,11 +132,13 @@ def main():
     print("Loaded data with shape:", data.shape)
 
     print("Fitting KMeans model for labels")
-    num_classes = 10
+    num_classes = 128
     data_original_shape = data.shape
     data_color_features = data.reshape(-1,4)
-    kmeans = MiniBatchKMeans(n_clusters=num_classes, verbose=1)
-    labels = kmeans.fit_predict(data_color_features)
+    kmeans = MiniBatchKMeans(n_clusters=num_classes, verbose=1, compute_labels=False)
+    kmeans = kmeans.fit(data_color_features)
+    #labels = kmeans.fit_predict(data_color_features)
+    labels = manual_kmeans_predict(data_color_features, cluster_centers=kmeans.cluster_centers_)
     data_color_labels = labels.reshape(data_original_shape[:2])
 
     print("Extracting training samples")
@@ -112,7 +158,7 @@ def main():
         y_all[i] = target
 
     x_all = x_all/255.0
-    y_all = keras.utils.to_categorical(y_all)
+    y_all = keras.utils.to_categorical(y_all, num_classes=num_classes)
 
 
     model = basic_model((height, width, 4), num_classes, lr=0.003)
