@@ -171,7 +171,7 @@ DATASET_DEFINITIONS = {
         "imagery_metadata": "SPOT Imagery",
         "data_layer_type": DatasetTypes.CUSTOM,
         "data_fn": "tiles/spot6_2019_02_10.tif",
-        "data_padding": 1100,
+        "data_padding": 10,
         "leafletTileLayer": {
             "url": 'tiles/spot6_2019_02_10/{z}/{x}/{y}.png',
             "args": {
@@ -198,7 +198,7 @@ DATASET_DEFINITIONS = {
         "imagery_metadata": "SPOT Imagery",
         "data_layer_type": DatasetTypes.CUSTOM,
         "data_fn": "tiles/spot6_2017_02_12.tif",
-        "data_padding": 1100,
+        "data_padding": 10,
         "leafletTileLayer": {
             "url": 'tiles/spot6_2017_02_12/{z}/{x}/{y}.png',
             "args": {
@@ -348,35 +348,6 @@ DATASET_DEFINITIONS = {
             "initialZoom": 10,
         }
     },
-    # "florida_keys_2013": {
-    #     "name": "Florida Keys, 2013",
-    #     "imagery_metadata": "NAIP 2013",
-    #     "data_layer_type": DatasetTypes.CUSTOM,
-    #     "data_fn": "tiles/florida_keys.vrt",
-    #     "data_padding": 20,
-    #     "leafletTileLayer": {
-    #         "wms": True,
-    #         "url": 'http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?',
-    #         "args": {
-    #             "layers": "local:florida_keys_2013_rgb",
-    #             "styles": "raster",
-    #             "tileSize": 1024,
-    #             "transparent": True,
-    #             "EXCEPTIONS": "SE_XML",
-    #             "GWC_SEED_INTERCEPT": True,
-    #             "minZoom": 10,
-    #             "maxNativeZoom": 18,
-    #             "maxZoom": 20,
-    #             "attribution": 'Georeferenced Image'
-    #         }
-    #     },
-    #     "shape_layers": None,
-    #     "location": {
-    #         "center": [24.7007, -81.3847],
-    #         "initialZoom": 10,
-    #         "bounds": None
-    #     }
-    # },
     "florida_keys_2010_wmts": {
         "name": "Florida Keys, 2010",
         "imagery_metadata": "NAIP 2010",
@@ -394,7 +365,9 @@ DATASET_DEFINITIONS = {
                 "attribution": 'Georeferenced Image',
             }
         },
-        "shape_layers": None,
+        "shape_layers": [
+            {"name": "NAIP tiles", "shapes_fn": "shapes/florida_keys_tiles.geojson", "zone_name_key": "location"}
+        ],
         "location": {
             "center": [24.7007, -81.3847],
             "initialZoom": 10,
@@ -418,7 +391,35 @@ DATASET_DEFINITIONS = {
                 "attribution": 'Georeferenced Image',
             }
         },
-        "shape_layers": None,
+        "shape_layers": [
+            {"name": "NAIP tiles", "shapes_fn": "shapes/florida_keys_tiles.geojson", "zone_name_key": "location"}
+        ],
+        "location": {
+            "center": [24.7007, -81.3847],
+            "initialZoom": 10,
+            "bounds": None
+        }
+    },
+    "florida_keys_2015_wmts": {
+        "name": "Florida Keys, 2015",
+        "imagery_metadata": "NAIP 2015",
+        "data_layer_type": DatasetTypes.CUSTOM,
+        "data_fn": "tiles/florida_keys_2015.vrt",
+        "data_padding": 20,
+        "leafletTileLayer": {
+            "wms": False,
+            "url": 'http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:florida_keys_2015_rgb&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}',
+            "args": {
+                "tms": False,
+                "minZoom": 8,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "attribution": 'Georeferenced Image',
+            }
+        },
+        "shape_layers": [
+            {"name": "NAIP tiles", "shapes_fn": "shapes/florida_keys_tiles.geojson", "zone_name_key": "location"}
+        ],
         "location": {
             "center": [24.7007, -81.3847],
             "initialZoom": 10,
