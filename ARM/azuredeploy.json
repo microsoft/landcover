@@ -2,17 +2,46 @@
     "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
-        "adminUsername": {
+        "vmSize": {
+            "allowedValues": [
+                "Standard_B1ms",
+                "Standard_A2",
+                "Standard_A3",
+                "Standard_A4",
+                "Standard_D1",
+                "Standard_D2",
+                "Standard_D3",
+                "Standard_D4"
+            ],
             "type": "String",
             "metadata": {
-                "description": "Username for Administrator Account"
+                "description": "Size of vm"
             }
         },
-        "vmName": {
-            "defaultValue": "vmName",
+        "username": {
             "type": "String",
             "metadata": {
-                "description": "The name of you Virtual Machine."
+                "description": "Username for the Virtual Machine."
+            }
+        },
+        "_artifactsLocation": {
+            "defaultValue": "https://raw.githubusercontent.com/microsoft/landcover/feature/vm-arm-template/ARM",
+            "type": "String",
+            "metadata": {
+                "description": "The base URI where artifacts required by this template are located. When the template is deployed using the accompanying scripts, a private location in the subscription will be used and this value will be automatically generated."
+            }
+        },
+        "_artifactsLocationSasToken": {
+            "defaultValue": "",
+            "type": "SecureString",
+            "metadata": {
+                "description": "The sasToken required to access _artifactsLocation.  When the template is deployed using the accompanying scripts, a sasToken will be automatically generated."
+            }
+        },
+        "commandToExecute": {
+            "type": "String",
+            "metadata": {
+                "description": "The command to execute."
             }
         },
         "location": {
@@ -20,42 +49,6 @@
             "type": "String",
             "metadata": {
                 "description": "Location for all resources."
-            }
-        },
-        "cpu-gpu": {
-            "defaultValue": "CPU-4GB",
-            "allowedValues": [
-                "CPU-4GB",
-                "CPU-7GB",
-                "CPU-8GB",
-                "CPU-14GB",
-                "CPU-16GB",
-                "GPU-56GB"
-            ],
-            "type": "String",
-            "metadata": {
-                "description": "Choose between CPU or GPU processing"
-            }
-        },
-        "virtualNetworkName": {
-            "defaultValue": "vNet",
-            "type": "String",
-            "metadata": {
-                "description": "Name of the VNET"
-            }
-        },
-        "subnetName": {
-            "defaultValue": "subnet",
-            "type": "String",
-            "metadata": {
-                "description": "Name of the subnet in the virtual network"
-            }
-        },
-        "networkSecurityGroupName": {
-            "defaultValue": "SecGroupNet",
-            "type": "String",
-            "metadata": {
-                "description": "Name of the Network Security Group"
             }
         },
         "authenticationType": {
@@ -77,29 +70,22 @@
         }
     },
     "variables": {
-        "networkInterfaceName": "[concat(parameters('vmName'),'NetInt')]",
-        "virtualMachineName": "[parameters('vmName')]",
-        "publicIpAddressName": "[concat(parameters('vmName'), 'PublicIP' )]",
-        "subnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworkName'), parameters('subnetName'))]",
-        "nsgId": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('networkSecurityGroupName'))]",
-        "osDiskType": "Standard_LRS",
-        "storageAccountName": "[concat('storage', uniqueString(resourceGroup().id))]",
-        "storageAccountType": "Standard_LRS",
-        "storageAccountKind": "Storage",
-        "vmSize": {
-            "CPU-4GB": "Standard_B2s",
-            "CPU-7GB": "Standard_DS2_v2",
-            "CPU-8GB": "Standard_D2s_v3",
-            "CPU-14GB": "Standard_DS3_v2",
-            "CPU-16GB": "Standard_D4s_v3",
-            "GPU-56GB": "Standard_NC6_Promo"
-        },
+        "scenarioPrefix": "customscriptLinux",
+        "nicName": "[concat(variables('scenarioPrefix'),'Nic')]",
+        "vnetAddressPrefix": "10.0.0.0/16",
+        "subnetName": "[concat(variables('scenarioPrefix'),'Subnet')]",
+        "subnetPrefix": "10.0.0.0/24",
+        "publicIPAddressName": "[concat(variables('scenarioPrefix'),'PublicIp')]",
+        "publicIPAddressType": "Dynamic",
+        "vmName": "[concat(variables('scenarioPrefix'),'VM')]",
+        "virtualNetworkName": "[concat(variables('scenarioPrefix'),'Vnet')]",
+        "subnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworkName'), variables('subnetName'))]",
         "linuxConfiguration": {
             "disablePasswordAuthentication": true,
             "ssh": {
                 "publicKeys": [
                     {
-                        "path": "[concat('/home/', parameters('adminUsername'), '/.ssh/authorized_keys')]",
+                        "path": "[concat('/home/', parameters('username'), '/.ssh/authorized_keys')]",
                         "keyData": "[parameters('adminPasswordOrKey')]"
                     }
                 ]
@@ -108,204 +94,120 @@
     },
     "resources": [
         {
+            "type": "Microsoft.Network/publicIPAddresses",
+            "apiVersion": "2015-05-01-preview",
+            "name": "[variables('publicIPAddressName')]",
+            "location": "[parameters('location')]",
+            "properties": {
+                "publicIPAllocationMethod": "[variables('publicIPAddressType')]"
+            }
+        },
+        {
+            "type": "Microsoft.Network/virtualNetworks",
+            "apiVersion": "2015-05-01-preview",
+            "name": "[variables('virtualNetworkName')]",
+            "location": "[parameters('location')]",
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "[variables('vnetAddressPrefix')]"
+                    ]
+                },
+                "subnets": [
+                    {
+                        "name": "[variables('subnetName')]",
+                        "properties": {
+                            "addressPrefix": "[variables('subnetPrefix')]"
+                        }
+                    }
+                ]
+            }
+        },
+        {
             "type": "Microsoft.Network/networkInterfaces",
-            "apiVersion": "2018-10-01",
-            "name": "[variables('networkInterfaceName')]",
+            "apiVersion": "2015-05-01-preview",
+            "name": "[variables('nicName')]",
             "location": "[parameters('location')]",
             "dependsOn": [
-                "[resourceId('Microsoft.Network/networkSecurityGroups/', parameters('networkSecurityGroupName'))]",
-                "[resourceId('Microsoft.Network/virtualNetworks/', parameters('virtualNetworkName'))]",
-                "[resourceId('Microsoft.Network/publicIpAddresses/', variables('publicIpAddressName'))]"
+                "[concat('Microsoft.Network/publicIPAddresses/', variables('publicIPAddressName'))]",
+                "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
             ],
             "properties": {
                 "ipConfigurations": [
                     {
                         "name": "ipconfig1",
                         "properties": {
+                            "privateIPAllocationMethod": "Dynamic",
+                            "publicIPAddress": {
+                                "id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]"
+                            },
                             "subnet": {
                                 "id": "[variables('subnetRef')]"
-                            },
-                            "privateIPAllocationMethod": "Dynamic",
-                            "publicIpAddress": {
-                                "id": "[resourceId('Microsoft.Network/publicIpAddresses', variables('publicIpAddressName'))]"
                             }
                         }
                     }
-                ],
-                "networkSecurityGroup": {
-                    "id": "[variables('nsgId')]"
-                }
-            }
-        },
-        {
-            "type": "Microsoft.Network/networkSecurityGroups",
-            "apiVersion": "2019-02-01",
-            "name": "[parameters('networkSecurityGroupName')]",
-            "location": "[parameters('location')]",
-            "properties": {
-                "securityRules": [
-                    {
-                        "name": "JupyterHub",
-                        "properties": {
-                            "priority": 1010,
-                            "protocol": "TCP",
-                            "access": "Allow",
-                            "direction": "Inbound",
-                            "sourceAddressPrefix": "*",
-                            "sourcePortRange": "*",
-                            "destinationAddressPrefix": "*",
-                            "destinationPortRange": "8000"
-                        }
-                    },
-                    {
-                        "name": "RStudioServer",
-                        "properties": {
-                            "priority": 1020,
-                            "protocol": "TCP",
-                            "access": "Allow",
-                            "direction": "Inbound",
-                            "sourceAddressPrefix": "*",
-                            "sourcePortRange": "*",
-                            "destinationAddressPrefix": "*",
-                            "destinationPortRange": "8787"
-                        }
-                    },
-                    {
-                        "name": "SSH",
-                        "properties": {
-                            "priority": 1030,
-                            "protocol": "TCP",
-                            "access": "Allow",
-                            "direction": "Inbound",
-                            "sourceAddressPrefix": "*",
-                            "sourcePortRange": "*",
-                            "destinationAddressPrefix": "*",
-                            "destinationPortRange": "22"
-                        }
-                    }
                 ]
             }
-        },
-        {
-            "type": "Microsoft.Network/virtualNetworks",
-            "apiVersion": "2019-04-01",
-            "name": "[parameters('virtualNetworkName')]",
-            "location": "[parameters('location')]",
-            "properties": {
-                "addressSpace": {
-                    "addressPrefixes": [
-                        "10.0.0.0/24"
-                    ]
-                },
-                "subnets": [
-                    {
-                        "name": "[parameters('subnetName')]",
-                        "properties": {
-                            "addressPrefix": "10.0.0.0/24",
-                            "privateEndpointNetworkPolicies": "Enabled",
-                            "privateLinkServiceNetworkPolicies": "Enabled"
-                        }
-                    }
-                ]
-            }
-        },
-        {
-            "type": "Microsoft.Network/publicIpAddresses",
-            "apiVersion": "2019-02-01",
-            "name": "[variables('publicIpAddressName')]",
-            "location": "[parameters('location')]",
-            "sku": {
-                "name": "Basic",
-                "tier": "Regional"
-            },
-            "properties": {
-                "publicIpAllocationMethod": "Dynamic"
-            }
-        },
-        {
-            "type": "Microsoft.Storage/storageAccounts",
-            "apiVersion": "2019-06-01",
-            "name": "[variables('storageAccountName')]",
-            "location": "[parameters('location')]",
-            "sku": {
-                "name": "[variables('storageAccountType')]"
-            },
-            "kind": "[variables('storageAccountKind')]"
         },
         {
             "type": "Microsoft.Compute/virtualMachines",
-            "apiVersion": "2019-03-01",
-            "name": "[concat(variables('virtualMachineName'),'-', parameters('Cpu-Gpu'))]",
+            "apiVersion": "2016-04-30-preview",
+            "name": "[variables('vmName')]",
             "location": "[parameters('location')]",
             "dependsOn": [
-                "[resourceId('Microsoft.Network/networkInterfaces/', variables('networkInterfaceName'))]",
-                "[resourceId('Microsoft.Storage/storageAccounts/', variables('storageAccountName'))]"
+                "[concat('Microsoft.Network/networkInterfaces/', variables('nicName'))]"
             ],
             "properties": {
                 "hardwareProfile": {
-                    "vmSize": "[variables('vmSize')[parameters('Cpu-Gpu')]]"
+                    "vmSize": "[parameters('vmSize')]"
+                },
+                "osProfile": {
+                    "computerName": "[variables('vmName')]",
+                    "adminUsername": "[parameters('username')]",
+                    "adminPassword": "[parameters('adminPasswordOrKey')]",
+                    "linuxConfiguration": "[if(equals(parameters('authenticationType'), 'password'), json('null'), variables('linuxConfiguration'))]"
                 },
                 "storageProfile": {
-                    "osDisk": {
-                        "createOption": "fromImage",
-                        "managedDisk": {
-                            "storageAccountType": "[variables('osDiskType')]"
-                        }
-                    },
                     "imageReference": {
                         "publisher": "microsoft-dsvm",
                         "offer": "linux-data-science-vm-ubuntu",
                         "sku": "linuxdsvmubuntu",
                         "version": "latest"
+                    },
+                    "osDisk": {
+                        "caching": "ReadWrite",
+                        "createOption": "FromImage"
                     }
                 },
                 "networkProfile": {
                     "networkInterfaces": [
                         {
-                            "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('networkInterfaceName'))]"
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nicName'))]"
                         }
                     ]
-                },
-                "osProfile": {
-                    "computerName": "[variables('virtualMachineName')]",
-                    "adminUsername": "[parameters('adminUsername')]",
-                    "adminPassword": "[parameters('adminPasswordOrKey')]",
-                    "linuxConfiguration": "[if(equals(parameters('authenticationType'), 'password'), json('null'), variables('linuxConfiguration'))]"
                 }
             }
         },
         {
             "type": "Microsoft.Compute/virtualMachines/extensions",
-            "apiVersion": "2018-06-01",
-            "name": "[concat(variables('virtualMachineName'), '-', parameters('Cpu-Gpu'),'/installcustomscript')]",
-            "location": "[resourceGroup().location]",
+            "apiVersion": "2015-05-01-preview",
+            "name": "[concat(variables('vmName'),'/installcustomscript')]",
+            "location": "[parameters('location')]",
             "dependsOn": [
-                "[concat('Microsoft.Compute/virtualMachines/', variables('virtualMachineName'), '-', parameters('Cpu-Gpu'))]"
+                "[concat('Microsoft.Compute/virtualMachines/', variables('vmName'))]"
             ],
-            "tags": {
-                "displayName": "installcustomscript"
-            },
             "properties": {
-                "publisher": "Microsoft.Compute",
-                "type": "CustomScriptExtension",
-                "typeHandlerVersion": "1.9",
+                "publisher": "Microsoft.Azure.Extensions",
+                "type": "CustomScript",
+                "typeHandlerVersion": "2.0",
                 "autoUpgradeMinorVersion": true,
                 "settings": {
                     "fileUris": [
-                        "https://raw.githubusercontent.com/microsoft/landcover/feature/vm-arm-template/ARM/run_docker_image.sh"
+                        "[concat(parameters('_artifactsLocation'), '/run_docker_image.sh')]"
                     ],
-                    "timestamp": 123456789
-                },
-                "protectedSettings": {
-                    "commandToExecute": "bash run_docker_image.sh"
+                    "commandToExecute": "[parameters('commandToExecute')]"
                 }
             }
         }
-    ],
-    "outputs": {
-        "adminUsername": {
-            "type": "String",
-            "value": "[parameters('adminUsername')]"
-        }
-    }
+    ]
 }
