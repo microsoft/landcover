@@ -205,7 +205,7 @@
                     "fileUris": [
                         "[concat(parameters('_artifactsLocation'), '/run_docker_image.sh')]"
                     ],
-                    "commandToExecute": "[parameters('commandToExecute')]"
+                    "commandToExecute": "bash run_docker_image.sh"
                 }
             }
         }
