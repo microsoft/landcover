@@ -38,12 +38,6 @@
                 "description": "The sasToken required to access _artifactsLocation.  When the template is deployed using the accompanying scripts, a sasToken will be automatically generated."
             }
         },
-        "commandToExecute": {
-            "type": "String",
-            "metadata": {
-                "description": "The command to execute."
-            }
-        },
         "location": {
             "defaultValue": "[resourceGroup().location]",
             "type": "String",
