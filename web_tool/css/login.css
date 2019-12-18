@@ -105,7 +105,7 @@ nav
 
 @media only screen and (max-width: 600px) {
     body {
-        background-image: url(/css/images/bg-map.png);
+        background-image: url(/css/images/highres_world.jpg);
         background-position: top center;
         font-family: 'Montserrat';
         background-attachment: fixed;
@@ -129,7 +129,7 @@ nav
 
 @media only screen and (min-width: 600px) {
     body {
-        background-image: url(/css/images/bg-map.png);
+        background-image: url(/css/images/highres_world.jpg);
         background-position: top center;
         font-family: 'Montserrat';
         background-attachment: fixed;
@@ -154,7 +154,7 @@ nav
 
 @media only screen and (min-width: 768px) {
     body {
-        background-image: url(/css/images/bg-map.png);
+        background-image: url(/css/images/highres_world.jpg);
         background-position: top center;
         font-family: 'Montserrat';
         background-attachment: fixed;
@@ -180,9 +180,9 @@ nav
 @media only screen and (min-width: 992px) {
     body {
         background:#0B0B31;
-        background-image: url(/css/images/bg-map-widescreen.png);
+        background-image: url(/css/images/highres_world.jpg);
         background-repeat: no-repeat;
-        background-position: 80% 0%;
+        background-position: 100% 0%;
         font-family: 'Montserrat';
         background-attachment: fixed;
         background-size: cover;
@@ -204,9 +204,9 @@ nav
 @media only screen and (min-width: 1200px) {
     body {
         background:#0B0B31;
-        background-image: url(/css/images/bg-map-widescreen.png);
+        background-image: url(/css/images/highres_world.jpg);
         background-repeat: no-repeat;
-        background-position: 80% 0%;
+        background-position: 100% 0%;
         font-family: 'Montserrat';
         background-attachment: fixed;
         background-size: cover;
@@ -227,9 +227,9 @@ nav
 @media only screen and (min-width: 1900px) {
     body {
         background:#0B0B31;
-        background-image: url(/css/images/bg-map-widescreen.png);
+        background-image: url(/css/images/highres_world.jpg);
         background-repeat: no-repeat;
-        background-position: 80% 0%;
+        background-position: 100% 0%;
         font-family: 'Montserrat';
         background-attachment: fixed;
         background-size: cover;
