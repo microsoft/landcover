@@ -425,6 +425,240 @@ DATASET_DEFINITIONS = {
             "initialZoom": 10,
             "bounds": None
         }
+    },
+    "la_coast_2010_wmts": {
+        "name": "LA Coast, 2010",
+        "imagery_metadata": "NAIP 2010",
+        "data_layer_type": DatasetTypes.CUSTOM,
+        "data_fn": "tiles/la_coast_2010.vrt",
+        "data_padding": 20,
+        "leafletTileLayer": {
+            "wms": False,
+            "url": 'http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:la_coast_2010_rgb&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}',
+            "args": {
+                "tms": False,
+                "minZoom": 8,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "attribution": 'Georeferenced Image',
+            }
+        },
+        "shape_layers": [
+            {"name": "NAIP tiles", "shapes_fn": "shapes/la_coast_29090_2010_tiles.geojson", "zone_name_key": "location"}
+        ],
+        "location": {
+            "center": [29.598, -90.559],
+            "initialZoom": 10,
+            "bounds": None
+        }
+    },
+    "la_coast_2013_wmts": {
+        "name": "LA Coast, 2013",
+        "imagery_metadata": "NAIP 2013",
+        "data_layer_type": DatasetTypes.CUSTOM,
+        "data_fn": "tiles/la_coast_2013.vrt",
+        "data_padding": 20,
+        "leafletTileLayer": {
+            "wms": False,
+            "url": 'http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:la_coast_2013_rgb&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}',
+            "args": {
+                "tms": False,
+                "minZoom": 8,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "attribution": 'Georeferenced Image',
+            }
+        },
+        "shape_layers": [
+            {"name": "NAIP tiles", "shapes_fn": "shapes/la_coast_29090_2010_tiles.geojson", "zone_name_key": "location"}
+        ],
+        "location": {
+            "center": [29.598, -90.559],
+            "initialZoom": 10,
+            "bounds": None
+        }
+    },
+    "la_coast_2015_wmts": {
+        "name": "LA Coast, 2015",
+        "imagery_metadata": "NAIP 2015",
+        "data_layer_type": DatasetTypes.CUSTOM,
+        "data_fn": "tiles/la_coast_2015.vrt",
+        "data_padding": 20,
+        "leafletTileLayer": {
+            "wms": False,
+            "url": 'http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:la_coast_2015_rgb&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}',
+            "args": {
+                "tms": False,
+                "minZoom": 8,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "attribution": 'Georeferenced Image',
+            }
+        },
+        "shape_layers": [
+            {"name": "NAIP tiles", "shapes_fn": "shapes/la_coast_29090_2010_tiles.geojson", "zone_name_key": "location"}
+        ],
+        "location": {
+            "center": [29.598, -90.559],
+            "initialZoom": 10,
+            "bounds": None
+        }
+    },
+    "la_coast_nlcd_wmts": {
+        "name": "LA Coast, NLCD Ground Truth Old",
+        "imagery_metadata": "Ground Truth",
+        "data_layer_type": DatasetTypes.CUSTOM,
+        "data_fn": "tiles/la_coast_2013.vrt",
+        "data_padding": 20,
+        "leafletTileLayer": {
+            "wms": False,
+            "url": 'http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:la_coast_nlcd&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}',
+            "args": {
+                "tms": False,
+                "minZoom": 8,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "attribution": 'Georeferenced Image',
+            }
+        },
+        "shape_layers": [
+            {"name": "NAIP tiles", "shapes_fn": "shapes/la_coast_29090_2010_tiles.geojson", "zone_name_key": "location"}
+        ],
+        "location": {
+            "center": [29.598, -90.559],
+            "initialZoom": 10,
+            "bounds": None
+        }
+    },
+    "la_coast_nlcd_2011_wmts": {
+        "name": "LA Coast, NLCD Ground Truth 2011",
+        "imagery_metadata": "Ground Truth",
+        "data_layer_type": DatasetTypes.CUSTOM,
+        "data_fn": "tiles/la_coast_2013.vrt",
+        "data_padding": 20,
+        "leafletTileLayer": {
+            "wms": False,
+            "url": 'http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:la_coast_nlcd_2011&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}',
+            "args": {
+                "tms": False,
+                "minZoom": 8,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "attribution": 'Georeferenced Image',
+            }
+        },
+        "shape_layers": [
+            {"name": "NAIP tiles", "shapes_fn": "shapes/la_coast_29090_2010_tiles.geojson", "zone_name_key": "location"}
+        ],
+        "location": {
+            "center": [29.598, -90.559],
+            "initialZoom": 10,
+            "bounds": None
+        }
+    },
+    "la_coast_nlcd_2013_wmts": {
+        "name": "LA Coast, NLCD Ground Truth 2013",
+        "imagery_metadata": "Ground Truth",
+        "data_layer_type": DatasetTypes.CUSTOM,
+        "data_fn": "tiles/la_coast_2013.vrt",
+        "data_padding": 20,
+        "leafletTileLayer": {
+            "wms": False,
+            "url": 'http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:la_coast_nlcd_2013&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}',
+            "args": {
+                "tms": False,
+                "minZoom": 8,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "attribution": 'Georeferenced Image',
+            }
+        },
+        "shape_layers": [
+            {"name": "NAIP tiles", "shapes_fn": "shapes/la_coast_29090_2010_tiles.geojson", "zone_name_key": "location"}
+        ],
+        "location": {
+            "center": [29.598, -90.559],
+            "initialZoom": 10,
+            "bounds": None
+        }
+    },
+    "la_coast_nlcd_2016_wmts": {
+        "name": "LA Coast, NLCD Ground Truth 2016",
+        "imagery_metadata": "Ground Truth",
+        "data_layer_type": DatasetTypes.CUSTOM,
+        "data_fn": "tiles/la_coast_2013.vrt",
+        "data_padding": 20,
+        "leafletTileLayer": {
+            "wms": False,
+            "url": 'http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:la_coast_nlcd_2016&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}',
+            "args": {
+                "tms": False,
+                "minZoom": 8,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "attribution": 'Georeferenced Image',
+            }
+        },
+        "shape_layers": [
+            {"name": "NAIP tiles", "shapes_fn": "shapes/la_coast_29090_2010_tiles.geojson", "zone_name_key": "location"}
+        ],
+        "location": {
+            "center": [29.598, -90.559],
+            "initialZoom": 10,
+            "bounds": None
+        }
+    },
+    "la_coast_embed_2010_wmts": {
+        "name": "LA Coast, 2010",
+        "imagery_metadata": "Embedded NLCD 2010",
+        "data_layer_type": DatasetTypes.CUSTOM,
+        "data_fn": "tiles/la_coast_2010.vrt",
+        "data_padding": 20,
+        "leafletTileLayer": {
+            "wms": False,
+            "url": 'http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:la_coast_embed_2010&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}',
+            "args": {
+                "tms": False,
+                "minZoom": 8,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "attribution": 'Georeferenced Image',
+            }
+        },
+        "shape_layers": [
+            {"name": "NAIP tiles", "shapes_fn": "shapes/la_coast_29090_2010_tiles.geojson", "zone_name_key": "location"}
+        ],
+        "location": {
+            "center": [29.598, -90.559],
+            "initialZoom": 10,
+            "bounds": None
+        }
+    },
+    "la_coast_embed_2013_wmts": {
+        "name": "LA Coast, 2013",
+        "imagery_metadata": "Embedded NLCD 2013",
+        "data_layer_type": DatasetTypes.CUSTOM,
+        "data_fn": "tiles/la_coast_2013.vrt",
+        "data_padding": 20,
+        "leafletTileLayer": {
+            "wms": False,
+            "url": 'http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:la_coast_embed_2013&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}',
+            "args": {
+                "tms": False,
+                "minZoom": 8,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "attribution": 'Georeferenced Image',
+            }
+        },
+        "shape_layers": [
+            {"name": "NAIP tiles", "shapes_fn": "shapes/la_coast_29090_2010_tiles.geojson", "zone_name_key": "location"}
+        ],
+        "location": {
+            "center": [29.598, -90.559],
+            "initialZoom": 10,
+            "bounds": None
+        }
     }
 }
 
