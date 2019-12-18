@@ -8,16 +8,16 @@
         "description": "Principal ID to set the access for"
       }
     },
-    "storageAccountName": {
+    "vmName": {
       "type": "string",
       "metadata": {
-        "description": "The storage account to set access for"
+        "description": "The vm to set access for"
       }
     }
   },
   "variables": {
     "contributor": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Authorization/roleDefinitions/', 'b24988ac-6180-42a0-ab88-20f7382dd24c')]",
-    "RBACResourceName": "[concat(parameters('storageAccountName'),'/Microsoft.Authorization/',parameters('principalId'))]"
+    "RBACResourceName": "[concat(parameters('vmName'),'/Microsoft.Authorization/',parameters('principalId'))]"
   },
   "resources": [
     {
@@ -27,7 +27,7 @@
       "properties": {
         "roleDefinitionId": "[variables('contributor')]",
         "principalId": "[parameters('principalId')]",
-        "scope": "[resourceId('Microsoft.Storage/storageAccounts',parameters('storageAccountName'))]"
+        "scope": "[resourceId('Microsoft.Compute/virtualMachines',parameters('vmName'))]"
       }
     }
   ]
