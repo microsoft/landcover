@@ -44,7 +44,7 @@ class Session():
         self.last_interaction_time = self.creation_time
 
     def spawn_worker(self):
-    
+        # TODO: instead of spawning a local worker provision a VM that autostarts a worker
         command = [
             "/usr/bin/env", "python", "web_tool/worker.py",
             "--model", "keras_dense",

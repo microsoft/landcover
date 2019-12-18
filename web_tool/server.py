@@ -75,7 +75,7 @@ def manage_sessions():
     else:
         pass # not logged in, we don't care about this
 
-def session_monitor(session_timeout_seconds=30):
+def session_monitor(session_timeout_seconds=900):
     ''' This is a `Thread()` that is starting when the program is run. It is responsible for finding which of the `Session()` objects
     in `SESSION_MAP` haven't been used recently and killing them.
     '''

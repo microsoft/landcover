@@ -5,8 +5,8 @@
   <div class="col-8">
    <div class="content-container">
     <h4 class="lcm-heading">Land Cover Mapping</h4>
-    <p>Advanced mapping for precision conservation.</p>
-    <p>Scientists are using real time data mapping to enable precision conservation.</p>
+    <p>Human centric land cover mapping.</p>
+    <p>Interactively train machine learning models on fit for purpose imagery in order to produce downloadable land cover maps.</p>
     <form action="/login" method="GET">
     <p><button type="submit" class="submit-button" id="submit" onClick="ShowLoading()">LOG IN</button></p>
     </form>
