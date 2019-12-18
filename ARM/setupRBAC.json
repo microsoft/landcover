@@ -23,7 +23,7 @@
     {
       "apiVersion": "2016-07-01",
       "name": "[variables('RBACResourceName')]",
-      "type": "Microsoft.Storage/storageAccounts/providers/roleAssignments",
+      "type": "microsoft.Compute/virtualMachines/providers/roleassignments",
       "properties": {
         "roleDefinitionId": "[variables('contributor')]",
         "principalId": "[parameters('principalId')]",
