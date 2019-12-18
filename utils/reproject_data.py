@@ -1,6 +1,10 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
+'''This script takes an input raster file (e.g. the 2013 NLCD layer) and a target raster file (e.g. a small NAIP tile)
+and creates an output file that contains a crop of the input raster file that has been reprojected to match the
+spatial dimension and resolution of the target file.
+'''
 import sys
 import os
 import time
@@ -23,13 +27,14 @@ def main():
 
     start_time = float(time.time())
 
-    print("Starting reprojection")
-    print("--input_fn: %s" % (args.input_fn))
-    print("--target_fn: %s" % (args.target_fn))
-    print("--output_fn: %s" % (args.output_fn))
-    print("")
+    if args.verbose:
+        print("Starting reprojection")
+        print("--input_fn: %s" % (args.input_fn))
+        print("--target_fn: %s" % (args.target_fn))
+        print("--output_fn: %s" % (args.output_fn))
+        print("")
 
-    print("Reading metadata from target_fn")
+        print("Reading metadata from target_fn")
     f = rasterio.open(args.target_fn,"r")
     left, bottom, right, top = f.bounds
     crs = f.crs.to_string()
@@ -40,6 +45,7 @@ def main():
 
     command = [
         "gdalwarp",
+        "" if args.verbose else "-q",
         "-overwrite",
         "-ot", "Byte",
         "-t_srs", crs,
@@ -52,10 +58,12 @@ def main():
         args.input_fn,
         args.output_fn
     ]
-    print("Reprojecting input_fn to shape of target_fn")
+    if args.verbose:
+        print("Reprojecting input_fn to shape of target_fn")
     subprocess.call(command)
 
-    print("Finished in %0.4f seconds" % (time.time() - start_time))
+    if args.verbose:
+        print("Finished in %0.4f seconds" % (time.time() - start_time))
 
 if __name__ == "__main__":
     main()
