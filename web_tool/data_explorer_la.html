@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="icon" href="favicon.ico">
+
+    <title>Microsoft AI for Earth</title>
+
+    <!-- Core CSS -->
+    <link href="css/leaflet.css" rel="stylesheet" />
+    <link href="css/leaflet-slider.css" rel="stylesheet" />
+    <link href="css/leaflet-sidebar.css" rel="stylesheet" />
+    <link href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.css">
+    <link href="css/noty.css" rel="stylesheet">
+
+    <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet">
+    <link href="css/main.css" rel="stylesheet">
+    
+
+</head>
+
+<body>
+
+    <div id="map"></div>
+
+    <div id="privacy" class="leaflet-container">
+        <a href="https://privacy.microsoft.com/en-US/privacystatement" target="_blank">Privacy Statement</a>
+    </div>
+    
+    <div id="sidebar" class="sidebar">
+    
+        <!-- Tab panes -->
+        <div class="sidebar-content">
+
+            <!-- Start of "home" tab -->
+            <div class="sidebar-pane" id="home">
+                <div style="text-align: center; margin-bottom:10px;" id="inputImages">
+                    <h3 id="lblModelInput">Model Input</h3>
+                    <img id="inputImage">
+                </div>
+
+                <div style="text-align: center; margin-bottom:10px; width:100%;" id="exampleImages">
+                    <h3>Land Cover Predictions</h3>
+                    <div id="exampleImageList">
+                    </div>
+                </div>
+
+                <div style="text-align: left; margin-bottom:10px; width:100%; padding-left:30px;">
+                    <span>Name of zone: <input type="text" id="lblZoneName" placeholder="none selected"/></span>
+                </div>
+
+                <div style="margin-bottom:10px;">
+
+                    <h3 style="text-align: center; margin-top:20px;">Correction type:</h3>
+                    <div style="padding-left:20px">
+                        <div id="classList">
+                            <div class="radio">
+                                <button class="circle jscolor" data-class-name="Water" data-jscolor="{valueElement:null,value:'0000FF',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
+                                <label class="selected"><input type="radio" name="radClasses" class="radNewClass" value="Water" checked><span class="className">Water</span> (<span class="classCounts">0</span> samples since last retrain)</label>
+                            </div>
+                            <div class="radio">
+                                <button class="circle jscolor" data-class-name="Tree Canopy" data-jscolor="{valueElement:null,value:'008000',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
+                                <label><input type="radio" name="radClasses" class="radNewClass" value="Tree Canopy"><span class="className">Tree Canopy</span> (<span class="classCounts">0</span> samples since last retrain)</label>
+                            </div>
+                            <div class="radio">
+                                <button class="circle jscolor" data-class-name="Field" data-jscolor="{valueElement:null,value:'80FF80',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
+                                <label><input type="radio" name="radClasses" class="radNewClass" value="Field"><span class="className">Field</span> (<span class="classCounts">0</span> samples since last retrain)</label>
+                            </div>
+                            <div class="radio">
+                                <button class="circle jscolor" data-class-name="Built" data-jscolor="{valueElement:null,value:'806060',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
+                                <label><input type="radio" name="radClasses" class="radNewClass" value="Built"><span class="className">Built</span> (<span class="classCounts">0</span> samples since last retrain)</label>
+                            </div>
+                        </div>
+                        <div style="text-align: center; margin-top:10px; margin-bottom:20px;">
+                            <button id="btnNewClass" style="background-color: gray; border-color: white;"> Add new class</button>
+                        </div>
+
+                        <div style="text-align: center; margin-top:10px;">
+                            <button id="btnRetrain">Retrain (<span id="label-retrains">0</span> times)</button>
+                        </div>
+                        <div style="text-align: center; margin-top:10px;">
+                            <button id="btnUndo">Undo</button>
+                        </div>
+                        <div style="text-align: center; margin-top:10px;">
+                            <button id="btnReset">Reset</button>
+                        </div>
+                        <div style="text-align: center; margin-top:10px;">
+                            <button id="btnDownload">Download</button>
+                        </div>
+
+                        <div style="text-align: center; margin-top:10px;">
+                            <input type="text" id="lblURL" value="" placeholder="Visit this URL to start from a saved checkpoint" readonly="readonly"/>
+                        </div>
+
+                        <div style="text-align: center; margin-top:5px;">
+                            <div id="lblPNG"></div>
+                            <div id="lblTIFF"></div>
+                            <div id="lblStatistics"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- End of "home" tab -->
+        </div>
+    </div>
+
+    <!-- Core JavaScript
+    ================================================== -->
+    <script src="js/jquery-3.3.1.min.js"></script>
+    <script src="js/noty.js" type="text/javascript"></script>
+    <script src="js/jscolor.js" type="text/javascript"></script>
+
+    <!-- Leaflet JavaScript
+    ================================================== -->
+    <script src="js/leaflet.js" type="text/javascript"></script>
+    <script src="js/leaflet-slider.js" type="text/javascript"></script>
+    <script src="js/leaflet-sidebar.min.js" type="text/javascript"></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.js" type="text/javascript"></script>
+
+    <!-- Application JavaScript
+    ================================================== -->
+    <script src="js/main.js" type="text/javascript"></script>
+    <script src="js/utils.js" type="text/javascript"></script>
+    <script src="js/datasets.js" type="text/javascript"></script>
+    <script src="js/globals.js" type="text/javascript"></script>
+
+    <!-- List of backend URLS to query
+    ================================================== -->
+    <script src="endpoints.mine.js" type="text/javascript"></script>
+
+    <script type="text/javascript">
+        //'use strict';
+
+        var forEachFeatureOnClickCustom = function(feature, layer) {
+            console.debug("Adding layer click");
+            layer.on('click', function (e) {
+                currentZone = layer;
+                for(k in zoneMaps){
+                    zoneMaps[k].setStyle(defaultZoneStyle(zoneMapsWeight[k]));
+                }
+                layer.setStyle(highlightedZoneStyle);
+                layer.bringToFront();
+                var nameKey = e.target.feature.properties["KEY"];
+                if (nameKey !== null){
+                    $("#lblZoneName").val(e.target.feature.properties[nameKey]);
+                }
+            });
+        }
+
+        var defaultZoneLineWeights = [
+            0.5,1,0.7,0.3
+        ]
+
+        BASEMAP_TO_DATASET_MAP = {
+            "NAIP 2010": "la_coast_2010_wmts",
+            "NAIP 2013": "la_coast_2013_wmts",
+            "NAIP 2015": "la_coast_2015_wmts",
+            "NLCD Ground Truth Old": "la_coast_nlcd_wmts",
+            "NLCD Ground Truth 2011": "la_coast_nlcd_2011_wmts",
+            "NLCD Ground Truth 2013": "la_coast_nlcd_2013_wmts",
+            "NLCD Ground Truth 2016": "la_coast_nlcd_2016_wmts",
+            "Embedded NLCD 2010": "la_coast_embed_2010_wmts",
+            "Embedded NLCD 2013": "la_coast_embed_2013_wmts"
+        }
+
+        //----------------------------------------------------------------------
+        // Runtime entrance
+        //----------------------------------------------------------------------
+        $(document).ready(function(){
+
+            
+            //----------------------------------------------------------------------
+            // Remove the default behavior of the shift key
+            //----------------------------------------------------------------------
+            document.getElementById("map").onselectstart = function() {
+                return false;
+            }
+            
+            //----------------------------------------------------------------------
+            // Parse URL arguments
+            //----------------------------------------------------------------------
+            let args = getURLArguments()
+            EXP_NAME = args.userID
+            BACKEND_URL = BACKEND_ENDPOINTS[0]["url"];
+            DATASET = "la_coast_2010_wmts"
+
+            //----------------------------------------------------------------------
+            // Get a session id to include in all API requests
+            //----------------------------------------------------------------------
+            SESSION_ID = getRandomString(10);
+
+            //----------------------------------------------------------------------
+            // Load the dataset specific shapes
+            //----------------------------------------------------------------------
+
+            if(tileLayers[DATASET]["shapes"] !== null){
+                for(zoneSetId in tileLayers[DATASET]["shapes"]){
+                    console.debug("Zonesetid", zoneSetId);
+                    var zoneName = tileLayers[DATASET]["shapes"][zoneSetId]["name"];
+                    zoneMapsWeight[zoneName] = defaultZoneLineWeights[zoneSetId];
+                    zoneMaps[zoneName] = L.geoJSON(null, {
+                        style: defaultZoneStyle(zoneMapsWeight[zoneName]),
+                        onEachFeature: forEachFeatureOnClickCustom,
+                        pane: "polygons"
+                    });
+                    getZoneMap(zoneSetId, zoneName, tileLayers[DATASET]["shapes"][zoneSetId]["shapes_fn"]);
+                }
+            }
+
+            //----------------------------------------------------------------------
+            // Setup map layers
+            //----------------------------------------------------------------------
+
+            var esriLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 20,
+                maxNativeZoom: 17,
+                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+            })
+
+            var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 20,
+                maxNativeZoom: 17,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            })
+            
+            var baseLayer = tileLayers[DATASET]["tileObject"];
+            START_CENTER = tileLayers[DATASET]["location"][0];
+            START_ZOOM = tileLayers[DATASET]["location"][1];
+
+            var initialLayers = [baseLayer];
+            if(tileLayers[DATASET]["shapes"] !== null){
+                initialLayers.push(zoneMaps[tileLayers[DATASET]["shapes"][0]["name"]]);
+                currentZoneLayerName = tileLayers[DATASET]["shapes"][0]["name"];
+            }
+
+            map = L.map('map', {
+                zoomControl: false,
+                crs: L.CRS.EPSG3857, // this is a default, but I'm setting it to be explicit about what CRS we are in	
+                center: START_CENTER,
+                zoom: START_ZOOM,
+                keyboard: false,
+                minZoom: baseLayer.options.minZoom,
+                layers: initialLayers
+            });
+            map.createPane('polygons');
+            map.getPane('polygons').style.zIndex = 2000;
+
+            map.createPane('labels');
+            map.getPane('labels').style.zIndex = 201;
+
+            map.createPane('downloadOutput');
+            map.getPane('downloadOutput').style.zIndex = 200;
+
+            //----------------------------------------------------------------------
+            // Setup layer picker
+            //----------------------------------------------------------------------
+
+            var baseMapString = tileLayers[DATASET]["location"][3];
+            currentBasemapLayerName = baseMapString;
+
+            var baseMaps = {};
+            baseMaps[baseMapString] = baseLayer;
+            baseMaps["NAIP 2013"] = tileLayers["la_coast_2013_wmts"]["tileObject"];
+            baseMaps["NAIP 2015"] = tileLayers["la_coast_2015_wmts"]["tileObject"];
+            baseMaps["NLCD Ground Truth Old"] = tileLayers["la_coast_nlcd_wmts"]["tileObject"];
+            baseMaps["NLCD Ground Truth 2011"] = tileLayers["la_coast_nlcd_2011_wmts"]["tileObject"];
+            baseMaps["NLCD Ground Truth 2013"] = tileLayers["la_coast_nlcd_2013_wmts"]["tileObject"];
+            baseMaps["NLCD Ground Truth 2016"] = tileLayers["la_coast_nlcd_2016_wmts"]["tileObject"];
+            baseMaps["Embedded NLCD 2010"] = tileLayers["la_coast_embed_2010_wmts"]["tileObject"];
+            baseMaps["Embedded NLCD 2013"] = tileLayers["la_coast_embed_2013_wmts"]["tileObject"];
+            baseMaps["OpenStreetMap"] = osmLayer;
+            baseMaps["'Google Earth' like Imagery"] = esriLayer;
+            
+            var basemapLayerControl = L.control.layers(
+                baseMaps, null, {
+                    collapsed:false,
+                    position:"bottomleft"
+                }
+            ).addTo(map);
+
+            var basemapLayerControlContainer = basemapLayerControl.getContainer();
+
+            var zoneControl = L.control.layers(
+                zoneMaps, null, {
+                    collapsed:false,
+                    position:"bottomleft"
+                }
+            ).addTo(map);
+
+            var zoneControlContainer = zoneControl.getContainer();
+
+            //---------------------------------------------------------------------
+            // Setup AI4E Branding
+            //----------------------------------------------------------------------
+            var logoControl = $("<div class='leaflet-control logo-area'></div>");
+            logoControl.append("<span class='logo-text'>Microsoft AI for Earth</span>");
+            logoControl.append("<br/>");
+            logoControl.append("<span class='logo-text-small'>Version: 0.9</span>");
+            logoControl.append("<br/>");
+            logoControl.append("<span class='logo-text-small'>Location: "+tileLayers[DATASET]["location"][2]+"</span>");
+            
+            $(".leaflet-top.leaflet-left").append(logoControl)
+
+            $("#lblModelInput").html(tileLayers[DATASET]["location"][3]);
+            
+            //----------------------------------------------------------------------
+            // Custom initialization of the map zoom controls so that we can 
+            // position it where we want
+            //----------------------------------------------------------------------
+            L.control.zoom({
+                position:'topleft'
+            }).addTo(map);
+
+            //----------------------------------------------------------------------
+            // Setup the leaflet-easybutton plugin to reset the map to its initial
+            // position
+            //----------------------------------------------------------------------
+            L.easyButton(
+                'fa-undo', function(btn, map) {
+                    map.closePopup();
+                    map.setView(START_CENTER, START_ZOOM);
+                },
+            ).addTo(map);
+
+            //----------------------------------------------------------------------
+            // Setup leaflet-slider plugin
+            // First slider is to control map opacity
+            //----------------------------------------------------------------------
+            opacitySlider = L.control.slider( // opacity slider
+                function(value){
+                    map.getPane('labels').style.opacity = value / 100.0;
+                }, {
+                    position: 'bottomleft',
+                    id: 'opacity_slider',
+                    orientation: 'horizontal',
+                    collapsed: true,
+                    syncSlider: true,
+                    min: 0,
+                    max: 100,
+                    value: 100,
+                    logo: "Opacity",
+                    size: "171px"
+                }
+            );
+            opacitySlider.addTo(map);
+
+            //----------------------------------------------------------------------
+            // Setup the selection window size slider
+            //----------------------------------------------------------------------
+            windowSizeSlider = L.control.slider( // opacity slider
+                function(value){
+                   SELECTION_SIZE = value;
+                }, {
+                    position: 'bottomleft',
+                    id: 'window_size_slider',
+                    orientation: 'horizontal',
+                    collapsed: true,
+                    syncSlider: true,
+                    min: 10,
+                    max: 700,
+                    value: 300,
+                    logo: "Window Size",
+                    size: "171px"
+                }
+            );
+            windowSizeSlider.addTo(map);
+
+            //----------------------------------------------------------------------
+            // Setup the sharpness slider to control which type of image is shown
+            //----------------------------------------------------------------------
+            L.control.slider( // sharpness slider
+                function(value){
+                    soft0_hard1 = value;
+
+                    for(idx=0; idx<currentPatches.length; idx++){
+                        var tActiveImgIdx = currentPatches[idx]["activeImgIdx"];
+                        var srcs = currentPatches[idx]["patches"][tActiveImgIdx]["srcs"];
+                        currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
+                    }
+
+                    if(currentPatches.length>0){
+                        var idx = currentPatches.length - 1;
+                        for(var tActiveImgIdx=0; tActiveImgIdx<currentPatches[idx]["patches"].length; tActiveImgIdx++){
+                            var srcs = currentPatches[idx]["patches"][tActiveImgIdx]["srcs"];
+                            $("#exampleImage_"+tActiveImgIdx).attr("src", srcs[soft0_hard1]);
+                        }
+                    }
+
+                }, {
+                    position: 'bottomleft',
+                    id: 'soft_hard_slider',
+                    orientation: 'horizontal',
+                    collapsed: true,
+                    syncSlider: true,
+                    min: 0,
+                    max: 1,
+                    value: 1,
+                    logo: "Sharpness",
+                    size: "171px"
+                }
+            ).addTo(map);
+            
+            //----------------------------------------------------------------------
+            // Setup leaflet-sidebar-v2 and open the "#home" tab 
+            //----------------------------------------------------------------------
+            var sidebar = L.control.sidebar(
+                'sidebar', {
+                    position: 'right'
+                }
+            ).addTo(map);
+            sidebar.open("home")        
+
+            //----------------------------------------------------------------------
+            // Setup map selection handlers
+            //----------------------------------------------------------------------
+            map.addEventListener('mousemove', function(e){
+                // Choose style
+                var curSelPoly = null;
+                if(!shiftKeyDown){
+                    curSelPoly = getPolyAround(e.latlng, CORRECTION_SIZE);
+                }else{
+                    curSelPoly = getPolyAround(e.latlng, SELECTION_SIZE);
+                }
+
+                if(selectionBox === null){
+                    selectionBox = L.polygon(curSelPoly, {
+                        color: "#000000",
+                        fillColor: "#ffffff",
+                        weight: 2
+                    });
+                    selectionBox.addTo(map);
+                }else{
+                    if(!animating){
+                        selectionBox.setStyle({
+                            color: "#000000",
+                            fillColor: "#ffffff",
+                            weight: 2
+                        });
+                    }
+                    selectionBox.setLatLngs(curSelPoly);
+                }
+            });
+
+            map.addEventListener('click', function(e){
+                
+                var curSelPoly = null;
+                if(shiftKeyDown){
+                    // Run the inference path
+                    curSelPoly = getPolyAround(e.latlng, SELECTION_SIZE);
+                    if(currentSelection === null){ // This condition creates the red selection box on the first click
+                        currentSelection = L.polygon(curSelPoly, {
+                            color: "#ff0000",
+                            fillColor: "#ffffff",
+                            weight: 2
+                        });
+                        currentSelection.addTo(map);
+                    }else{
+                        currentSelection.setLatLngs(curSelPoly);
+                    }
+   
+                    requestPatches(curSelPoly);
+                }else{
+                    // Run the add sample path
+                    if(currentSelection !== null){
+                        if(isPointInsidePolygon(e.latlng, currentSelection)){
+                            if(currentBasemapLayerName == tileLayers[DATASET]["location"][3]){
+                                curSelPoly = getPolyAround(e.latlng, CORRECTION_SIZE);
+                                var idx = currentPatches.length-1;
+                                doSendCorrection(curSelPoly, idx);
+                                
+                                var rect = L.rectangle(
+                                    [curSelPoly[0], curSelPoly[2]],
+                                    {
+                                        color: classes[selectedClassIdx]["color"],
+                                        weight: 1,
+                                        opacity: 1
+                                        //pane: "labels"
+                                    }
+                                ).addTo(map);
+                                userPointList.push([rect, selectedClassIdx]);
+
+                                map.dragging.disable();
+                                numClicks += 1
+                                window.setTimeout(function(){
+                                    numClicks -= 1;
+                                    if(numClicks == 0){
+                                        map.dragging.enable();
+                                    }
+                                }, 700);
+                            }else{
+                                notifyFailMessage("Please add corrections using the '"+tileLayers[DATASET]["location"][3]+"' imagery layer.")
+                            }
+                        }else{
+                            console.debug("Click not in selection 123");
+                        }
+                    }
+                }
+            });
+
+            map.on('contextmenu',function(e){}); // disables the context menu
+            map.on('dblclick',function(e){});
+            map.doubleClickZoom.disable();
+            map.boxZoom.disable();
+
+            $(zoneControlContainer).find('input[type=radio]').change(function() {
+                var name = $(this).siblings()[0].innerHTML.trim();
+                currentZoneLayerName = name;
+                console.debug("Switched zone layer to: " + name);
+            });
+
+            $(basemapLayerControlContainer).find('input[type=radio]').change(function() {
+                var name = $(this).siblings()[0].innerHTML.trim();
+                currentBasemapLayerName = name;
+                if(currentBasemapLayerName in BASEMAP_TO_DATASET_MAP){
+                    console.debug("Swapping dataset");
+                    DATASET = BASEMAP_TO_DATASET_MAP[currentBasemapLayerName];
+                }
+                console.debug("Switched basemap layer to: " + name);
+            });
+
+
+            $(document).keydown(function(e){
+                shiftKeyDown = e.shiftKey;
+                ctrlKeyDown = e.ctrlKey;
+            });
+            $(document).keyup(function(e){
+                shiftKeyDown = e.shiftKey;
+                ctrlKeyDown = e.ctrlKey;
+            });
+
+            $(document).keydown(function(e) {
+                if(document.activeElement == document.body){
+                    if(e.which == 97 || e.which == 65) { // "a"
+                        visible = false;
+                        map.getPane('labels').style.opacity = 0.0;
+                        opacitySlider.slider.value = 0;
+                        opacitySlider._updateValue();
+                    } else if(e.which == 115 || e.which == 83) { // "s"
+                        if(visible){
+                            visible = false;
+                            map.getPane('labels').style.opacity = 0.0;
+                            opacitySlider.slider.value = 0;
+                            opacitySlider._updateValue();
+                        }else{
+                            visible = true;
+                            map.getPane('labels').style.opacity = 1.0;
+                            opacitySlider.slider.value = 100;
+                            opacitySlider._updateValue();
+                        }
+                    } else if(e.which == 100 || e.which == 68) { "d"
+                        visible = true;
+                        map.getPane('labels').style.opacity = 1.0;
+                        opacitySlider.slider.value = 100
+                        opacitySlider._updateValue();
+                    } else if((e.which == 114 || e.which == 82) && !ctrlKeyDown){ "r"
+                        doRetrain();
+                    } else if(e.which == 37){ "left arrow"
+                        var currentOpacity = parseFloat(map.getPane('labels').style.opacity);
+                        if (currentOpacity >= 0.05){
+                            currentOpacity -= 0.05;
+
+                            map.getPane('labels').style.opacity = currentOpacity;
+                            opacitySlider.slider.value = currentOpacity*100;
+                            opacitySlider._updateValue();
+                        }
+                        e.preventDefault()
+                    } else if(e.which == 39){ "right arrow"
+                        var currentOpacity = parseFloat(map.getPane('labels').style.opacity);
+                        if (currentOpacity <= 0.95){
+                            currentOpacity += 0.05;
+
+                            map.getPane('labels').style.opacity = currentOpacity;
+                            opacitySlider.slider.value = currentOpacity*100;
+                            opacitySlider._updateValue();
+                        }
+                        e.preventDefault()
+                    } else if(e.which == 38 || e.which == 40){
+                        e.preventDefault()
+                    } else if(ctrlKeyDown && e.which==90){
+                        doUndo();
+                    }
+                }
+            });
+
+
+            $("#btnRetrain").click(doRetrain);
+            $("#btnUndo").click(doUndo);
+            $("#btnReset").click(function(){doReset(true, initialReset=false)});
+            $("#btnDownload").click(doDownloadTile);
+            $("#btnNewClass").click(function(){
+                
+                var newClassIdx = classes.length + 1;
+                var newColor = getRandomColor();
+
+                var newClassElement =  $("<div class='radio'>");
+                var newLabel = $("<label><input type='radio' name='radClasses' class='radNewClass' value='Class "+newClassIdx+"'><span class='className'>Class "+newClassIdx+"</span> (<span class='classCounts'>0</span> samples since last retrain)<i class='fa fa-edit ml-1 classNameEdit'></i></label>");
+
+                var newPicker = document.createElement('button');
+                newPicker.classList.add("circle");
+                newPicker.classList.add("jscolor");
+                newPicker.setAttribute("data-class-name", "Class "+newClassIdx);
+                var output = new jscolor(newPicker, {
+                    valueElement: null,
+                    value: newColor.substr(1),
+                    position:'left',
+                    zIndex:2001,
+                    closable:true,
+                    closeText:'Close',
+                    onFineChange:'updateClassColor(this)'
+                });
+
+                newClassElement.append(newPicker);
+                newClassElement.append(newLabel);        
+            
+                $("#classList").append(newClassElement);
+
+                classes.push({
+                    "name": "Class " + newClassIdx,
+                    "color": newColor,
+                    "count": 0
+                });
+
+            });
+
+            //----------------------------------------------------------------------
+            // Setup radio button change detection
+            //----------------------------------------------------------------------
+            $(document).on('change', '.radNewClass', function(){
+
+                $('.radio label').removeClass("selected");
+                $(this).parent().addClass("selected");
+
+                selectedClassIdx = findClassByName(this.value);
+                console.debug(this.value + " " + selectedClassIdx);
+            });
+
+            $(document).on('click', '.classNameEdit', function(){
+                var oldName = $(this).siblings(".className").html();
+                var newName = prompt("New label name for '"+oldName+"'");
+                $(this).siblings(".className").html(newName);
+                $(this).siblings(".radNewClass").val(newName);
+                
+                $(this).parent().siblings(".jscolor").attr("data-class-name", newName);
+
+                var classIdx = findClassByName(oldName)
+                classes[classIdx]["name"] = newName;
+
+
+            });
+            
+            //----------------------------------------------------------------------
+            // Setup the example images list
+            //----------------------------------------------------------------------
+            for(var i=0; i<ENDPOINTS.length; i++){
+                var img = $("<img class='exampleImage'>");
+                img.attr("im-id", i);
+                img.attr("id", "exampleImage_"+i);
+                $("#exampleImageList").append(img);
+            }
+
+            $(".exampleImage").click(function(){
+                $(".exampleImage").removeClass("active");
+                $(this).addClass("active");
+                
+                var idx = currentPatches.length-1;
+                activeImgIdx = $(this).attr("im-id");
+
+                var srcs = currentPatches[idx]["patches"][activeImgIdx]["srcs"];
+                currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
+                currentPatches[idx]["activeImgIdx"] = activeImgIdx;
+                $(this).attr("src", srcs[soft0_hard1]);
+            });
+
+        });
+
+    </script>
+</body>
+
+</html>
