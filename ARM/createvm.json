@@ -73,18 +73,6 @@
       },
       "type": "bool"
     },
-    "storageAccountId": {
-      "metadata": {
-        "description": "The storage account Id for boot diagnostics for the VMs"
-      },
-      "type": "string"
-    },
-    "storageAccountName": {
-      "type": "string",
-      "metadata": {
-        "description": "The name of the storage account for the blob copy"
-      }
-    },
     "subnetRef": {
       "type": "string"
     },
@@ -218,67 +206,12 @@
           }
         }
       }
-    },
-    {
-      "condition": "[and(variables('isWindowsOS'), parameters('provisionExtensions'))]",
-      "name": "[concat(parameters('vmName'),'/cse-windows')]",
-      "type": "Microsoft.Compute/virtualMachines/extensions",
-      "apiVersion": "2017-03-30",
-      "location": "[parameters('location')]",
-      "dependsOn": [
-        "[parameters('vmName')]"
-      ],
-      "properties": {
-        "publisher": "Microsoft.Compute",
-        "type": "CustomScriptExtension",
-        "typeHandlerVersion": "1.8",
-        "autoUpgradeMinorVersion": true,
-        "settings": {
-          "fileUris": [
-            "[uri(parameters('_artifactsLocation'), concat('writeblob.ps1', parameters('_artifactsLocationSasToken')))]"
-          ],
-          "commandToExecute": "[concat('powershell -ExecutionPolicy Unrestricted -File  .\\writeblob.ps1  -SubscriptionId ', subscription().subscriptionId, ' -TenantId ', subscription().tenantId,' -ResourceGroupName ', resourceGroup().Name, ' -StorageAccountName ', parameters('storageAccountName'), ' -ContainerName ', parameters('containerName'),' -Verbose')]"
-        }
-      }
-    },
-    {
-      "condition": "[and(not(variables('isWindowsOS')), parameters('provisionExtensions'))]",
-      "name": "[concat(parameters('vmName'),'/cse-linux')]",
-      "type": "Microsoft.Compute/virtualMachines/extensions",
-      "apiVersion": "2017-03-30",
-      "location": "[parameters('location')]",
-      "dependsOn": [
-        "[parameters('vmName')]"
-      ],
-      "properties": {
-        "publisher": "Microsoft.Azure.Extensions",
-        "type": "CustomScript",
-        "typeHandlerVersion": "2.0",
-        "autoUpgradeMinorVersion": true,
-        "settings": {
-          "fileUris": [
-            "[uri(parameters('_artifactsLocation'), concat('scripts/writeblob.sh', parameters('_artifactsLocationSasToken')))]",
-            "[uri(parameters('_artifactsLocation'), concat('scripts/install-and-run-cli-2.sh', parameters('_artifactsLocationSasToken')))]"
-          ]
-        },
-        "protectedSettings": {
-          "commandToExecute": "[concat('./install-and-run-cli-2.sh -i \"', parameters('azureCLI2DockerImage'),'\" -a \"', parameters('storageAccountName'), '\" -c \"', parameters('containerName'), '\" -r \"', resourceGroup().Name, '\"')]"
-        }
-      }
     }
   ],
   "outputs": {
     "principalId": {
       "type": "string",
       "value": "[reference(concat(resourceId('Microsoft.Compute/virtualMachines', parameters('vmName')),'/providers/Microsoft.ManagedIdentity/Identities/default'),'2015-08-31-PREVIEW').principalId]"
-    },
-    "linuxTest": {
-      "type": "bool",
-      "value": "[and(not(variables('isWindowsOS')), parameters('provisionExtensions'))]"
-    },
-    "windowsTest": {
-      "type": "bool",
-      "value": "[and(variables('isWindowsOS'), parameters('provisionExtensions'))]"
     }
   }
 }
