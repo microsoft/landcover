@@ -1,0 +1,196 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "_artifactsLocation": {
+      "defaultValue": "https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/201-vmss-msi-linux",
+      "metadata": {
+        "description": "The base URI where artifacts required by this template are located. When the template is deployed using the accompanying scripts, a private location in the subscription will be used and this value will be automatically generated."
+      },
+      "type": "string"
+    },
+    "_artifactsLocationSasToken": {
+      "defaultValue": "",
+      "metadata": {
+        "description": "The sasToken required to access _artifactsLocation."
+      },
+      "type": "securestring"
+    },
+    "adminPasswordOrKey": {
+      "metadata": {
+        "description": "OS Admin password or SSH Key depending on value of authentication type"
+      },
+      "type": "securestring"
+    },
+    "adminUsername": {
+      "metadata": {
+        "description": "Username for the Virtual Machine."
+      },
+      "type": "string"
+    },
+    "authenticationType": {
+      "allowedValues": [
+        "password",
+        "sshPublicKey"
+      ],
+      "defaultValue": "password",
+      "metadata": {
+        "description": "Authentication type"
+      },
+      "type": "string"
+    },
+    "location": {
+      "metadata": {
+        "description": "The Location For the resources"
+      },
+      "type": "string"
+    },
+    "nsgId": {
+      "metadata": {
+        "description": "The nsg id for the VM"
+      },
+      "type": "string"
+    },
+    "subnetRef": {
+      "type": "string"
+    },
+    "vmSize": {
+      "defaultValue": "Standard_DS1_V2",
+      "metadata": {
+        "description": "The size of the VM to create"
+      },
+      "type": "string"
+    },
+    "vmName": {
+      "metadata": {
+        "description": "The name of the vm"
+      },
+      "type": "string"
+    }
+  },
+  "variables": {
+    "linuxConfiguration": {
+      "disablePasswordAuthentication": true,
+      "ssh": {
+        "publicKeys": [
+          {
+            "path": "[concat('/home/', parameters('adminUsername'), '/.ssh/authorized_keys')]",
+            "keyData": "[parameters('adminPasswordOrKey')]"
+          }
+        ]
+      }
+    },
+    "imageReference": {
+      "UbuntuServer_16.04-LTS": {
+        "publisher": "Canonical",
+        "offer": "UbuntuServer",
+        "sku": "16.04-LTS",
+        "version": "latest"
+      },
+      "UbuntuServer_18.04-LTS": {
+        "publisher": "Canonical",
+        "offer": "UbuntuServer",
+        "sku": "18.04-LTS",
+        "version": "latest"
+      },
+      "WindowsServer_2016-DataCenter": {
+        "publisher": "MicrosoftWindowsServer",
+        "offer": "WindowsServer",
+        "sku": "2016-Datacenter",
+        "version": "latest"
+      }
+    },
+    "windowsConfiguration": {
+      "provisionVmAgent": "true"
+    },
+    "publicIPAddressName": "publicIp",
+    "nicName": "nic"
+  },
+  "resources": [
+    {
+      "apiVersion": "2018-07-01",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "[variables('publicIPAddressName')]",
+      "location": "[parameters('Location')]",
+      "properties": {
+        "publicIPAllocationMethod": "Dynamic"
+      }
+    },
+    {
+      "apiVersion": "2018-07-01",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[variables('nicName')]",
+      "location": "[parameters('Location')]",
+      "dependsOn": [
+        "[variables('publicIPAddressName')]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddressName'))]"
+              },
+              "subnet": {
+                "id": "[parameters('subnetRef')]"
+              }
+            }
+          }
+        ],
+        "networkSecurityGroup": {
+          "id": "[parameters('nsgId')]"
+        }
+      }
+    },
+    {
+      "apiVersion": "2017-03-30",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[parameters('vmName')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[variables('nicName')]"
+      ],
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('vmSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('vmName')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPasswordOrKey')]",
+          "linuxConfiguration": "[if(equals(parameters('authenticationType'), 'password'), json('null'), variables('linuxConfiguration'))]",
+        },
+        "storageProfile": {
+            "imageReference": {
+              "publisher": "microsoft-dsvm",
+              "offer": "linux-data-science-vm-ubuntu",
+              "sku": "linuxdsvmubuntu",
+              "version": "latest"
+            },
+            "osDisk": {
+              "caching": "ReadWrite",
+              "createOption": "FromImage"
+        }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('nicName'))]"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "principalId": {
+      "type": "string",
+      "value": "[reference(concat(resourceId('Microsoft.Compute/virtualMachines', parameters('vmName')),'/providers/Microsoft.ManagedIdentity/Identities/default'),'2015-08-31-PREVIEW').principalId]"
+    }
+  }
+}
