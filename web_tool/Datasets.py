@@ -84,6 +84,32 @@ DATASET_DEFINITIONS = {
             "bounds": None
         }
     },
+    "leuser": {
+        "name": "Sumatra",
+        "imagery_metadata": "Planet",
+        "data_layer_type": DatasetTypes.CUSTOM,
+        "data_fn": "tiles/merged_4m_rgb.tif",
+        "data_padding": 500,
+        "leafletTileLayer": {
+            "url": 'tiles/leuser/{z}/{x}/{y}.png',
+            "args": {
+                "tms": True,
+                "minZoom": 8,
+                "maxNativeZoom": 16,
+                "maxZoom": 20,
+                "attribution": 'Georeferenced Image'
+            }
+        },
+        "shape_layers": [
+            {"name": "Btoru", "shapes_fn": "shapes/btoru_aoi_extent.geojson", "zone_name_key": "MINX"},
+            {"name": "Atimur", "shapes_fn": "shapes/atimur_aoi_extent.geojson", "zone_name_key": "MINX"},
+        ],
+        "location": {
+            "center": [4.1828740090001588, 97.418702680771901],
+            "initialZoom": 10,
+            "bounds": None
+        }
+    },
     "yangon_sentinel": {
         "name": "Yangon, Myanmar",
         "imagery_metadata": "Sentinel Imagery",
