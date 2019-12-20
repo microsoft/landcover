@@ -1,0 +1,34 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "principalId": {
+      "type": "string",
+      "metadata": {
+        "description": "Principal ID to set the access for"
+      }
+    },
+    "vmName": {
+      "type": "string",
+      "metadata": {
+        "description": "The vm to set access for"
+      }
+    }
+  },
+  "variables": {
+    "vmcontributor": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Authorization/roleDefinitions/', '9980e02c-c2be-4d73-94e8-173b1dc7cf3c')]",
+    "RBACResourceName": "[concat(parameters('vmName'),'/Microsoft.Authorization/',parameters('principalId'))]"
+  },
+  "resources": [
+    {
+      "apiVersion": "2016-07-01",
+      "name": "[variables('RBACResourceName')]",
+      "type": "microsoft.Compute/virtualMachines/providers/roleassignments",
+      "properties": {
+        "roleDefinitionId": "[variables('vmcontributor')]",
+        "principalId": "[parameters('principalId')]",
+        "scope": "[resourceId('Microsoft.Compute/virtualMachines',parameters('vmName'))]"
+      }
+    }
+  ]
+}
