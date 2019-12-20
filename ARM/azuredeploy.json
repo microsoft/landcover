@@ -8,13 +8,6 @@
              "description": "Specifies a name for generating resource names."
          }
      },
-     "_artifactsLocation": {
-        "defaultValue": "",
-        "type": "String",
-       "metadata": {
-           "description": "Specifies the location for all resources."
-       }
-     },
      "vmSize": {
          "allowedValues": [
              "Standard_B1ms",
