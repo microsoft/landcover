@@ -72,8 +72,9 @@
      "networkInterfaceName": "[concat(parameters('projectName'), '-nic')]",
      "networkSecurityGroupName": "[concat(parameters('projectName'), '-nsg')]",
      "subnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vNetName'), variables('vNetSubnetName'))]",        
-     "createVMUrl": "https://raw.githubusercontent.com/microsoft/landcover/feature/vm-arm-template/ARM/createvm.json",
-     "createRBACUrl": "https://raw.githubusercontent.com/microsoft/landcover/feature/vm-arm-template/ARM/setupRBAC.json",
+     "createVMUrl": "https://raw.githubusercontent.com/microsoft/landcover/feature/vm-arm-template/ARM/nested_templates/createvm.json",
+     "createRBACUrl": "https://raw.githubusercontent.com/microsoft/landcover/feature/vm-arm-template/ARM/nested_templates/setupVMIdentityRole.json",
+     "updateVMUrl": "https://raw.githubusercontent.com/microsoft/landcover/feature/vm-arm-template/ARM/nested_templates/updatevm.json"
      "linuxConfiguration": {
          "disablePasswordAuthentication": true,
          "ssh": {
