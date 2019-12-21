@@ -196,7 +196,8 @@ DATASET_DEFINITIONS = {
         "name": "Hồ Chí Minh City, Vietnam",
         "imagery_metadata": "SPOT Imagery",
         "data_layer_type": DatasetTypes.CUSTOM,
-        "data_fn": "tiles/spot6_2019_02_10.tif",
+        #"data_fn": "tiles/spot6_2019_02_10.tif",
+        "data_fn": "tiles/nhabe_spot_stacked_2019.tif",
         "data_padding": 10,
         "leafletTileLayer": {
             "url": 'tiles/spot6_2019_02_10/{z}/{x}/{y}.png',
@@ -223,7 +224,8 @@ DATASET_DEFINITIONS = {
         "name": "Hồ Chí Minh City, Vietnam",
         "imagery_metadata": "SPOT Imagery",
         "data_layer_type": DatasetTypes.CUSTOM,
-        "data_fn": "tiles/spot6_2017_02_12.tif",
+        #"data_fn": "tiles/spot6_2017_02_12.tif",
+        "data_fn": "tiles/nhabe_spot_stacked_2017.tif",
         "data_padding": 10,
         "leafletTileLayer": {
             "url": 'tiles/spot6_2017_02_12/{z}/{x}/{y}.png',
