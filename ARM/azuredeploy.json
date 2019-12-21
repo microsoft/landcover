@@ -13,7 +13,8 @@
              "Standard NC6",
              "Standard NC6_Promo",
              "Standard NC12",
-             "Standard NC12_Promo"
+             "Standard NC12_Promo",
+             "Standard_B1ms"
             ],
             "type": "String",
             "metadata": {
