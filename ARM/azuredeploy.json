@@ -2,7 +2,7 @@
     "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
     "contentVersion": "1.0.0.0",
     "parameters": {
-        "projectName": {
+        "vmName": {
             "type": "String",
             "metadata": {
                 "description": "Specifies a name for generating resource names."
@@ -53,14 +53,14 @@
         }
     },
     "variables": {
-        "vNetName": "[concat(parameters('projectName'), '-vnet')]",
+        "vNetName": "[concat(parameters('vmName'), '-vnet')]",
         "vNetAddressPrefixes": "10.0.0.0/16",
         "vNetSubnetName": "default",
         "vNetSubnetAddressPrefix": "10.0.0.0/24",
-        "vmName": "[concat(parameters('projectName'), '-vm')]",
-        "publicIPAddressName": "[concat(parameters('projectName'), '-ip')]",
-        "networkInterfaceName": "[concat(parameters('projectName'), '-nic')]",
-        "networkSecurityGroupName": "[concat(parameters('projectName'), '-nsg')]",
+        "vmName": "[concat(parameters('vmName'), '-vm')]",
+        "publicIPAddressName": "[concat(parameters('vmName'), '-ip')]",
+        "networkInterfaceName": "[concat(parameters('vmName'), '-nic')]",
+        "networkSecurityGroupName": "[concat(parameters('vmName'), '-nsg')]",
         "subnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vNetName'), variables('vNetSubnetName'))]",
         "createVMUrl": "https://raw.githubusercontent.com/microsoft/landcover/feature/vm-arm-template/ARM/nested_templates/createVM.json",
         "createRBACUrl": "https://raw.githubusercontent.com/microsoft/landcover/feature/vm-arm-template/ARM/nested_templates/setupVMIdentityRole.json",
