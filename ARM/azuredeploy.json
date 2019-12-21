@@ -1,281 +1,271 @@
 {
- "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
- "contentVersion": "1.0.0.0",
- "parameters": {
-     "projectName": {
-         "type": "String",
-         "metadata": {
-             "description": "Specifies a name for generating resource names."
-         }
-     },
-     "vmSize": {
-         "allowedValues": [
-             "Standard_B1ms",
-             "Standard_A2",
-             "Standard_A3",
-             "Standard_A4",
-             "Standard_D1",
-             "Standard_D2",
-             "Standard_D3",
-             "Standard_D4"
-         ],
-         "type": "String",
-         "metadata": {
-             "description": "Size of vm"
-         }
-     },
-     "location": {
-         "defaultValue": "[resourceGroup().location]",
-         "type": "String",
-         "metadata": {
-             "description": "Specifies the location for all resources."
-         }
-     },
-     "adminUsername": {
-         "type": "String",
-         "metadata": {
-             "description": "Specifies a username for the Virtual Machine."
-         }
-     },
-     "authenticationType": {
-         "defaultValue": "sshPublicKey",
-         "allowedValues": [
-             "sshPublicKey",
-             "password"
-         ],
-         "type": "String",
-         "metadata": {
-             "description": "Type of authentication to use on the Virtual Machine. SSH key is recommended."
-         }
-     },
-     "adminPasswordOrKey": {
-         "type": "SecureString",
-         "metadata": {
-             "description": "SSH Key or password for the Virtual Machine. SSH key is recommended."
-         }
-     }
- },
- "variables": {
-     "vNetName": "[concat(parameters('projectName'), '-vnet')]",
-     "vNetAddressPrefixes": "10.0.0.0/16",
-     "vNetSubnetName": "default",
-     "vNetSubnetAddressPrefix": "10.0.0.0/24",
-     "vmName": "[concat(parameters('projectName'), '-vm')]",
-     "publicIPAddressName": "[concat(parameters('projectName'), '-ip')]",
-     "networkInterfaceName": "[concat(parameters('projectName'), '-nic')]",
-     "networkSecurityGroupName": "[concat(parameters('projectName'), '-nsg')]",
-     "subnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vNetName'), variables('vNetSubnetName'))]",        
-     "createVMUrl": "https://raw.githubusercontent.com/microsoft/landcover/feature/vm-arm-template/ARM/nested_templates/createVM.json",
-     "createRBACUrl": "https://raw.githubusercontent.com/microsoft/landcover/feature/vm-arm-template/ARM/nested_templates/setupVMIdentityRole.json",
-     "updateVMUrl": "https://raw.githubusercontent.com/microsoft/landcover/feature/vm-arm-template/ARM/nested_templates/updateVM.json",
-     "linuxConfiguration": {
-         "disablePasswordAuthentication": true,
-         "ssh": {
-             "publicKeys": [
-                 {
-                     "path": "[concat('/home/', parameters('adminUsername'), '/.ssh/authorized_keys')]",
-                     "keyData": "[parameters('adminPasswordOrKey')]"
-                 }
-             ]
-         }
-     }
- },
- "resources": [
-     {
-         "type": "Microsoft.Network/networkSecurityGroups",
-         "apiVersion": "2018-11-01",
-         "name": "[variables('networkSecurityGroupName')]",
-         "location": "[parameters('location')]",
-         "properties": {
-             "securityRules": [
-                 {
-                     "name": "ssh_rule",
-                     "properties": {
-                         "description": "Locks inbound down to ssh default port 22.",
-                         "protocol": "Tcp",
-                         "sourcePortRange": "*",
-                         "destinationPortRange": "22",
-                         "sourceAddressPrefix": "*",
-                         "destinationAddressPrefix": "*",
-                         "access": "Allow",
-                         "priority": 123,
-                         "direction": "Inbound"
-                     }
-                 }
-             ]
-         }
-     },
-     {
-         "type": "Microsoft.Network/publicIPAddresses",
-         "apiVersion": "2018-11-01",
-         "name": "[variables('publicIPAddressName')]",
-         "location": "[parameters('location')]",
-         "sku": {
-             "name": "Basic"
-         },
-         "properties": {
-             "publicIPAllocationMethod": "Dynamic"
-         }
-     },
-     {
-         "type": "Microsoft.Network/virtualNetworks",
-         "apiVersion": "2018-11-01",
-         "name": "[variables('vNetName')]",
-         "location": "[parameters('location')]",
-         "properties": {
-             "addressSpace": {
-                 "addressPrefixes": [
-                     "[variables('vNetAddressPrefixes')]"
-                 ]
-             },
-             "subnets": [
-                 {
-                     "name": "[variables('vNetSubnetName')]",
-                     "properties": {
-                         "addressPrefix": "[variables('vNetSubnetAddressPrefix')]"
-                     }
-                 }
-             ]
-         }
-     },
-     {
-         "type": "Microsoft.Network/networkInterfaces",
-         "apiVersion": "2018-11-01",
-         "name": "[variables('networkInterfaceName')]",
-         "location": "[parameters('location')]",
-         "dependsOn": [
-             "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddressName'))]",
-             "[resourceId('Microsoft.Network/virtualNetworks', variables('vNetName'))]",
-             "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
-         ],
-         "properties": {
-             "ipConfigurations": [
-                 {
-                     "name": "ipconfig1",
-                     "properties": {
-                         "privateIPAllocationMethod": "Dynamic",
-                         "publicIPAddress": {
-                             "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddressName'))]"
-                         },
-                         "subnet": {
-                             "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vNetName'), variables('vNetSubnetName'))]"
-                         }
-                     }
-                 }
-             ]
-         }
-     },
-     {
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2018-05-01",
-      "name": "creatingVM",
-      "dependsOn": [
-          "[variables('vNetName')]",
-          "[variables('networkSecurityGroupName')]"
-      ],
-      "properties": {
-          "mode": "Incremental",
-          "templateLink": {
-              "uri": "[variables('createVMUrl')]",
-              "contentVersion": "1.0.0.0"
-          },
-          "parameters": {
-              "adminPasswordOrKey": {
-                  "value": "[parameters('adminPasswordOrKey')]"
-              },
-              "adminUsername": {
-                  "value": "[parameters('adminUsername')]"
-              },
-              "authenticationType": {
-                  "value": "[parameters('authenticationType')]"
-              },
-              "location": {
-                  "value": "[parameters('location')]"
-              },
-              "nsgId": {
-                  "value": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
-              },
-              "subnetRef": {
-                  "value": "[variables('subnetRef')]"
-              },
-              "vmSize": {
-                  "value": "[parameters('vmSize')]"
-              },
-              "vmName": {
-                  "value": "[variables('vmName')]"
-              }
-          }
-      }
-     },
-     {
-      "name": "creatingRBAC",
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2018-05-01",
-      "dependsOn": [
-        "creatingVM"
-      ],
-      "properties": {
-        "mode": "Incremental",
-        "templateLink": {
-          "uri": "[variables('createRBACUrl')]",
-          "contentVersion": "1.0.0.0"
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "projectName": {
+            "type": "String",
+            "metadata": {
+                "description": "Specifies a name for generating resource names."
+            }
         },
-        "parameters": {
-          "principalId": {
-            "value": "[reference('Microsoft.Resources/deployments/creatingVM', '2018-05-01').outputs.principalId.value]"
-          },
-          "vmName": {
-            "value": "[variables('vmName')]"
-          }
+        "vmSize": {
+            "allowedValues": [
+				            "Standard NC6",
+				            "Standard NC6_Promo",
+				            "Standard NC12",
+				            "Standard NC12_Promo"
+            ],
+            "type": "String",
+            "metadata": {
+                "description": "Size of vm"
+            }
+        },
+        "location": {
+            "defaultValue": "[resourceGroup().location]",
+            "type": "String",
+            "metadata": {
+                "description": "Specifies the location for all resources."
+            }
+        },
+        "adminUsername": {
+            "type": "String",
+            "metadata": {
+                "description": "Specifies a username for the Virtual Machine."
+            }
+        },
+        "authenticationType": {
+            "defaultValue": "sshPublicKey",
+            "allowedValues": [
+                "sshPublicKey",
+                "password"
+            ],
+            "type": "String",
+            "metadata": {
+                "description": "Type of authentication to use on the Virtual Machine. SSH key is recommended."
+            }
+        },
+        "adminPasswordOrKey": {
+            "type": "SecureString",
+            "metadata": {
+                "description": "SSH Key or password for the Virtual Machine. SSH key is recommended."
+            }
         }
-      }
     },
-     {
-        "type": "Microsoft.Resources/deployments",
-        "apiVersion": "2018-05-01",
-        "name": "updatingVM",
-        "dependsOn": [
-            "creatingVM"
-        ],
-        "properties": {
-            "mode": "Incremental",
-            "templateLink": {
-                "uri": "[variables('updateVMUrl')]",
-                "contentVersion": "1.0.0.0"
+    "variables": {
+        "vNetName": "[concat(parameters('projectName'), '-vnet')]",
+        "vNetAddressPrefixes": "10.0.0.0/16",
+        "vNetSubnetName": "default",
+        "vNetSubnetAddressPrefix": "10.0.0.0/24",
+        "vmName": "[concat(parameters('projectName'), '-vm')]",
+        "publicIPAddressName": "[concat(parameters('projectName'), '-ip')]",
+        "networkInterfaceName": "[concat(parameters('projectName'), '-nic')]",
+        "networkSecurityGroupName": "[concat(parameters('projectName'), '-nsg')]",
+        "subnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vNetName'), variables('vNetSubnetName'))]",
+        "createVMUrl": "https://raw.githubusercontent.com/microsoft/landcover/feature/vm-arm-template/ARM/nested_templates/createVM.json",
+        "createRBACUrl": "https://raw.githubusercontent.com/microsoft/landcover/feature/vm-arm-template/ARM/nested_templates/setupVMIdentityRole.json",
+        "updateVMUrl": "https://raw.githubusercontent.com/microsoft/landcover/feature/vm-arm-template/ARM/nested_templates/updateVM.json",
+        "linuxConfiguration": {
+            "disablePasswordAuthentication": true,
+            "ssh": {
+                "publicKeys": [
+                    {
+                        "path": "[concat('/home/', parameters('adminUsername'), '/.ssh/authorized_keys')]",
+                        "keyData": "[parameters('adminPasswordOrKey')]"
+                    }
+                ]
+            }
+        }
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "apiVersion": "2018-11-01",
+            "name": "[variables('networkSecurityGroupName')]",
+            "location": "[parameters('location')]",
+            "properties": {
+                "securityRules": [
+                    {
+                        "name": "ssh_rule",
+                        "properties": {
+                            "description": "Locks inbound down to ssh default port 22.",
+                            "protocol": "Tcp",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "22",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 123,
+                            "direction": "Inbound"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/publicIPAddresses",
+            "apiVersion": "2018-11-01",
+            "name": "[variables('publicIPAddressName')]",
+            "location": "[parameters('location')]",
+            "sku": {
+                "name": "Basic"
             },
-            "parameters": {
-                "adminPasswordOrKey": {
-                    "value": "[parameters('adminPasswordOrKey')]"
+            "properties": {
+                "publicIPAllocationMethod": "Dynamic"
+            }
+        },
+        {
+            "type": "Microsoft.Network/virtualNetworks",
+            "apiVersion": "2018-11-01",
+            "name": "[variables('vNetName')]",
+            "location": "[parameters('location')]",
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "[variables('vNetAddressPrefixes')]"
+                    ]
                 },
-                "adminUsername": {
-                    "value": "[parameters('adminUsername')]"
+                "subnets": [
+                    {
+                        "name": "[variables('vNetSubnetName')]",
+                        "properties": {
+                            "addressPrefix": "[variables('vNetSubnetAddressPrefix')]"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2018-11-01",
+            "name": "[variables('networkInterfaceName')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddressName'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks', variables('vNetName'))]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
+            ],
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig1",
+                        "properties": {
+                            "privateIPAllocationMethod": "Dynamic",
+                            "publicIPAddress": {
+                                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddressName'))]"
+                            },
+                            "subnet": {
+                                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vNetName'), variables('vNetSubnetName'))]"
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2018-05-01",
+            "name": "creatingVM",
+            "dependsOn": [
+                "[variables('vNetName')]",
+                "[variables('networkSecurityGroupName')]"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "[variables('createVMUrl')]",
+                    "contentVersion": "1.0.0.0"
                 },
-                "authenticationType": {
-                    "value": "[parameters('authenticationType')]"
+                "parameters": {
+                    "adminPasswordOrKey": {
+                        "value": "[parameters('adminPasswordOrKey')]"
+                    },
+                    "adminUsername": {
+                        "value": "[parameters('adminUsername')]"
+                    },
+                    "authenticationType": {
+                        "value": "[parameters('authenticationType')]"
+                    },
+                    "location": {
+                        "value": "[parameters('location')]"
+                    },
+                    "nsgId": {
+                        "value": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
+                    },
+                    "subnetRef": {
+                        "value": "[variables('subnetRef')]"
+                    },
+                    "vmSize": {
+                        "value": "[parameters('vmSize')]"
+                    },
+                    "vmName": {
+                        "value": "[variables('vmName')]"
+                    }
+                }
+            }
+        },
+        {
+            "name": "creatingRBAC",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2018-05-01",
+            "dependsOn": [
+                "creatingVM"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "[variables('createRBACUrl')]",
+                    "contentVersion": "1.0.0.0"
                 },
-                "location": {
-                    "value": "[parameters('location')]"
+                "parameters": {
+                    "principalId": {
+                        "value": "[reference('Microsoft.Resources/deployments/creatingVM', '2018-05-01').outputs.principalId.value]"
+                    },
+                    "vmName": {
+                        "value": "[variables('vmName')]"
+                    }
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2018-05-01",
+            "name": "updatingVM",
+            "dependsOn": [
+                "creatingVM"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "[variables('updateVMUrl')]",
+                    "contentVersion": "1.0.0.0"
                 },
-                "nsgId": {
-                    "value": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
-                },
-                "subnetRef": {
-                    "value": "[variables('subnetRef')]"
-                },
-                "vmSize": {
-                    "value": "[parameters('vmSize')]"
-                },
-                "vmName": {
-                    "value": "[variables('vmName')]"
+                "parameters": {
+                    "adminPasswordOrKey": {
+                        "value": "[parameters('adminPasswordOrKey')]"
+                    },
+                    "adminUsername": {
+                        "value": "[parameters('adminUsername')]"
+                    },
+                    "authenticationType": {
+                        "value": "[parameters('authenticationType')]"
+                    },
+                    "location": {
+                        "value": "[parameters('location')]"
+                    },
+                    "nsgId": {
+                        "value": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
+                    },
+                    "subnetRef": {
+                        "value": "[variables('subnetRef')]"
+                    },
+                    "vmSize": {
+                        "value": "[parameters('vmSize')]"
+                    },
+                    "vmName": {
+                        "value": "[variables('vmName')]"
+                    }
                 }
             }
         }
-       }
- ],
- "outputs": {
-     "adminUsername": {
-         "type": "String",
-         "value": "[parameters('adminUsername')]"
-     }
- }
+    ]
 }
