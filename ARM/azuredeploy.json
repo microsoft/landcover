@@ -240,7 +240,7 @@
         "properties": {
             "mode": "Incremental",
             "templateLink": {
-                "uri": "https://raw.githubusercontent.com/microsoft/landcover/feature/vm-arm-template/ARM/updatingvm.json",
+                "uri": "[variables('updateVMUrl')]",
                 "contentVersion": "1.0.0.0"
             },
             "parameters": {
