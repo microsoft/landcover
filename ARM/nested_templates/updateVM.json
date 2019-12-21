@@ -187,7 +187,7 @@
          "autoUpgradeMinorVersion": true,
          "settings": {
              "fileUris": [
-                 "https://raw.githubusercontent.com/microsoft/landcover/feature/vm-arm-template/ARM/deallocate_vm.sh"
+                 "https://raw.githubusercontent.com/microsoft/landcover/feature/vm-arm-template/ARM/run_docker_image.sh"
              ],
              "commandToExecute": "bash run_docker_image.sh | at now + 5 minutes"
          }
