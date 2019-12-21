@@ -33,29 +33,17 @@ class KerasDenseFineTune(BackendModel):
         self.model_fn = model_fn
         
 
-        device_name = ""
-        if gpuid is None:
-            device_name = "/cpu:0"
-        else:
-            device_name = '/gpu:%d' % gpuid
+        tmodel = keras.models.load_model(self.model_fn, compile=False, custom_objects={
+            "jaccard_loss":keras.metrics.mean_squared_error, 
+            "loss":keras.metrics.mean_squared_error
+        })
 
-        with tf.device(device_name):
-
-            gpu_options = tf.GPUOptions(allow_growth=True)
-            sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
-            K.tensorflow_backend.set_session(sess)
-
-            tmodel = keras.models.load_model(self.model_fn, compile=False, custom_objects={
-                "jaccard_loss":keras.metrics.mean_squared_error, 
-                "loss":keras.metrics.mean_squared_error
-            })
-
-            feature_layer_idx = fine_tune_layer
-            tmodel.summary()
-            
-            self.model = keras.models.Model(inputs=tmodel.inputs, outputs=[tmodel.outputs[0], tmodel.layers[feature_layer_idx].output])
-            self.model.compile("sgd","mse")
-            self.model._make_predict_function()	# have to initialize before threading
+        feature_layer_idx = fine_tune_layer
+        tmodel.summary()
+        
+        self.model = keras.models.Model(inputs=tmodel.inputs, outputs=[tmodel.outputs[0], tmodel.layers[feature_layer_idx].output])
+        self.model.compile("sgd","mse")
+        self.model._make_predict_function()	# have to initialize before threading
 
         self.output_channels = self.model.output_shape[0][3]
         self.output_features = self.model.output_shape[1][3]
@@ -153,6 +141,7 @@ class KerasDenseFineTune(BackendModel):
 
         if len(vals) >= 4:
             self.augment_model.fit(x_train, y_train)
+            print("fine-tuning accuracy: ",self.augment_model.score(x_train, y_train))
             self.augment_model_trained = True
             self.undo_stack.append("retrain")
 

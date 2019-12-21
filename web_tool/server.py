@@ -392,7 +392,7 @@ def pred_tile():
     print("Finished, output dimensions:", output.shape)
 
     # apply nodata mask from naip_data
-    nodata_mask = np.sum(naip_data == 0, axis=2) == 4
+    nodata_mask = np.sum(naip_data == 0, axis=2) == naip_data.shape[2]
     output_hard[nodata_mask] = 255
     vals, counts = np.unique(output_hard[~nodata_mask], return_counts=True)
 
