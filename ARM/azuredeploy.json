@@ -10,10 +10,10 @@
         },
         "vmSize": {
             "allowedValues": [
-				            "Standard NC6",
-				            "Standard NC6_Promo",
-				            "Standard NC12",
-				            "Standard NC12_Promo"
+		"Standard NC6"
+		"Standard NC6_Promo",
+		"Standard NC12",
+		"Standard NC12_Promo"
             ],
             "type": "String",
             "metadata": {
