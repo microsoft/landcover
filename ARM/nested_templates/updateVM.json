@@ -189,7 +189,7 @@
              "fileUris": [
                  "https://raw.githubusercontent.com/microsoft/landcover/feature/vm-arm-template/ARM/deallocate_vm.sh"
              ],
-             "commandToExecute": " at -f /deallocate_vm.sh now + 30 minutes"
+             "commandToExecute": "bash run_docker_image.sh | at now + 5 minutes"
          }
      }
     }
