@@ -5,5 +5,3 @@ log = "/app/logs/docker.log"
 
 logging.basicConfig(filename=log,level=logging.DEBUG,format='%(asctime)s %(message)s', datefmt='%d/%m/%Y %H:%M:%S')
 logging.info('testing arm docker image deployment')
-
-subprocess.call(["at", "-f", "/deallocate_vm.sh", "now", "+" ,'5" , "minutes"])
