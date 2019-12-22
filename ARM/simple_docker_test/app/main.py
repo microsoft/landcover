@@ -2,6 +2,7 @@ import subprocess
 import shlex
 import sys
 import az_config
+import logging
 
 log = "/app/logs/docker.log"
 
