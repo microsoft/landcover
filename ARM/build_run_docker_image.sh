@@ -1,4 +1,4 @@
-CFG_FILE="config.cfg"
+CFG_FILE="az_config.cfg"
 echo "az_resource_grp = $1" >> $CFG_FILE
 echo "az_vm_name = $2" >> $CFG_FILE
 
