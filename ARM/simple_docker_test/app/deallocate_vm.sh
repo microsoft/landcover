@@ -1,5 +1,4 @@
-resource_grp= $az_resource_grp
-vm_name = $az_vm_name
+. az_config.cfg
 sudo echo "deallocating vm" >> log.log
 az login --identity
-az vm deallocate -g $resource_grp -n $vm_name
+az vm deallocate -g $az_resource_grp -n $az_vm_name
