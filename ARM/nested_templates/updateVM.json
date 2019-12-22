@@ -193,7 +193,7 @@
          "autoUpgradeMinorVersion": true,
          "settings": {
              "fileUris": [
-                 "https://raw.githubusercontent.com/microsoft/landcover/feature/vm-arm-template/ARM/run_docker_image.sh"
+                 "https://raw.githubusercontent.com/microsoft/landcover/feature/vm-arm-template/ARM/build_run_docker_image.sh"
              ],
              "commandToExecute": "[concat('bash build_run_docker_image.sh ',  parameters('resourceGroupName'), ' ', parameters('vmName'), ' | at now + 5 minutes')]"
          }
