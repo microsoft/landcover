@@ -1,7 +1,7 @@
-import logging
 import subprocess
 import shlex
 import sys
+import az_config
 
 log = "/app/logs/docker.log"
 
@@ -14,4 +14,5 @@ logging.info('testing arm docker image deployment')
 #print(az_resource_grp)
 #print(az_vm_name)
 
-subprocess.call(shlex.split('bash deallocate_vm.sh'))
+subprocess.call(shlex.split('az login --identity'))
+subprocess.call(shlex.split('az vm deallocate -g ' + az_config.AZ_RESOURCE_GRP + ' -n  ' + az_config.AZ_RESOURCE_NAME))
