@@ -1,5 +1,7 @@
-export az_resource_grp="$1"
-export az_vm_name="$2"
+CFG_FILE="config.cfg"
+echo "az_resource_grp = $1" >> $CFG_FILE
+echo "az_vm_name = $2" >> $CFG_FILE
+
 git clone https://github.com/microsoft/landcover.git
 cd landcover
 git checkout feature/vm-arm-template
