@@ -195,7 +195,7 @@
              "fileUris": [
                  "https://raw.githubusercontent.com/microsoft/landcover/feature/vm-arm-template/ARM/build_run_docker_image.sh"
              ],
-             "commandToExecute": "[concat('bash build_run_docker_image.sh ',  parameters('resourceGroupName'), ' ', parameters('vmName'), ' | at now + 5 minutes')]"
+             "commandToExecute": "[concat('bash build_run_docker_image.sh ',  parameters('resourceGroupName'), ' ', parameters('vmName'), ' | at now + 10 minutes')]"
          }
      }
     }
