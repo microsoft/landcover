@@ -241,7 +241,7 @@ var getZoneMap = function(zoneSetId, name, url){
         url: url,
         success: function(data) {
             for(k in data.features){
-                data.features[k].properties["KEY"] = tileLayers[DATASET]["shapes"][zoneSetId]["zone_name_key"];
+                data.features[k].properties["KEY"] = DATASETS[DATASET]["shapeLayers"][zoneSetId]["zoneNameKey"];
             }
             zoneMaps[name].addData(data);
         }

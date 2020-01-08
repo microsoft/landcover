@@ -136,7 +136,7 @@ def main():
 
     args = parser.parse_args(sys.argv[1:])
     args.batch_size = 10
-    args.num_epochs = 10
+    args.num_epochs = 30
 
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpuid)
@@ -162,14 +162,15 @@ def main():
     num_classes = 64
     data_original_shape = data.shape
     data_color_features = data.reshape(-1,data_original_shape[2])
-    kmeans = MiniBatchKMeans(n_clusters=num_classes, verbose=1, compute_labels=False)
-    kmeans = kmeans.fit(data_color_features)
+    mask = (data_color_features == 0).sum(axis=1) != data_original_shape[2]
+    kmeans = MiniBatchKMeans(n_clusters=num_classes, verbose=1, init_size=2**16, n_init=20, batch_size=2**14, compute_labels=False)
+    kmeans = kmeans.fit(data_color_features[mask])
     #labels = kmeans.fit_predict(data_color_features)
     labels = manual_kmeans_predict(data_color_features, cluster_centers=kmeans.cluster_centers_)
     data_color_labels = labels.reshape(data_original_shape[:2])
 
     print("Extracting training samples")
-    n_samples = 4000
+    n_samples = 5000
     height, width = 150, 150
     x_all = np.zeros((n_samples, height, width, data_original_shape[2]), dtype=np.float32)
     y_all = np.zeros((n_samples, height, width), dtype=np.float32)
@@ -178,12 +179,17 @@ def main():
         x = np.random.randint(0, data.shape[1]-width)
         y = np.random.randint(0, data.shape[0]-height)
         
+        while np.any((data[y:y+height, x:x+width, :] == 0).sum(axis=2) == data_original_shape[2]):
+            x = np.random.randint(0, data.shape[1]-width)
+            y = np.random.randint(0, data.shape[0]-height)
+        
         img = data[y:y+height, x:x+width, :].astype(np.float32)
         target = data_color_labels[y:y+height, x:x+width].copy()
         
         x_all[i] = img
         y_all[i] = target
 
+    del data, data_color_labels, data_color_features
     x_all = x_all/255.0
     y_all = keras.utils.to_categorical(y_all, num_classes=num_classes)
 
