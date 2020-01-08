@@ -34,7 +34,10 @@ from azure.cosmosdb.table.models import Entity
 
 from DataLoader import warp_data_to_3857, crop_data_by_extent
 from Heatmap import Heatmap
-from Datasets import DATASETS
+
+from Datasets import load_datasets
+DATASETS = load_datasets()
+
 from Utils import get_random_string, class_prediction_to_img, get_shape_layer_by_name, AtomicCounter
 
 from ServerModelsKerasDense import KerasDenseFineTune
@@ -405,7 +408,7 @@ def pred_tile():
     img_hard = cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGRA)
     img_hard[nodata_mask] = [0,0,0,0]
 
-    img_hard, img_hard_bounds = warp_data_to_3857(img_hard, raster_crs, raster_transform, raster_bounds, resolution=1)
+    img_hard, img_hard_bounds = warp_data_to_3857(img_hard, raster_crs, raster_transform, raster_bounds, resolution=10)
 
     cv2.imwrite(os.path.join(ROOT_DIR, "downloads/%s.png" % (tmp_id)), img_hard)
     data["downloadPNG"] = "downloads/%s.png" % (tmp_id)
@@ -496,29 +499,6 @@ def get_input_metadata():
 
 def get_root_app():
     return bottle.static_file("index.html", root="./" + ROOT_DIR + "/")
-
-def get_datasets():
-    tile_layers = "var tileLayers = {\n"
-    for dataset_name, dataset in DATASETS.items():
-        tile_layers += '"%s": %s,\n' % (dataset_name, dataset["javascript_string"])
-    tile_layers += "};"
-    
-    interesting_locations = '''var interestingLocations = [
-        L.marker([47.60, -122.15]).bindPopup('Bellevue, WA'),
-        L.marker([39.74, -104.99]).bindPopup('Denver, CO'),
-        L.marker([37.53,  -77.44]).bindPopup('Richmond, VA'),
-        L.marker([39.74, -104.99]).bindPopup('Denver, CO'),
-        L.marker([37.53,  -77.44]).bindPopup('Richmond, VA'),
-        L.marker([33.746526, -84.387522]).bindPopup('Atlanta, GA'),
-        L.marker([32.774250, -96.796122]).bindPopup('Dallas, TX'),
-        L.marker([40.106675, -88.236409]).bindPopup('Champaign, IL'),
-        L.marker([38.679485, -75.874667]).bindPopup('Dorchester County, MD'),
-        L.marker([34.020618, -118.464412]).bindPopup('Santa Monica, CA'),
-        L.marker([37.748517, -122.429771]).bindPopup('San Fransisco, CA'),
-        L.marker([38.601951, -98.329227]).bindPopup('Ellsworth County, KS')
-    ];'''
-
-    return tile_layers + '\n\n' + interesting_locations
 
 def get_favicon():
     return
@@ -625,7 +605,6 @@ def main():
     app.route("/heatmap/<z>/<y>/<x>", method="GET", callback=do_heatmap)
 
     app.route("/", method="GET", callback=get_root_app)
-    app.route("/js/datasets.js", method="GET", callback=get_datasets)
     app.route("/favicon.ico", method="GET", callback=get_favicon)
     app.route("/<filepath:re:.*>", method="GET", callback=get_everything_else)
 

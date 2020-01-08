@@ -4,7 +4,7 @@ var DATASET = null;
 var START_CENTER = null;
 var START_ZOOM = null;
 
-var SELECTION_SIZE = 300; // in meters, probably
+var SELECTION_SIZE = 300; // number of units (meters) in EPSG:3857 (the number of _actual_ meters this represents will vary based on latitute)
 var CORRECTION_SIZE = 1;
 
 var SESSION_ID = null;

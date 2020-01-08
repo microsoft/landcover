@@ -127,7 +127,6 @@
     ================================================== -->
     <script src="js/main.js" type="text/javascript"></script>
     <script src="js/utils.js" type="text/javascript"></script>
-    <script src="js/datasets.js" type="text/javascript"></script>
     <script src="js/globals.js" type="text/javascript"></script>
 
     <!-- List of backend URLS to query
@@ -135,7 +134,22 @@
     <script src="endpoints.mine.js" type="text/javascript"></script>
 
     <script type="text/javascript">
-        //'use strict';
+        
+        //----------------------------------------------------------------------
+        // Load potential datasets
+        //----------------------------------------------------------------------
+        var DATASETS = (function () {
+            var json = null;
+            $.ajax({
+                'async': false,
+                'url': 'data/datasets.json',
+                'dataType': "json",
+                'success': function(data){
+                    json = data;
+                }
+            });
+            return json;
+        })(); 
 
         //----------------------------------------------------------------------
         // Runtime entrance
@@ -157,7 +171,7 @@
             EXP_NAME = args.userID
             BACKEND_URL = BACKEND_ENDPOINTS[args.backendID]["url"];
             
-            if(!(args.dataset in tileLayers) && (args.dataset !== null)){
+            if(!(args.dataset in DATASETS) && (args.dataset !== null)){
                 args.dataset = null;
                 new Noty({
                     type: "error",
@@ -196,16 +210,18 @@
             // Load the dataset specific shapes
             //----------------------------------------------------------------------
 
-            if(tileLayers[DATASET]["shapes"] !== null){
-                for(zoneSetId in tileLayers[DATASET]["shapes"]){
+            if(DATASETS[DATASET]["shapeLayers"] !== null){
+                for(zoneSetId in DATASETS[DATASET]["shapeLayers"]){
                     console.debug("Zonesetid", zoneSetId);
-                    var zoneName = tileLayers[DATASET]["shapes"][zoneSetId]["name"];
+                    var zoneName = DATASETS[DATASET]["shapeLayers"][zoneSetId]["name"];
                     zoneMapsWeight[zoneName] = defaultZoneLineWeights[zoneSetId];
                     zoneMaps[zoneName] = L.geoJSON(null, {
                         style: defaultZoneStyle(zoneMapsWeight[zoneName]),
-                        onEachFeature: forEachFeatureOnClick
+                        onEachFeature: forEachFeatureOnClick,
+                        pane: "polygons"
                     });
-                    getZoneMap(zoneSetId, zoneName, tileLayers[DATASET]["shapes"][zoneSetId]["shapes_fn"]);
+                    
+                    getZoneMap(zoneSetId, zoneName, DATASETS[DATASET]["shapeLayers"][zoneSetId]["shapesFn"]);
                 }
             }
 
@@ -219,11 +235,6 @@
                 attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
             })
 
-            // var esriLayer = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-            //     maxZoom: 20,
-            //     subdomains:['mt0','mt1','mt2','mt3']
-            // });
-
             var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 20,
                 maxNativeZoom: 17,
@@ -231,19 +242,19 @@
             })
 
 
-            if((DATASET != "esri_world_imagery") && (DATASET != "esri_world_imagery_naip")){
-                interestingLocations = [];
-            }
-            var baseLayer = tileLayers[DATASET]["tileObject"];
-            START_CENTER = tileLayers[DATASET]["location"][0];
-            START_ZOOM = tileLayers[DATASET]["location"][1];
+            var baseLayer = L.tileLayer(DATASETS[DATASET]["basemapLayer"]["url"], DATASETS[DATASET]["basemapLayer"]["args"]);
 
+
+            START_CENTER = DATASETS[DATASET]["basemapLayer"]["initialLocation"];
+            START_ZOOM = DATASETS[DATASET]["basemapLayer"]["initialZoom"];
+
+            interestingLocations = []
             var cities = L.layerGroup(interestingLocations);
 
             var initialLayers = [baseLayer];
-            if(tileLayers[DATASET]["shapes"] !== null){
-                initialLayers.push(zoneMaps[tileLayers[DATASET]["shapes"][0]["name"]]);
-                currentZoneLayerName = tileLayers[DATASET]["shapes"][0]["name"];
+            if(DATASETS[DATASET]["shapeLayers"] !== null){
+                initialLayers.push(zoneMaps[DATASETS[DATASET]["shapeLayers"][0]["name"]]);
+                currentZoneLayerName = DATASETS[DATASET]["shapeLayers"][0]["name"];
             }
 
             map = L.map('map', {
@@ -255,6 +266,9 @@
                 minZoom: baseLayer.options.minZoom,
                 layers: initialLayers
             });
+            map.createPane('polygons');
+            map.getPane('polygons').style.zIndex = 2000;
+
             map.createPane('labels');
             map.getPane('labels').style.zIndex = 201;
 
@@ -271,7 +285,7 @@
             // Setup layer picker
             //----------------------------------------------------------------------
 
-            var baseMapString = tileLayers[DATASET]["location"][3];
+            var baseMapString = DATASETS[DATASET]["metadata"]["imageryName"];
             currentBasemapLayerName = baseMapString;
 
             var baseMaps = {};
@@ -305,11 +319,11 @@
             logoControl.append("<br/>");
             logoControl.append("<span class='logo-text-small'>Version: 0.9</span>");
             logoControl.append("<br/>");
-            logoControl.append("<span class='logo-text-small'>Location: "+tileLayers[DATASET]["location"][2]+"</span>");
+            logoControl.append("<span class='logo-text-small'>Location: "+DATASETS[DATASET]["metadata"]["displayName"]+"</span>");
             
             $(".leaflet-top.leaflet-left").append(logoControl)
 
-            $("#lblModelInput").html(tileLayers[DATASET]["location"][3]);
+            $("#lblModelInput").html(DATASETS[DATASET]["metadata"]["locationName"]);
             
             //----------------------------------------------------------------------
             // Custom initialization of the map zoom controls so that we can 
@@ -471,7 +485,7 @@
                     // Run the add sample path
                     if(currentSelection !== null){
                         if(isPointInsidePolygon(e.latlng, currentSelection)){
-                            if(currentBasemapLayerName == tileLayers[DATASET]["location"][3]){
+                            if(currentBasemapLayerName == DATASETS[DATASET]["location"][3]){
                                 curSelPoly = getPolyAround(e.latlng, CORRECTION_SIZE);
                                 var idx = currentPatches.length-1;
                                 doSendCorrection(curSelPoly, idx);
@@ -496,7 +510,7 @@
                                     }
                                 }, 700);
                             }else{
-                                notifyFailMessage("Please add corrections using the '"+tileLayers[DATASET]["location"][3]+"' imagery layer.")
+                                notifyFailMessage("Please add corrections using the '"+DATASETS[DATASET]["location"][3]+"' imagery layer.")
                             }
                         }else{
                             console.debug("Click not in selection");
