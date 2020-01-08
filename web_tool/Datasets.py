@@ -11,7 +11,7 @@ from web_tool import ROOT_DIR
 
 from DataLoader import DataLoaderCustom, DataLoaderUSALayer, DataLoaderBasemap
 
-_DATASET_FN = "data/datasets.json"
+_DATASET_FN = "datasets.json"
 
 def _load_geojson_as_list(fn):
     ''' Takes a geojson file as input and outputs a list of shapely `shape` objects in that file and their corresponding areas in km^2.
