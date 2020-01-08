@@ -512,9 +512,6 @@ def main():
     app.route("/getInput", method="OPTIONS", callback=do_options)
     app.route('/getInput', method="POST", callback=get_input)
 
-    app.route("/getInputMetadata", method="OPTIONS", callback=do_options)
-    app.route('/getInputMetadata', method="POST", callback=get_input_metadata)
-
     app.route("/recordCorrection", method="OPTIONS", callback=do_options)
     app.route('/recordCorrection', method="POST", callback=record_correction)
 
