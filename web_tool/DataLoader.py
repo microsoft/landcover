@@ -136,9 +136,6 @@ class DataLoaderCustom(DataLoader):
 
         return src_image, src_crs, src_transform, buffed_geom.bounds, src_index
 
-    def get_metadata_from_extent(self, extent):
-        raise NotImplementedError()
-
     def get_area_from_shape_by_extent(self, extent, shape_layer):
         i, shape = self.get_shape_by_extent(extent, shape_layer)
         return self.shapes[shape_layer]["areas"][i]
@@ -173,6 +170,20 @@ class DataLoaderCustom(DataLoader):
             if shape.contains(transformed_shape.centroid):
                 return i, shape
         raise ValueError("No shape contains the centroid")
+
+    def get_data_from_shape(self, shape):
+        mask_geom = shapely.geometry.mapping(shape)
+
+        # Second, crop out that area for running the entire model on
+        f = rasterio.open(os.path.join(ROOT_DIR, self.data_fn), "r")
+        src_profile = f.profile
+        src_crs = f.crs.to_string()
+        src_bounds = f.bounds
+        transformed_mask_geom = fiona.transform.transform_geom("epsg:4326", src_crs, mask_geom)
+        src_image, src_transform = rasterio.mask.mask(f, [transformed_mask_geom], crop=True, all_touched=True, pad=False)
+        f.close()
+
+        return src_image, src_profile, src_transform, shapely.geometry.shape(transformed_mask_geom).bounds, src_crs
 
 
 # ------------------------------------------------------
@@ -287,11 +298,6 @@ class DataLoaderUSALayer(DataLoader):
 
         return src_image, src_crs, src_transform, buffed_geom.bounds, src_index
 
-    def get_metadata_from_extent(self, extent, geo_data_type=USALayerGeoDataTypes.NAIP):
-        naip_fn = NAIPTileIndex.lookup(extent)
-        fn = self.get_fn_by_geo_data_type(naip_fn, geo_data_type)
-        return fn
-
     def get_area_from_shape_by_extent(self, extent, shape_layer):
         raise NotImplementedError()
 
@@ -309,6 +315,8 @@ class DataLoaderUSALayer(DataLoader):
 
         return data, src_profile, src_transform, src_bounds, src_crs
 
+    def get_data_from_shape(self, shape):
+        raise NotImplementedError()
 
 # ------------------------------------------------------
 # DataLoader for loading RGB data from arbitrary basemaps
@@ -416,11 +424,11 @@ class DataLoaderBasemap(DataLoader):
         
         return out_image, dst_crs, out_transform, (minx, miny, maxx, maxy), dst_index
 
-    def get_metadata_from_extent(self, extent):
-        raise NotImplementedError()
-
     def get_area_from_shape_by_extent(self, extent, shape_layer):
         raise NotImplementedError()
 
     def get_data_from_shape_by_extent(self, extent, shape_layer):
+        raise NotImplementedError()
+
+    def get_data_from_shape(self, shape):
         raise NotImplementedError()

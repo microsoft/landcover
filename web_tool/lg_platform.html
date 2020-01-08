@@ -16,6 +16,7 @@
     <link href="css/leaflet-sidebar.css" rel="stylesheet" />
     <link href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.14/leaflet.draw.css">
     <link href="css/noty.css" rel="stylesheet">
 
     <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet">
@@ -122,6 +123,7 @@
     <script src="js/leaflet-sidebar.min.js" type="text/javascript"></script>
     <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js" type="text/javascript"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.js" type="text/javascript"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.14/leaflet.draw.js" type="text/javascript"></script>
 
     <!-- Application JavaScript
     ================================================== -->
@@ -149,7 +151,61 @@
                 }
             });
             return json;
-        })(); 
+        })();
+
+
+        //----------------------------------------------------------------------
+        // Setup map draw polygon
+        //----------------------------------------------------------------------
+        var currentCustomPolygon = null; //layer.toGeoJSON();
+        var setupDrawControls = function(){
+
+            var drawnItems = new L.FeatureGroup();
+            L.Util.setOptions(drawnItems, {pane: "customPolygons"});
+            map.addLayer(drawnItems);
+
+            var drawControl = new L.Control.Draw({
+                edit: {
+                    featureGroup: drawnItems,
+                    edit: false,
+                    remove: true
+                },
+                draw: {
+                    polyline: false,
+                    circle: false,
+                    circlemarker: false,
+                    rectangle: false,
+                    marker: false,
+                }
+            });
+
+            map.addControl(drawControl);
+
+            map.on("draw:created", function (e) {
+                var layer = e.layer;
+                var type = e.layerType;
+                
+                if (type === 'polygon') {
+                    L.Util.setOptions(layer, {pane: "customPolygons"});
+                    if(currentCustomPolygon !== null){
+                        currentCustomPolygon.remove();
+                    }
+                    layer.addTo(drawnItems);
+                    currentCustomPolygon = layer;
+                }
+            });
+
+            map.on("draw:deleted", function(e){
+                var layer = e.layer;
+                var type = e.layerType;
+
+                if (type === "draw:deleted"){
+                    currentCustomPolygon = null;
+                }
+            });
+        };
+
+
 
         //----------------------------------------------------------------------
         // Runtime entrance
@@ -266,6 +322,9 @@
                 minZoom: baseLayer.options.minZoom,
                 layers: initialLayers
             });
+            map.createPane('customPolygons');
+            map.getPane('customPolygons').style.zIndex = 2001;
+
             map.createPane('polygons');
             map.getPane('polygons').style.zIndex = 2000;
 
@@ -430,7 +489,9 @@
                     position: 'right'
                 }
             ).addTo(map);
-            sidebar.open("home")        
+            sidebar.open("home")
+
+            setupDrawControls();
 
             //----------------------------------------------------------------------
             // Setup map selection handlers
@@ -485,7 +546,7 @@
                     // Run the add sample path
                     if(currentSelection !== null){
                         if(isPointInsidePolygon(e.latlng, currentSelection)){
-                            if(currentBasemapLayerName == DATASETS[DATASET]["location"][3]){
+                            if(currentBasemapLayerName == DATASETS[DATASET]["metadata"]["imageryName"]){
                                 curSelPoly = getPolyAround(e.latlng, CORRECTION_SIZE);
                                 var idx = currentPatches.length-1;
                                 doSendCorrection(curSelPoly, idx);
@@ -510,7 +571,7 @@
                                     }
                                 }, 700);
                             }else{
-                                notifyFailMessage("Please add corrections using the '"+DATASETS[DATASET]["location"][3]+"' imagery layer.")
+                                notifyFailMessage("Please add corrections using the '"+DATASETS[DATASET]["metadata"]["imageryName"]+"' imagery layer.")
                             }
                         }else{
                             console.debug("Click not in selection");
@@ -518,6 +579,8 @@
                     }
                 }
             });
+
+            
 
             map.on('contextmenu',function(e){}); // disables the context menu
             map.on('dblclick',function(e){});

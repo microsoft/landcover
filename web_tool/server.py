@@ -365,7 +365,7 @@ def pred_patch():
 
 
 def pred_tile():
-    ''' Method called for POST `/predPatch`'''
+    ''' Method called for POST `/predTile`'''
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
     Session.add_entry(data) # record this interaction
@@ -383,6 +383,86 @@ def pred_tile():
     
     try:
         naip_data, raster_profile, raster_transform, raster_bounds, raster_crs = DATASETS[dataset]["data_loader"].get_data_from_shape_by_extent(extent, zone_layer_name)
+        naip_data = np.rollaxis(naip_data, 0, 3)
+        shape_area = DATASETS[dataset]["data_loader"].get_area_from_shape_by_extent(extent, zone_layer_name)      
+    except NotImplementedError as e:
+        bottle.response.status = 400
+        return json.dumps({"error": "Cannot currently download imagery with 'Basemap' based datasets"})
+
+
+    output = Session.model.run(naip_data, extent, True)
+    output_hard = output.argmax(axis=2)
+    print("Finished, output dimensions:", output.shape)
+
+    # apply nodata mask from naip_data
+    nodata_mask = np.sum(naip_data == 0, axis=2) == naip_data.shape[2]
+    output_hard[nodata_mask] = 255
+    vals, counts = np.unique(output_hard[~nodata_mask], return_counts=True)
+
+    # ------------------------------------------------------
+    # Step 4
+    #   Convert images to base64 and return  
+    # ------------------------------------------------------
+    tmp_id = get_random_string(8)
+    img_hard = np.round(class_prediction_to_img(output, True, color_list)*255,0).astype(np.uint8)
+    img_hard = cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGRA)
+    img_hard[nodata_mask] = [0,0,0,0]
+
+    img_hard, img_hard_bounds = warp_data_to_3857(img_hard, raster_crs, raster_transform, raster_bounds, resolution=10)
+
+    cv2.imwrite(os.path.join(ROOT_DIR, "downloads/%s.png" % (tmp_id)), img_hard)
+    data["downloadPNG"] = "downloads/%s.png" % (tmp_id)
+
+    new_profile = raster_profile.copy()
+    new_profile['driver'] = 'GTiff'
+    new_profile['dtype'] = 'uint8'
+    new_profile['compress'] = "lzw"
+    new_profile['count'] = 1
+    new_profile['transform'] = raster_transform
+    new_profile['height'] = naip_data.shape[0] 
+    new_profile['width'] = naip_data.shape[1]
+    new_profile['nodata'] = 255
+    f = rasterio.open(os.path.join(ROOT_DIR, "downloads/%s.tif" % (tmp_id)), 'w', **new_profile)
+    f.write(output_hard.astype(np.uint8), 1)
+    f.close()
+    data["downloadTIFF"] = "downloads/%s.tif" % (tmp_id)
+
+    f = open(os.path.join(ROOT_DIR, "downloads/%s.txt" % (tmp_id)), "w")
+    f.write("Class id\tClass name\tPercent area\tArea (km^2)\n")
+    for i in range(len(vals)):
+        pct_area = (counts[i] / np.sum(counts))
+        if shape_area is not None:
+            real_area = shape_area * pct_area
+        else:
+            real_area = -1
+        f.write("%d\t%s\t%0.4f%%\t%0.4f\n" % (vals[i], name_list[vals[i]], pct_area*100, real_area))
+    f.close()
+    data["downloadStatistics"] = "downloads/%s.txt" % (tmp_id)
+
+    bottle.response.status = 200
+    return json.dumps(data)
+
+
+
+def pred_tile_custom():
+    ''' Method called for POST `/predTileCustom`'''
+    bottle.response.content_type = 'application/json'
+    data = bottle.request.json
+    Session.add_entry(data) # record this interaction
+
+    # Inputs
+    polygon = data["polygon"]
+    class_list = data["classes"]
+    name_list = [item["name"] for item in class_list]
+    color_list = [item["color"] for item in class_list]
+    dataset = data["dataset"]
+    zone_layer_name = data["zoneLayerName"]
+   
+    if dataset not in DATASETS:
+        raise ValueError("Dataset doesn't seem to be valid, do the datasets in js/tile_layers.js correspond to those in TileLayers.py")    
+    
+    try:
+        naip_data, raster_profile, raster_transform, raster_bounds, raster_crs = DATASETS[dataset]["data_loader"].get_data_from_shape(polygon)
         naip_data = np.rollaxis(naip_data, 0, 3)
         shape_area = DATASETS[dataset]["data_loader"].get_area_from_shape_by_extent(extent, zone_layer_name)      
     except NotImplementedError as e:
@@ -580,6 +660,9 @@ def main():
 
     app.route("/predTile", method="OPTIONS", callback=do_options)
     app.route('/predTile', method="POST", callback=pred_tile)
+
+    app.route("/predTileCustom", method="OPTIONS", callback=do_options)
+    app.route('/predTileCustom', method="POST", callback=pred_tile_custom)
     
     app.route("/getInput", method="OPTIONS", callback=do_options)
     app.route('/getInput', method="POST", callback=get_input)

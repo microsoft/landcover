@@ -91,7 +91,49 @@ var doReset = function(notify=true, initialReset=false){
 var doDownloadTile = function(){
 
     if(currentZoneLayerName !== null){
-        if(currentSelection !== null){
+        if(currentCustomPolygon !== null){
+            var polygon = currentCustomPolygon.toGeoJSON();
+            var request = {
+                "type": "download",
+                "dataset": DATASET,
+                "experiment": EXP_NAME,
+                "polygon": polygon,
+                "classes": classes,
+                "zoneLayerName": currentZoneLayerName,
+                "SESSION": SESSION_ID
+            };
+
+            var testLayer = L.imageOverlay("", currentCustomPolygon.getBounds(), {pane: "labels"}).addTo(map);
+
+            $.ajax({
+                type: "POST",
+                url: BACKEND_URL + "predTileCustom",
+                data: JSON.stringify(request),
+                timeout: 0,
+                success: function(data, textStatus, jqXHR){
+                    new Noty({
+                        type: "success",
+                        text: "Tile download ready!",
+                        layout: 'topCenter',
+                        timeout: 5000,
+                        theme: 'metroui'
+                    }).show();
+                    var pngURL = window.location.origin + "/" + data["downloadPNG"];
+                    var tiffURL = window.location.origin + "/" + data["downloadTIFF"];
+                    var statisticsURL = window.location.origin + "/" + data["downloadStatistics"];
+                    $("#lblPNG").html("<a href='"+pngURL+"' target='_blank'>Download PNG</a>");
+                    $("#lblTIFF").html("<a href='"+tiffURL+"' target='_blank'>Download TIFF</a>");
+                    $("#lblStatistics").html("<a href='"+statisticsURL+"' target='_blank'>Download Class Statistics</a>");
+
+                    testLayer.setUrl(pngURL);
+                },
+                error: notifyFail,
+                dataType: "json",
+                contentType: "application/json"
+            });
+
+
+        }else if(currentSelection !== null){
             var t = currentSelection._latlngs[0];
             var polygon = [
                 [t[0]["lat"], t[0]["lng"]],
