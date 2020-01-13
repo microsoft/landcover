@@ -1,6 +1,6 @@
 var findClassByName = function(name){
-    for(var i=0; i<classes.length; i++){
-        if(classes[i]["name"] == name){
+    for(var i=0; i<CLASSES.length; i++){
+        if(CLASSES[i]["name"] == name){
             return i;
         }
     }
@@ -8,7 +8,7 @@ var findClassByName = function(name){
 };
 
 var findClassByIdx = function(idx){
-    return classes[idx]["name"];
+    return CLASSES[idx]["name"];
 }
 
 var renderClassCount = function(name, count){
@@ -18,7 +18,7 @@ var renderClassCount = function(name, count){
 var updateClassColor = function(obj){
     var className = $(obj.targetElement).attr("data-class-name");
     var classIdx = findClassByName(className);
-    classes[classIdx]["color"] = '#' + obj;
+    CLASSES[classIdx]["color"] = '#' + obj;
 };
 
 var getRandomColor = function(){
@@ -41,12 +41,12 @@ var getRandomString = function(length=8){
 }
 
 var animateSuccessfulCorrection = function(countdown, time){
-    animating = true;
-    selectionBox.setStyle({weight:countdown})
+    gAnimating = true;
+    gSelectionBox.setStyle({weight:countdown})
     if(countdown > 2){
         window.setTimeout(function(){animateSuccessfulCorrection(countdown-1);}, time);
     }else{
-        animating = false;
+        gAnimating = false;
     }
 }
 
@@ -241,9 +241,9 @@ var getZoneMap = function(zoneSetId, name, url){
         url: url,
         success: function(data) {
             for(k in data.features){
-                data.features[k].properties["KEY"] = DATASETS[DATASET]["shapeLayers"][zoneSetId]["zoneNameKey"];
+                data.features[k].properties["KEY"] = DATASETS[gCurrentDataset]["shapeLayers"][zoneSetId]["zoneNameKey"];
             }
-            zoneMaps[name].addData(data);
+            gZonemaps[name].addData(data);
         }
     });
 }
@@ -251,10 +251,10 @@ var getZoneMap = function(zoneSetId, name, url){
 var forEachFeatureOnClick = function(feature, layer) {
     layer.on('click', function (e) {
         currentZone = layer;
-        for(k in zoneMaps){
-            zoneMaps[k].setStyle(defaultZoneStyle(zoneMapsWeight[k]));
+        for(k in gZonemaps){
+            gZonemaps[k].setStyle(DEFAULT_ZONE_STYLE(gZoneMapsWeight[k]));
         }
-        layer.setStyle(highlightedZoneStyle);
+        layer.setStyle(HIGHLIGHTED_ZONE_STYLE);
         layer.bringToFront();
         var nameKey = e.target.feature.properties["KEY"];
         if (nameKey !== null){

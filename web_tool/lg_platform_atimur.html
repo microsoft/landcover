@@ -214,9 +214,9 @@
                 for(zoneSetId in DATASETS[DATASET]["shapeLayers"]){
                     console.debug("Zonesetid", zoneSetId);
                     var zoneName = DATASETS[DATASET]["shapeLayers"][zoneSetId]["name"];
-                    zoneMapsWeight[zoneName] = defaultZoneLineWeights[zoneSetId];
+                    zoneMapsWeight[zoneName] = DEFAULT_ZONE_LINE_WEIGHTS[zoneSetId];
                     zoneMaps[zoneName] = L.geoJSON(null, {
-                        style: defaultZoneStyle(zoneMapsWeight[zoneName]),
+                        style: DEFAULT_ZONE_STYLE(zoneMapsWeight[zoneName]),
                         onEachFeature: forEachFeatureOnClick,
                         pane: "polygons"
                     });

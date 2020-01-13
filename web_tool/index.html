@@ -182,7 +182,7 @@
             if(tileLayers[DATASET]["shapes"] !== null){
                 for(zoneSetId in tileLayers[DATASET]["shapes"]){
                     zoneMaps[tileLayers[DATASET]["shapes"][zoneSetId]["name"]] = L.geoJSON(null, {
-                        style: defaultZoneStyle,
+                        style: DEFAULT_ZONE_STYLE,
                         onEachFeature: forEachFeatureOnClick
                     });
                     getZoneMap(zoneSetId, tileLayers[DATASET]["shapes"][zoneSetId]["name"], tileLayers[DATASET]["shapes"][zoneSetId]["shapes_fn"]);
