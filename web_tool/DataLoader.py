@@ -172,7 +172,8 @@ class DataLoaderCustom(DataLoader):
         raise ValueError("No shape contains the centroid")
 
     def get_data_from_shape(self, shape):
-        mask_geom = shapely.geometry.mapping(shape)
+        #mask_geom = shapely.geometry.mapping(shape)
+        mask_geom = shape
 
         # Second, crop out that area for running the entire model on
         f = rasterio.open(os.path.join(ROOT_DIR, self.data_fn), "r")

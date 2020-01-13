@@ -13,6 +13,21 @@ from DataLoader import DataLoaderCustom, DataLoaderUSALayer, DataLoaderBasemap
 
 _DATASET_FN = "datasets.json"
 
+def get_area_from_geometry(geom, src_crs="epsg:4326"):
+    if geom["type"] == "Polygon":
+        lon, lat = geom["coordinates"][0][0]
+    elif geom["type"] == "MultiPolygon":
+        lon, lat = geom["coordinates"][0][0][0]
+    else:
+        raise ValueError("Polygons and MultiPolygons only")
+
+    zone_number = utm.latlon_to_zone_number(lat, lon)
+    hemisphere = "+north" if lat > 0 else "+south"
+    dest_crs = "+proj=utm +zone=%d %s +datum=WGS84 +units=m +no_defs" % (zone_number, hemisphere)
+    projected_geom = fiona.transform.transform_geom(src_crs, dest_crs, geom)
+    area = shapely.geometry.shape(projected_geom).area / 1000000.0 # we calculate the area in square meters then convert to square kilometers
+    return area
+
 def _load_geojson_as_list(fn):
     ''' Takes a geojson file as input and outputs a list of shapely `shape` objects in that file and their corresponding areas in km^2.
 
@@ -25,21 +40,11 @@ def _load_geojson_as_list(fn):
         src_crs = f.crs
         for row in f:
             geom = row["geometry"]
-            if geom["type"] == "Polygon":
-                lon, lat = geom["coordinates"][0][0]
-            elif geom["type"] == "MultiPolygon":
-                lon, lat = geom["coordinates"][0][0][0]
-            else:
-                raise ValueError("Polygons and MultiPolygons only")
-
-            zone_number = utm.latlon_to_zone_number(lat, lon)
-            hemisphere = "+north" if lat > 0 else "+south"
-            dest_crs = "+proj=utm +zone=%d %s +datum=WGS84 +units=m +no_defs" % (zone_number, hemisphere)
-            projected_geom = fiona.transform.transform_geom(src_crs, dest_crs, geom)
-            area = shapely.geometry.shape(projected_geom).area / 1000000.0 # we calculate the area in square meters then convert to square kilometers
+            
+            area = get_area_from_geometry(geom, src_crs)
+            areas.append(area)
 
             shape = shapely.geometry.shape(geom)
-            areas.append(area)
             shapes.append(shape)
     return shapes, areas, src_crs
 
