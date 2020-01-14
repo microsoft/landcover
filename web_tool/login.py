@@ -10,7 +10,6 @@ import shutil
 import requests
 
 import login_config
-from Session import Session
 from login_helper import check_user_access, get_token_from_querystring
 from log import LOGGER
 
@@ -73,7 +72,7 @@ def do_logout():
     bottle.request.session.delete()   
     return bottle.template('front_page.tpl')
 
-def get_accesstoken(SESSION_MAP):
+def get_accesstoken(SESSION_MAP, session_factory):
     if "logged_in" in bottle.request.session:
         bottle.redirect("/")
     else:
@@ -92,7 +91,7 @@ def get_accesstoken(SESSION_MAP):
             if name is not None:
                 bottle.request.session['logged_in'] = True
                 bottle.request.session['name'] = str(name)
-                SESSION_MAP[bottle.request.session.id] = Session(bottle.request.session.id)
+                SESSION_MAP[bottle.request.session.id] = session_factory.get_session(bottle.request.session.id)
                 SESSION_MAP[bottle.request.session.id].spawn_worker()
                 bottle.redirect("/")
             else:

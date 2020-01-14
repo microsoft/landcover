@@ -6,27 +6,25 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.ensemble import RandomForestClassifier
 
 import tensorflow as tf
-import keras
-import keras.backend as K
-import keras.models
-import keras.optimizers
+import tensorflow.keras as keras
 
 from ServerModelsAbstract import BackendModel
 from web_tool import ROOT_DIR
 
 
-AUGMENT_MODEL = MLPClassifier(
-    hidden_layer_sizes=(),
-    activation='relu',
-    alpha=0.0001,
-    solver='lbfgs',
-    tol=0.0001,
-    verbose=False,
-    validation_fraction=0.0,
-    n_iter_no_change=50
-)
 
 class KerasDenseFineTune(BackendModel):
+
+    AUGMENT_MODEL = MLPClassifier(
+        hidden_layer_sizes=(),
+        activation='relu',
+        alpha=0.0001,
+        solver='lbfgs',
+        tol=0.0001,
+        verbose=False,
+        validation_fraction=0.0,
+        n_iter_no_change=50
+    )
 
     def __init__(self, model_fn, gpuid, fine_tune_layer, fine_tune_seed_data_fn, verbose=False):
 
@@ -64,7 +62,7 @@ class KerasDenseFineTune(BackendModel):
 
         self.augment_x_train = []
         self.augment_y_train = []
-        self.augment_model = sklearn.base.clone(AUGMENT_MODEL)
+        self.augment_model = sklearn.base.clone(KerasDenseFineTune.AUGMENT_MODEL)
         self.augment_model_trained = False
 
         self.undo_stack = []
@@ -190,7 +188,7 @@ class KerasDenseFineTune(BackendModel):
         self.augment_x_train = []
         self.augment_y_train = []
         self.undo_stack = []
-        self.augment_model = sklearn.base.clone(AUGMENT_MODEL)
+        self.augment_model = sklearn.base.clone(KerasDenseFineTune.AUGMENT_MODEL)
         self.augment_model_trained = False
 
         for row in self.augment_base_x_train:

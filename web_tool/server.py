@@ -51,7 +51,7 @@ from log import setup_logging, LOGGER
 # Session handling code
 #---------------------------------------------------------------------------------------
 
-from Session import Session
+from Session import Session, SessionFactory
 SESSION_MAP = dict() # keys are bottle.request.session.id and values are corresponding Session() objects
 EXPIRED_SESSION_SET = set()
 
@@ -476,11 +476,43 @@ def main():
     parser.add_argument("--storage_path", action="store", dest="storage_path", type=str, help="Path to directory where output will be stored", default=None)
 
     parser.add_argument("--host", action="store", dest="host", type=str, help="Host to bind to", default="0.0.0.0")
-    parser.add_argument("--port", action="store", dest="port", type=int, help="Port to listen on", default=4444)
-    parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", default=None)
+    parser.add_argument("--port", action="store", dest="port", type=int, help="Port to listen on", default=8080)
 
+
+    subparsers = parser.add_subparsers(dest="subcommand", help='Help for subcommands') # TODO: If we use Python3.7 we can use the required keyword here
+    parser_a = subparsers.add_parser('local', help='For running models on the local server')
+    parser_a.add_argument("--model", action="store", dest="model",
+        choices=[
+            "keras_dense"
+        ],
+        help="Model to use", required=True
+    )
+    parser_a.add_argument("--fine_tune_seed_data_fn", action="store", dest="fine_tune_seed_data_fn", type=str, help="Path to npz containing seed data to use", default=None)
+    parser_a.add_argument("--fine_tune_layer", action="store", dest="fine_tune_layer", type=int, help="Layer of model to fine tune", default=-2)
+    parser_a.add_argument("--model_fn", action="store", dest="model_fn", type=str, help="Model fn to use", default=None)
+    parser_a.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", default=None)
+
+
+    parser_b = subparsers.add_parser('remote', help='For running models with RPC calls')
+    parser.add_argument("--remote_host", action="store", dest="remote_host", type=str, help="RabbitMQ host", default="0.0.0.0")
+    parser.add_argument("--remote_port", action="store", dest="remote_port", type=int, help="RabbitMQ port", default=8080)
 
     args = parser.parse_args(sys.argv[1:])
+
+
+    # create Session factory to use based on whether we are running locally or remotely
+    run_local = None
+    if args.subcommand == "local":
+        print("Sessions will be spawned on the local machine")
+        run_local = True
+    elif args.subcommand == "remote":
+        print("Sessions will be spawned remotely")
+        run_local = False
+    else:
+        print("Must specify 'local' or 'remote' on command line")
+        return
+    session_factory = SessionFactory(run_local, args)
+
 
     # Setup logging
     log_path = os.getcwd() + "/logs"
@@ -500,7 +532,7 @@ def main():
     app.route("/notAuthorized", method="GET", callback=login.not_authorized)
     app.route("/login", method="GET", callback=login.do_login)
     app.route("/logout", method="GET", callback=login.do_logout)
-    app.route("/checkAccess", method="POST", callback=lambda: login.get_accesstoken(SESSION_MAP))
+    app.route("/checkAccess", method="POST", callback=lambda: login.get_accesstoken(SESSION_MAP, session_factory))
 
     # API paths
     app.route("/predPatch", method="OPTIONS", callback=do_options)  # TODO: all of our web requests from index.html fire an OPTIONS call because of https://stackoverflow.com/questions/1256593/why-am-i-getting-an-options-request-instead-of-a-get-request, we should fix this 

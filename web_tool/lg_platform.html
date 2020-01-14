@@ -273,7 +273,7 @@
             addInferenceMouseHandlers();
             addDrawControlHandlers();
 
-            //document.getElementById("map").onselectstart = function(){ return false;} // remove the default behavior of the shift key. TODO: should this be on "document" or "body" instead of "map"?
+            document.getElementById("map").onselectstart = function(){ return false;} // remove the default behavior of the shift key. TODO: should this be on "document" or "body" instead of "map"?
             gMap.on('contextmenu',function(e){}); // disables the context menu
             gMap.on('dblclick',function(e){});
             gMap.doubleClickZoom.disable();
