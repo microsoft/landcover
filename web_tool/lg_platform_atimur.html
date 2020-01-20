@@ -8,7 +8,7 @@
     <meta name="author" content="">
     <link rel="icon" href="favicon.ico">
 
-    <title>Microsoft AI for Earth</title>
+    <title>Microsoft AI for Earth - Land cover mapping platform</title>
 
     <!-- Core CSS -->
     <link href="css/leaflet.css" rel="stylesheet" />
@@ -16,6 +16,7 @@
     <link href="css/leaflet-sidebar.css" rel="stylesheet" />
     <link href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.14/leaflet.draw.css">
     <link href="css/noty.css" rel="stylesheet">
 
     <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet">
@@ -120,11 +121,15 @@
     <script src="js/leaflet.js" type="text/javascript"></script>
     <script src="js/leaflet-slider.js" type="text/javascript"></script>
     <script src="js/leaflet-sidebar.min.js" type="text/javascript"></script>
+    <script src="js/leaflet.filelayer.js" type="text/javascript"></script>
     <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js" type="text/javascript"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.js" type="text/javascript"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.14/leaflet.draw.js" type="text/javascript"></script>
 
     <!-- Application JavaScript
     ================================================== -->
+    <script src="js/components.js" type="text/javascript"></script>
+    <script src="js/handlers.js" type="text/javascript"></script>
     <script src="js/main.js" type="text/javascript"></script>
     <script src="js/utils.js" type="text/javascript"></script>
     <script src="js/globals.js" type="text/javascript"></script>
@@ -135,41 +140,18 @@
 
     <script type="text/javascript">
         
-        //----------------------------------------------------------------------
-        // Load potential datasets
-        //----------------------------------------------------------------------
-        var DATASETS = (function () {
-            var json = null;
-            $.ajax({
-                'async': false,
-                'url': 'datasets.json',
-                'dataType': "json",
-                'success': function(data){
-                    json = data;
-                }
-            });
-            return json;
-        })(); 
-
+        var zonePickerControl;
         //----------------------------------------------------------------------
         // Runtime entrance
         //----------------------------------------------------------------------
         $(document).ready(function(){
 
-            
-            //----------------------------------------------------------------------
-            // Remove the default behavior of the shift key
-            //----------------------------------------------------------------------
-            document.getElementById("map").onselectstart = function() {
-                return false;
-            }
-            
             //----------------------------------------------------------------------
             // Parse URL arguments
             //----------------------------------------------------------------------
             let args = getURLArguments()
             EXP_NAME = args.userID
-            BACKEND_URL = BACKEND_ENDPOINTS[args.backendID]["url"];
+            gBackendURL = SERVERS[args.backendID]["url"];
             
             if(!(args.dataset in DATASETS) && (args.dataset !== null)){
                 args.dataset = null;
@@ -184,18 +166,13 @@
             if(args.dataset === null){
                 args.dataset = "esri_world_imagery";
             }
-            DATASET = args.dataset;
+            gCurrentDataset = "atimur";
 
             if(args.cachedModel !== null){
                 doLoad(args.cachedModel); // load a cached version of the model
             }else{
-                doReset(false, true); // reset the backend server
+                //doReset(false, true); // reset the backend server
             }
-
-            //----------------------------------------------------------------------
-            // Get a session id to include in all API requests
-            //----------------------------------------------------------------------
-            SESSION_ID = getRandomString(10);
             
             //----------------------------------------------------------------------
             // Start user study if necessary
@@ -209,19 +186,20 @@
             //----------------------------------------------------------------------
             // Load the dataset specific shapes
             //----------------------------------------------------------------------
+            // TODO: This needs to be refactored out of main() somehow. e.g. If I want to create a new interface that handles zone clicks differently then it should be easy to do, while currently I would have to break everything about how zones are currently handled.
+            if(DATASETS[gCurrentDataset]["shapeLayers"] !== null){
+                for(zoneSetId in DATASETS[gCurrentDataset]["shapeLayers"]){
+                    // for each shapeLayer in the current dataset we need to load the GeoJSON in `zoneMaps`
 
-            if(DATASETS[DATASET]["shapeLayers"] !== null){
-                for(zoneSetId in DATASETS[DATASET]["shapeLayers"]){
-                    console.debug("Zonesetid", zoneSetId);
-                    var zoneName = DATASETS[DATASET]["shapeLayers"][zoneSetId]["name"];
-                    zoneMapsWeight[zoneName] = DEFAULT_ZONE_LINE_WEIGHTS[zoneSetId];
-                    zoneMaps[zoneName] = L.geoJSON(null, {
-                        style: DEFAULT_ZONE_STYLE(zoneMapsWeight[zoneName]),
+                    var zoneName = DATASETS[gCurrentDataset]["shapeLayers"][zoneSetId]["name"];
+                    gZoneMapsWeight[zoneName] = DEFAULT_ZONE_LINE_WEIGHTS[zoneSetId];
+                    gZonemaps[zoneName] = L.geoJSON(null, {
+                        style: DEFAULT_ZONE_STYLE(gZoneMapsWeight[zoneName]),
                         onEachFeature: forEachFeatureOnClick,
                         pane: "polygons"
                     });
                     
-                    getZoneMap(zoneSetId, zoneName, DATASETS[DATASET]["shapeLayers"][zoneSetId]["shapesFn"]);
+                    getZoneMap(zoneSetId, zoneName, DATASETS[gCurrentDataset]["shapeLayers"][zoneSetId]["shapesFn"]);
                 }
             }
 
@@ -229,12 +207,8 @@
             // Setup map layers
             //----------------------------------------------------------------------
 
-            var esriLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                maxZoom: 20,
-                maxNativeZoom: 17,
-                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-            })
-
+            // Create the basemap for the current dataset
+            var baseLayer = L.tileLayer(DATASETS[gCurrentDataset]["basemapLayer"]["url"], DATASETS[gCurrentDataset]["basemapLayer"]["args"]);
             var custom1 = L.tileLayer('tiles/atimur_healthy_veg/{z}/{x}/{y}.png', {
                 tms: true,
                 minZoom: 8,
@@ -243,380 +217,124 @@
                 attribution: 'Georeferenced Image'
             });
 
-            var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 20,
-                maxNativeZoom: 17,
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            })
+
+            // This is the list of basemaps that will be displayed on the control in bottom left of GUI
+            gCurrentBasemapLayerName = DATASETS[gCurrentDataset]["metadata"]["imageryName"];
+            gBasemaps[DATASETS[gCurrentDataset]["metadata"]["imageryName"]] = baseLayer;
+            gBasemaps["Healthy Vegetation"] = custom1;
+            gBasemaps["OpenStreetMap"] = getOSMLayer();
+            gBasemaps["ESRI World Imagery"] = getESRILayer();
 
 
-            var baseLayer = L.tileLayer(DATASETS[DATASET]["basemapLayer"]["url"], DATASETS[DATASET]["basemapLayer"]["args"]);
-
-
-            START_CENTER = DATASETS[DATASET]["basemapLayer"]["initialLocation"];
-            START_ZOOM = DATASETS[DATASET]["basemapLayer"]["initialZoom"];
-
-            interestingLocations = []
-            var cities = L.layerGroup(interestingLocations);
-
+            // Setup the initial layers to be displayed on the map. This consists of the basemap from the dataset and, if defined, the first shape layer.
             var initialLayers = [baseLayer];
-            if(DATASETS[DATASET]["shapeLayers"] !== null){
-                initialLayers.push(zoneMaps[DATASETS[DATASET]["shapeLayers"][0]["name"]]);
-                currentZoneLayerName = DATASETS[DATASET]["shapeLayers"][0]["name"];
+            if(DATASETS[gCurrentDataset]["shapeLayers"] !== null){
+                initialLayers.push(gZonemaps[DATASETS[gCurrentDataset]["shapeLayers"][0]["name"]]);
+                gCurrentZoneLayerName = DATASETS[gCurrentDataset]["shapeLayers"][0]["name"];
             }
 
-            map = L.map('map', {
+            // Setup the global map object
+            gMap = L.map('map', {
                 zoomControl: false,
-                crs: L.CRS.EPSG3857, // this is a default, but I'm setting it to be explicit about what CRS we are in	
-                center: START_CENTER,
-                zoom: START_ZOOM,
+                crs: L.CRS.EPSG3857, // this is the projection CRS (EPSG:3857), but it is different than the data CRS (EPSG:4326). See https://gis.stackexchange.com/questions/225765/leaflet-map-crs-is-3857-but-coordinates-4326/225786.
+                center: DATASETS[gCurrentDataset]["basemapLayer"]["initialLocation"],
+                zoom: DATASETS[gCurrentDataset]["basemapLayer"]["initialZoom"],
                 keyboard: false,
                 minZoom: baseLayer.options.minZoom,
                 layers: initialLayers
             });
-            map.createPane('polygons');
-            map.getPane('polygons').style.zIndex = 2000;
+            gMap.createPane('customPolygons');
+            gMap.getPane('customPolygons').style.zIndex = 2001;
 
-            map.createPane('labels');
-            map.getPane('labels').style.zIndex = 201;
+            gMap.createPane('polygons');
+            gMap.getPane('polygons').style.zIndex = 2000;
 
-            map.createPane('downloadOutput');
-            map.getPane('downloadOutput').style.zIndex = 200;
+            gMap.createPane('labels');
+            gMap.getPane('labels').style.zIndex = 201;
 
-            for(var i=0;i<interestingLocations.length;i++){
-                interestingLocations[i].on('click', function(e){
-                    map.setView(e.latlng, 13);
-                });
-            }
+            gMap.createPane('downloadOutput');
+            gMap.getPane('downloadOutput').style.zIndex = 200;
+
+
 
             //----------------------------------------------------------------------
-            // Setup layer picker
+            // Create UI components. These are all defined in `js/components.js`.
             //----------------------------------------------------------------------
-
-            var baseMapString = DATASETS[DATASET]["metadata"]["imageryName"];
-            currentBasemapLayerName = baseMapString;
-
-            var baseMaps = {};
-            baseMaps[baseMapString] = baseLayer;
-            baseMaps["Healthy Vegetation"] = custom1;
-            baseMaps["OpenStreetMap"] = osmLayer;
-            baseMaps["'Google Earth' like Imagery"] = esriLayer;
+            addCustomLogoControl();
+            addZoomControls();
+            addDrawControls();
+            var basemapPickerControl = addBasemapPickerControl(gBasemaps);
+            var basemapPickerControlContainer = basemapPickerControl.getContainer();
             
-            var basemapLayerControl = L.control.layers(
-                baseMaps, null, {
-                    collapsed:false,
-                    position:"bottomleft"
-                }
-            ).addTo(map);
-
-            var basemapLayerControlContainer = basemapLayerControl.getContainer();
-
-            var zoneControl = L.control.layers(
-                zoneMaps, null, {
-                    collapsed:false,
-                    position:"bottomleft"
-                }
-            ).addTo(map);
-
-            var zoneControlContainer = zoneControl.getContainer();
-
-            //---------------------------------------------------------------------
-            // Setup AI4E Branding
-            //----------------------------------------------------------------------
-            var logoControl = $("<div class='leaflet-control logo-area'></div>");
-            logoControl.append("<span class='logo-text'>Microsoft AI for Earth</span>");
-            logoControl.append("<br/>");
-            logoControl.append("<span class='logo-text-small'>Version: 0.9</span>");
-            logoControl.append("<br/>");
-            logoControl.append("<span class='logo-text-small'>Location: "+DATASETS[DATASET]["metadata"]["displayName"]+"</span>");
+            zonePickerControl = addZonePickerControl(gZonemaps);
+            var zonePickerControlContainer = zonePickerControl.getContainer();
             
-            $(".leaflet-top.leaflet-left").append(logoControl)
+            var opacitySlider = addOpacitySlider();
+            // addInferenceWindowSizeSlider();
+            // addCorrectionWindowSizeSlider();
+            // addSharpnessToggleSlider();
 
-            $("#lblModelInput").html(DATASETS[DATASET]["metadata"]["locationName"]);
-            
-            //----------------------------------------------------------------------
-            // Custom initialization of the map zoom controls so that we can 
-            // position it where we want
-            //----------------------------------------------------------------------
-            L.control.zoom({
-                position:'topleft'
-            }).addTo(map);
+            addSideBar();
 
-            //----------------------------------------------------------------------
-            // Setup the leaflet-easybutton plugin to reset the map to its initial
-            // position
-            //----------------------------------------------------------------------
-            L.easyButton(
-                'fa-undo', function(btn, map) {
-                    map.closePopup();
-                    map.setView(START_CENTER, START_ZOOM);
-                },
-            ).addTo(map);
 
-            //----------------------------------------------------------------------
-            // Setup leaflet-slider plugin
-            // First slider is to control map opacity
-            //----------------------------------------------------------------------
-            opacitySlider = L.control.slider( // opacity slider
-                function(value){
-                    map.getPane('labels').style.opacity = value / 100.0;
-                }, {
-                    position: 'bottomleft',
-                    id: 'opacity_slider',
-                    orientation: 'horizontal',
-                    collapsed: true,
-                    syncSlider: true,
-                    min: 0,
-                    max: 100,
-                    value: 100,
-                    logo: "Opacity",
-                    size: "171px"
-                }
-            );
-            opacitySlider.addTo(map);
+            var uploadControl = addUploadControl();
+            uploadControl.loader.on('data:loaded', function (e) {
+                var zoneName = e.filename;
 
-            //----------------------------------------------------------------------
-            // Setup the selection window size slider
-            //----------------------------------------------------------------------
-            windowSizeSlider = L.control.slider( // opacity slider
-                function(value){
-                   SELECTION_SIZE = value;
-                }, {
-                    position: 'bottomleft',
-                    id: 'window_size_slider',
-                    orientation: 'horizontal',
-                    collapsed: true,
-                    syncSlider: true,
-                    min: 10,
-                    max: 700,
-                    value: 300,
-                    logo: "Window Size",
-                    size: "171px"
-                }
-            );
-            windowSizeSlider.addTo(map);
-
-            //----------------------------------------------------------------------
-            // Setup the sharpness slider to control which type of image is shown
-            //----------------------------------------------------------------------
-            L.control.slider( // sharpness slider
-                function(value){
-                    soft0_hard1 = value;
-
-                    for(idx=0; idx<currentPatches.length; idx++){
-                        var tActiveImgIdx = currentPatches[idx]["activeImgIdx"];
-                        var srcs = currentPatches[idx]["patches"][tActiveImgIdx]["srcs"];
-                        currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
-                    }
-
-                    if(currentPatches.length>0){
-                        var idx = currentPatches.length - 1;
-                        for(var tActiveImgIdx=0; tActiveImgIdx<currentPatches[idx]["patches"].length; tActiveImgIdx++){
-                            var srcs = currentPatches[idx]["patches"][tActiveImgIdx]["srcs"];
-                            $("#exampleImage_"+tActiveImgIdx).attr("src", srcs[soft0_hard1]);
-                        }
-                    }
-
-                }, {
-                    position: 'bottomleft',
-                    id: 'soft_hard_slider',
-                    orientation: 'horizontal',
-                    collapsed: true,
-                    syncSlider: true,
-                    min: 0,
-                    max: 1,
-                    value: 1,
-                    logo: "Sharpness",
-                    size: "171px"
-                }
-            ).addTo(map);
-            
-            //----------------------------------------------------------------------
-            // Setup leaflet-sidebar-v2 and open the "#home" tab 
-            //----------------------------------------------------------------------
-            var sidebar = L.control.sidebar(
-                'sidebar', {
-                    position: 'right'
-                }
-            ).addTo(map);
-            sidebar.open("home")        
-
-            //----------------------------------------------------------------------
-            // Setup map selection handlers
-            //----------------------------------------------------------------------
-            map.addEventListener('mousemove', function(e){
-                // Choose style
-                var curSelPoly = null;
-                if(!shiftKeyDown){
-                    curSelPoly = getPolyAround(e.latlng, CORRECTION_SIZE);
+                if(zoneName in gZonemaps){ // if there is an entry in gZonemaps with the same filename then we have already loaded this file
+                    console.debug("Error, already loaded this file");
                 }else{
-                    curSelPoly = getPolyAround(e.latlng, SELECTION_SIZE);
-                }
-
-                if(selectionBox === null){
-                    selectionBox = L.polygon(curSelPoly, {
-                        color: "#000000",
-                        fillColor: "#ffffff",
-                        weight: 2
-                    });
-                    selectionBox.addTo(map);
-                }else{
-                    if(!animating){
-                        selectionBox.setStyle({
-                            color: "#000000",
-                            fillColor: "#ffffff",
-                            weight: 2
-                        });
+                    if(gCurrentZoneLayerName !== null){
+                        console.debug("Removing existing zone layer");
+                        gMap.removeLayer(gZonemaps[gCurrentZoneLayerName]);
                     }
-                    selectionBox.setLatLngs(curSelPoly);
+                    gZoneMapsWeight[zoneName] = 3;
+                    gZonemaps[zoneName] = e.layer;
+                    e.layer.addTo(gMap);
+                    zonePickerControl.addBaseLayer(e.layer, zoneName);
                 }
             });
-
-            map.addEventListener('click', function(e){
-                
-                var curSelPoly = null;
-                if(shiftKeyDown){
-                    // Run the inference path
-                    curSelPoly = getPolyAround(e.latlng, SELECTION_SIZE);
-                    if(currentSelection === null){ // This condition creates the red selection box on the first click
-                        currentSelection = L.polygon(curSelPoly, {
-                            color: "#ff0000",
-                            fillColor: "#ffffff",
-                            weight: 2
-                        });
-                        currentSelection.addTo(map);
-                    }else{
-                        currentSelection.setLatLngs(curSelPoly);
-                    }
-   
-                    requestPatches(curSelPoly);
-                }else{
-                    // Run the add sample path
-                    if(currentSelection !== null){
-                        if(isPointInsidePolygon(e.latlng, currentSelection)){
-                            if(currentBasemapLayerName == DATASETS[DATASET]["location"][3]){
-                                curSelPoly = getPolyAround(e.latlng, CORRECTION_SIZE);
-                                var idx = currentPatches.length-1;
-                                doSendCorrection(curSelPoly, idx);
-                                
-                                var rect = L.rectangle(
-                                    [curSelPoly[0], curSelPoly[2]],
-                                    {
-                                        color: classes[selectedClassIdx]["color"],
-                                        weight: 1,
-                                        opacity: 1
-                                        //pane: "labels"
-                                    }
-                                ).addTo(map);
-                                userPointList.push([rect, selectedClassIdx]);
-
-                                map.dragging.disable();
-                                numClicks += 1
-                                window.setTimeout(function(){
-                                    numClicks -= 1;
-                                    if(numClicks == 0){
-                                        map.dragging.enable();
-                                    }
-                                }, 700);
-                            }else{
-                                notifyFailMessage("Please add corrections using the '"+DATASETS[DATASET]["location"][3]+"' imagery layer.")
-                            }
-                        }else{
-                            console.debug("Click not in selection");
-                        }
-                    }
-                }
+            uploadControl.loader.on('data:error', function (error) {
+                console.error(error); //TODO: alert a reasonable error message
             });
 
-            map.on('contextmenu',function(e){}); // disables the context menu
-            map.on('dblclick',function(e){});
-            map.doubleClickZoom.disable();
-            map.boxZoom.disable();
+            //----------------------------------------------------------------------
+            // Register handlers. These are all defined in `js/handlers.js`
+            //----------------------------------------------------------------------
+            
+            addInferenceMouseHandlers();
+            addDrawControlHandlers();
+            addOpacityKeyHandlers(opacitySlider);
+            addRetrainKeyHandler();
+            addGUIKeyHandlers();
+            
 
-            $(zoneControlContainer).find('input[type=radio]').change(function() {
-                var name = $(this).siblings()[0].innerHTML.trim();
-                currentZoneLayerName = name;
-                console.debug("Switched zone layer to: " + name);
+            // $(zonePickerControlContainer).find('input[type=radio]').change(function() {
+            //     var name = $(this).siblings()[0].innerHTML.trim();
+            //     gCurrentZoneLayerName = name;
+            //     console.debug("Switched zone layer to: " + name);
+            // });
+
+            // $(basemapPickerControlContainer).find('input[type=radio]').change(function() {
+            //     var name = $(this).siblings()[0].innerHTML.trim();
+            //     gCurrentBasemapLayerName = name;
+            //     console.debug("Switched basemap layer to: " + name);
+            // });
+
+            gMap.on('baselayerchange', function(e) {
+                //https://gis.stackexchange.com/questions/171911/getting-current-layer-in-control-event-of-leaflet
+                console.log(e);
             });
-
-            $(basemapLayerControlContainer).find('input[type=radio]').change(function() {
-                var name = $(this).siblings()[0].innerHTML.trim();
-                currentBasemapLayerName = name;
-                console.debug("Switched basemap layer to: " + name);
-            });
-
-
-            $(document).keydown(function(e){
-                shiftKeyDown = e.shiftKey;
-                ctrlKeyDown = e.ctrlKey;
-            });
-            $(document).keyup(function(e){
-                shiftKeyDown = e.shiftKey;
-                ctrlKeyDown = e.ctrlKey;
-            });
-
-            $(document).keydown(function(e) {
-                if(document.activeElement == document.body){
-                    if(e.which == 97 || e.which == 65) { // "a"
-                        visible = false;
-                        map.getPane('labels').style.opacity = 0.0;
-                        opacitySlider.slider.value = 0;
-                        opacitySlider._updateValue();
-                    } else if(e.which == 115 || e.which == 83) { // "s"
-                        if(visible){
-                            visible = false;
-                            map.getPane('labels').style.opacity = 0.0;
-                            opacitySlider.slider.value = 0;
-                            opacitySlider._updateValue();
-                        }else{
-                            visible = true;
-                            map.getPane('labels').style.opacity = 1.0;
-                            opacitySlider.slider.value = 100;
-                            opacitySlider._updateValue();
-                        }
-                    } else if(e.which == 100 || e.which == 68) { "d"
-                        visible = true;
-                        map.getPane('labels').style.opacity = 1.0;
-                        opacitySlider.slider.value = 100
-                        opacitySlider._updateValue();
-                    } else if((e.which == 114 || e.which == 82) && !ctrlKeyDown){ "r"
-                        doRetrain();
-                    } else if(e.which == 37){ "left arrow"
-                        var currentOpacity = parseFloat(map.getPane('labels').style.opacity);
-                        if (currentOpacity >= 0.05){
-                            currentOpacity -= 0.05;
-
-                            map.getPane('labels').style.opacity = currentOpacity;
-                            opacitySlider.slider.value = currentOpacity*100;
-                            opacitySlider._updateValue();
-                        }
-                        e.preventDefault()
-                    } else if(e.which == 39){ "right arrow"
-                        var currentOpacity = parseFloat(map.getPane('labels').style.opacity);
-                        if (currentOpacity <= 0.95){
-                            currentOpacity += 0.05;
-
-                            map.getPane('labels').style.opacity = currentOpacity;
-                            opacitySlider.slider.value = currentOpacity*100;
-                            opacitySlider._updateValue();
-                        }
-                        e.preventDefault()
-                    } else if(e.which == 38 || e.which == 40){
-                        e.preventDefault()
-                    } else if(ctrlKeyDown && e.which==90){
-                        doUndo();
-                    }
-                }
-            });
-
 
             $("#btnRetrain").click(doRetrain);
             $("#btnUndo").click(doUndo);
             $("#btnReset").click(function(){doReset(true, initialReset=false)});
             $("#btnDownload").click(doDownloadTile);
+
+
             $("#btnNewClass").click(function(){
                 
-                var newClassIdx = classes.length + 1;
+                var newClassIdx = CLASSES.length + 1;
                 var newColor = getRandomColor();
 
                 var newClassElement =  $("<div class='radio'>");
@@ -641,7 +359,7 @@
             
                 $("#classList").append(newClassElement);
 
-                classes.push({
+                CLASSES.push({
                     "name": "Class " + newClassIdx,
                     "color": newColor,
                     "count": 0
@@ -657,8 +375,8 @@
                 $('.radio label').removeClass("selected");
                 $(this).parent().addClass("selected");
 
-                selectedClassIdx = findClassByName(this.value);
-                console.debug(this.value + " " + selectedClassIdx);
+                gSelectedClassIdx = findClassByName(this.value);
+                console.debug(this.value + " " + gSelectedClassIdx);
             });
 
             $(document).on('click', '.classNameEdit', function(){
@@ -670,7 +388,7 @@
                 $(this).parent().siblings(".jscolor").attr("data-class-name", newName);
 
                 var classIdx = findClassByName(oldName)
-                classes[classIdx]["name"] = newName;
+                CLASSES[classIdx]["name"] = newName;
 
 
             });
@@ -678,7 +396,7 @@
             //----------------------------------------------------------------------
             // Setup the example images list
             //----------------------------------------------------------------------
-            for(var i=0; i<ENDPOINTS.length; i++){
+            for(var i=0; i<SERVERS.length; i++){
                 var img = $("<img class='exampleImage'>");
                 img.attr("im-id", i);
                 img.attr("id", "exampleImage_"+i);
@@ -689,13 +407,14 @@
                 $(".exampleImage").removeClass("active");
                 $(this).addClass("active");
                 
-                var idx = currentPatches.length-1;
-                activeImgIdx = $(this).attr("im-id");
+                var idx = gCurrentPatches.length-1;
+                gActiveImgIdx = $(this).attr("im-id");
 
-                var srcs = currentPatches[idx]["patches"][activeImgIdx]["srcs"];
-                currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
-                currentPatches[idx]["activeImgIdx"] = activeImgIdx;
-                $(this).attr("src", srcs[soft0_hard1]);
+                var srcs = gCurrentPatches[idx]["patches"][gActiveImgIdx]["srcs"];
+                let tSelection = gDisplayHard ? "hard" : "soft";
+                gCurrentPatches[idx]["imageLayer"].setUrl(srcs[tSelection]);
+                gCurrentPatches[idx]["activeImgIdx"] = gActiveImgIdx;
+                $(this).attr("src", srcs[tSelection]);
             });
 
         });

@@ -88,7 +88,6 @@ var addInferenceMouseHandlers = function(){
 
 };
 
-
 var addDrawControlHandlers = function(){
     gMap.on("draw:created", function (e) {
         var layer = e.layer;
@@ -112,4 +111,61 @@ var addDrawControlHandlers = function(){
             gCurrentCustomPolygon = null;
         }
     });
+};
+
+var addRetrainKeyHandler = function(){
+    $(document).keydown(function(e) {
+        if(document.activeElement == document.body){
+            if((e.which == 114 || e.which == 82) && !gCtrlKeyDown){ // "r" - retrain
+                doRetrain();
+            }
+        }
+    });
+};
+
+var addOpacityKeyHandlers = function(opacitySlider){
+    $(document).keydown(function(e) {
+        if(document.activeElement == document.body){ // only register if we are in document.body so that we don't fire events when typing in text boxes
+            if(e.which == 97 || e.which == 65) { // "a" - set invisible
+                gVisible = false;
+                gMap.getPane('labels').style.opacity = 0.0;
+                opacitySlider.slider.value = 0;
+                opacitySlider._updateValue();
+            } else if(e.which == 115 || e.which == 83) { // "s" - toggle between visibile and invisible
+                if(gVisible){
+                    gVisible = false;
+                    gMap.getPane('labels').style.opacity = 0.0;
+                    opacitySlider.slider.value = 0;
+                    opacitySlider._updateValue();
+                }else{
+                    gVisible = true;
+                    gMap.getPane('labels').style.opacity = 1.0;
+                    opacitySlider.slider.value = 100;
+                    opacitySlider._updateValue();
+                }
+            } else if(e.which == 100 || e.which == 68) { // "d" - set visible
+                gVisible = true;
+                gMap.getPane('labels').style.opacity = 1.0;
+                opacitySlider.slider.value = 100
+                opacitySlider._updateValue();
+            }
+        }
+    });
+};
+
+var addGUIKeyHandlers = function(){
+    $(document).keydown(function(e){
+        gShiftKeyDown = e.shiftKey;
+        gCtrlKeyDown = e.ctrlKey;
+    });
+    $(document).keyup(function(e){
+        gShiftKeyDown = e.shiftKey;
+        gCtrlKeyDown = e.ctrlKey;
+    });
+
+    document.getElementById("map").onselectstart = function(){ return false;} // remove the default behavior of the shift key. TODO: should this be on "document" or "body" instead of "map"?
+    gMap.on('contextmenu',function(e){});
+    gMap.on('dblclick',function(e){});
+    gMap.doubleClickZoom.disable();
+    gMap.boxZoom.disable();
 };

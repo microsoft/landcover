@@ -90,81 +90,68 @@ var doReset = function(notify=true, initialReset=false){
 //-----------------------------------------------------------------
 var doDownloadTile = function(){
 
-    if(gCurrentZoneLayerName !== null){
-
-        var polygon = null;
-        if(gCurrentCustomPolygon !== null){
-            polygon = gCurrentCustomPolygon;
-        }else if(gCurrentZone !== null){
-            polygon = gCurrentZone;
-        }else{
-            new Noty({
-                type: "info",
-                text: "You must select a zone or draw a polygon to download data",
-                layout: 'topCenter',
-                timeout: 3000,
-                theme: 'metroui'
-            }).show();
-            return
-        }
-
-        var request = {
-            "type": "download",
-            "dataset": gCurrentDataset,
-            "experiment": EXP_NAME,
-            "polygon": polygon.toGeoJSON(),
-            "classes": CLASSES,
-            "zoneLayerName": gCurrentZoneLayerName,
-            "SESSION": SESSION_ID
-        };
-
-        var outputLayer = L.imageOverlay("", polygon.getBounds(), {pane: "labels"}).addTo(gMap);
-        $.ajax({
-            type: "POST",
-            url: gBackendURL + "predTile",
-            data: JSON.stringify(request),
-            timeout: 0,
-            success: function(data, textStatus, jqXHR){
-                new Noty({
-                    type: "success",
-                    text: "Tile download ready!",
-                    layout: 'topCenter',
-                    timeout: 5000,
-                    theme: 'metroui'
-                }).show();
-                var pngURL = window.location.origin + "/" + data["downloadPNG"];
-                var tiffURL = window.location.origin + "/" + data["downloadTIFF"];
-                var statisticsURL = window.location.origin + "/" + data["downloadStatistics"];
-                $("#lblPNG").html("<a href='"+pngURL+"' target='_blank'>Download PNG</a>");
-                $("#lblTIFF").html("<a href='"+tiffURL+"' target='_blank'>Download TIFF</a>");
-                $("#lblStatistics").html("<a href='"+statisticsURL+"' target='_blank'>Download Class Statistics</a>");
-
-                outputLayer.setUrl(pngURL);
-
-            },
-            error: notifyFail,
-            dataType: "json",
-            contentType: "application/json"
-        });
-
-        new Noty({
-            type: "success",
-            text: "Sent tile download request, please wait for 2-3 minutes. When the request is complete the download links will appear underneath the 'Download' button.",
-            layout: 'topCenter',
-            timeout: 10000,
-            theme: 'metroui'
-        }).show();
-
-
+    var polygon = null;
+    if(gCurrentCustomPolygon !== null){
+        polygon = gCurrentCustomPolygon;
+    }else if(gCurrentZone !== null){
+        polygon = gCurrentZone;
     }else{
         new Noty({
             type: "info",
-            text: "Downloads are not enabled for this dataset",
+            text: "You must select a zone or draw a polygon to download data",
             layout: 'topCenter',
             timeout: 3000,
             theme: 'metroui'
         }).show();
+        return
     }
+
+    var request = {
+        "type": "download",
+        "dataset": gCurrentDataset,
+        "experiment": EXP_NAME,
+        "polygon": polygon.toGeoJSON(),
+        "classes": CLASSES,
+        "zoneLayerName": null,
+        "SESSION": SESSION_ID
+    };
+
+    var outputLayer = L.imageOverlay("", polygon.getBounds(), {pane: "labels"}).addTo(gMap);
+    $.ajax({
+        type: "POST",
+        url: gBackendURL + "predTile",
+        data: JSON.stringify(request),
+        timeout: 0,
+        success: function(data, textStatus, jqXHR){
+            new Noty({
+                type: "success",
+                text: "Tile download ready!",
+                layout: 'topCenter',
+                timeout: 5000,
+                theme: 'metroui'
+            }).show();
+            var pngURL = window.location.origin + "/" + data["downloadPNG"];
+            var tiffURL = window.location.origin + "/" + data["downloadTIFF"];
+            var statisticsURL = window.location.origin + "/" + data["downloadStatistics"];
+            $("#lblPNG").html("<a href='"+pngURL+"' target='_blank'>Download PNG</a>");
+            $("#lblTIFF").html("<a href='"+tiffURL+"' target='_blank'>Download TIFF</a>");
+            $("#lblStatistics").html("<a href='"+statisticsURL+"' target='_blank'>Download Class Statistics</a>");
+
+            outputLayer.setUrl(pngURL);
+
+        },
+        error: notifyFail,
+        dataType: "json",
+        contentType: "application/json"
+    });
+
+    new Noty({
+        type: "success",
+        text: "Sent tile download request, please wait for 2-3 minutes. When the request is complete the download links will appear underneath the 'Download' button.",
+        layout: 'topCenter',
+        timeout: 10000,
+        theme: 'metroui'
+    }).show();
 };
 
 

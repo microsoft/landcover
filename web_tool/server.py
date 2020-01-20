@@ -47,19 +47,27 @@ import login
 import login_config
 from log import setup_logging, LOGGER
 
+
 #---------------------------------------------------------------------------------------
 # Session handling code
 #---------------------------------------------------------------------------------------
-
 from Session import Session, SessionFactory
 SESSION_MAP = dict() # keys are bottle.request.session.id and values are corresponding Session() objects
 EXPIRED_SESSION_SET = set()
+
+class LocalManager():
+    def __init__(self, run_local):
+        self.run_local = run_local
+LOCAL_MANAGER = LocalManager(False)
+DEFAULT_SESSION = None
+
 
 def setup_sessions():
     '''This method is called before every request. Adds the beaker SessionMiddleware on as request.session.
     '''
     bottle.request.session = bottle.request.environ['beaker.session']
     bottle.request.client_ip = bottle.request.environ.get('HTTP_X_FORWARDED_FOR') or bottle.request.environ.get('REMOTE_ADDR')
+
 
 def manage_sessions():
     '''This method is called before every request. Checks to see if there a session assosciated with the current request.
@@ -77,6 +85,7 @@ def manage_sessions():
             LOGGER.warning("I don't expect this to happen - someone is logged in but they do not have a `Session` object in SESSION_MAP")
     else:
         pass # not logged in, we don't care about this
+
 
 def session_monitor(session_timeout_seconds=900):
     ''' This is a `Thread()` that is starting when the program is run. It is responsible for finding which of the `Session()` objects
@@ -98,8 +107,10 @@ def session_monitor(session_timeout_seconds=900):
             del SESSION_MAP[session_id]
         time.sleep(5)
 
+
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
+
 
 def enable_cors():
     '''From https://gist.github.com/richard-flosi/3789163
@@ -110,24 +121,27 @@ def enable_cors():
     bottle.response.headers['Access-Control-Allow-Methods'] = 'PUT, GET, POST, DELETE, OPTIONS'
     bottle.response.headers['Access-Control-Allow-Headers'] = 'Origin, Accept, Content-Type, X-Requested-With, X-CSRF-Token'
 
+
 def do_options():
     '''This method is necessary for CORS to work (I think --Caleb)
     '''
     bottle.response.status = 204
     return
 
+
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
 
-@login.authenticated
+
+@login.authenticated(LOCAL_MANAGER)
 def do_load():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
     
     cached_model = data["cachedModel"]
 
-    SESSION_MAP[bottle.request.session.id].reset(False, from_cached=cached_model)
-    SESSION_MAP[bottle.request.session.id].load(cached_model)
+    SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).reset(False, from_cached=cached_model)
+    SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).load(cached_model)
 
     data["message"] = "Loaded new model from %s" % (cached_model)
     data["success"] = True
@@ -136,7 +150,7 @@ def do_load():
     return json.dumps(data)
 
 
-@login.authenticated
+@login.authenticated(LOCAL_MANAGER)
 def reset_model():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
@@ -144,10 +158,10 @@ def reset_model():
     
     initial_reset = data.get("initialReset", False)
     if not initial_reset:
-        SESSION_MAP[bottle.request.session.id].add_entry(data) # record this interaction
-        SESSION_MAP[bottle.request.session.id].save(data["experiment"])
+        SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).add_entry(data) # record this interaction
+        SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).save(data["experiment"])
 
-    SESSION_MAP[bottle.request.session.id].reset()
+    SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).reset()
 
     data["message"] = "Reset model"
     data["success"] = True
@@ -156,19 +170,19 @@ def reset_model():
     return json.dumps(data)
 
 
-@login.authenticated
+@login.authenticated(LOCAL_MANAGER)
 def retrain_model():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
     data["remote_address"] = bottle.request.client_ip
     
-    success, message = SESSION_MAP[bottle.request.session.id].model.retrain(**data["retrainArgs"])
+    success, message = SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).model.retrain(**data["retrainArgs"])
     
     if success:
         bottle.response.status = 200
-        encoded_model_fn = SESSION_MAP[bottle.request.session.id].save(data["experiment"])
+        encoded_model_fn = SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).save(data["experiment"])
         data["cached_model"] = encoded_model_fn 
-        SESSION_MAP[bottle.request.session.id].add_entry(data) # record this interaction
+        SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).add_entry(data) # record this interaction
     else:
         data["error"] = message
         bottle.response.status = 500
@@ -179,13 +193,13 @@ def retrain_model():
     return json.dumps(data)
 
 
-@login.authenticated
+@login.authenticated(LOCAL_MANAGER)
 def record_correction():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
     data["remote_address"] = bottle.request.client_ip
 
-    SESSION_MAP[bottle.request.session.id].add_entry(data) # record this interaction
+    SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).add_entry(data) # record this interaction
 
     #
     tlat, tlon = data["extent"]["ymax"], data["extent"]["xmin"]
@@ -200,7 +214,7 @@ def record_correction():
     xs, ys = fiona.transform.transform(origin_crs, "epsg:4326", [tlon], [tlat])
 
     #
-    naip_crs, naip_transform, naip_index = SESSION_MAP[bottle.request.session.id].current_transform
+    naip_crs, naip_transform, naip_index = SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).current_transform
 
     xs, ys = fiona.transform.transform(origin_crs, naip_crs.to_dict(), [tlon,blon], [tlat,blat])
     
@@ -219,7 +233,7 @@ def record_correction():
     tdst_row, bdst_row = min(tdst_row, bdst_row), max(tdst_row, bdst_row)
     tdst_col, bdst_col = min(tdst_col, bdst_col), max(tdst_col, bdst_col)
 
-    SESSION_MAP[bottle.request.session.id].model.add_sample(tdst_row, bdst_row, tdst_col, bdst_col, class_idx)
+    SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).model.add_sample(tdst_row, bdst_row, tdst_col, bdst_col, class_idx)
     num_corrected = (bdst_row-tdst_row) * (bdst_col-tdst_col)
 
     data["message"] = "Successfully submitted correction"
@@ -230,7 +244,7 @@ def record_correction():
     return json.dumps(data)
 
 
-@login.authenticated
+@login.authenticated(LOCAL_MANAGER)
 def do_undo():
     ''' Method called for POST `/doUndo`
     '''
@@ -238,10 +252,10 @@ def do_undo():
     data = bottle.request.json
     data["remote_address"] = bottle.request.client_ip
 
-    SESSION_MAP[bottle.request.session.id].add_entry(data) # record this interaction
+    SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).add_entry(data) # record this interaction
 
     # Forward the undo command to the backend model
-    success, message, num_undone = SESSION_MAP[bottle.request.session.id].model.undo()
+    success, message, num_undone = SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).model.undo()
     data["message"] = message
     data["success"] = success
     data["count"] = num_undone
@@ -250,14 +264,14 @@ def do_undo():
     return json.dumps(data)
 
 
-@login.authenticated
+@login.authenticated(LOCAL_MANAGER)
 def pred_patch():
     ''' Method called for POST `/predPatch`'''
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
     data["remote_address"] = bottle.request.client_ip
 
-    SESSION_MAP[bottle.request.session.id].add_entry(data) # record this interaction
+    SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).add_entry(data) # record this interaction
 
     # Inputs
     extent = data["extent"]
@@ -282,7 +296,7 @@ def pred_patch():
 
     naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DATASETS[dataset]["data_loader"].get_data_from_extent(extent)
     naip_data = np.rollaxis(naip_data, 0, 3) # we do this here instead of get_data_by_extent because not all GeoDataTypes will have a channel dimension
-    SESSION_MAP[bottle.request.session.id].current_transform = (naip_crs, naip_transform, naip_index)
+    SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).current_transform = (naip_crs, naip_transform, naip_index)
 
     # ------------------------------------------------------
     # Step 3
@@ -290,7 +304,7 @@ def pred_patch():
     #   Apply reweighting
     #   Fix padding
     # ------------------------------------------------------
-    output = SESSION_MAP[bottle.request.session.id].model.run(naip_data, extent, False)
+    output = SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).model.run(naip_data, extent, False)
     assert len(output.shape) == 3, "The model function should return an image shaped as (height, width, num_classes)"
     assert (output.shape[2] < output.shape[0] and output.shape[2] < output.shape[1]), "The model function should return an image shaped as (height, width, num_classes)" # assume that num channels is less than img dimensions
 
@@ -319,14 +333,14 @@ def pred_patch():
     return json.dumps(data)
 
 
-@login.authenticated
+@login.authenticated(LOCAL_MANAGER)
 def pred_tile():
     ''' Method called for POST `/predTile`'''
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
     data["remote_address"] = bottle.request.client_ip
 
-    SESSION_MAP[bottle.request.session.id].add_entry(data) # record this interaction
+    SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).add_entry(data) # record this interaction
 
     # Inputs
     geom = data["polygon"]
@@ -347,7 +361,7 @@ def pred_tile():
         bottle.response.status = 400
         return json.dumps({"error": "Cannot currently download imagery with 'Basemap' based datasets"})
 
-    output = SESSION_MAP[bottle.request.session.id].model.run(naip_data, geom, True)
+    output = SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).model.run(naip_data, geom, True)
     output_hard = output.argmax(axis=2)
     print("Finished, output dimensions:", output.shape)
 
@@ -400,7 +414,7 @@ def pred_tile():
     return json.dumps(data)
 
 
-@login.authenticated
+@login.authenticated(LOCAL_MANAGER)
 def get_input():
     ''' Method called for POST `/getInput`
     '''
@@ -408,7 +422,7 @@ def get_input():
     data = bottle.request.json
     data["remote_address"] = bottle.request.client_ip
 
-    SESSION_MAP[bottle.request.session.id].add_entry(data) # record this interaction
+    SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).add_entry(data) # record this interaction
 
     # Inputs
     extent = data["extent"]
@@ -433,12 +447,14 @@ def get_input():
     return json.dumps(data)
 
 
-@login.authenticated
+@login.authenticated(LOCAL_MANAGER)
 def whoami():
     return str(bottle.request.session) + " " + str(bottle.request.session.id)
 
+
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
+
 
 def get_landing_page():
     if 'logged_in' in bottle.request.session:
@@ -458,10 +474,13 @@ def get_favicon():
 def get_everything_else(filepath):
     return bottle.static_file(filepath, root="./" + ROOT_DIR + "/")
 
+
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
 
+
 def main():
+    global DEFAULT_SESSION, LOCAL_MANAGER
     parser = argparse.ArgumentParser(description="AI for Earth Land Cover")
 
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debugging", default=False)
@@ -511,8 +530,9 @@ def main():
     else:
         print("Must specify 'local' or 'remote' on command line")
         return
+    LOCAL_MANAGER.run_local = run_local
     session_factory = SessionFactory(run_local, args)
-
+    DEFAULT_SESSION = session_factory.get_session(0)
 
     # Setup logging
     log_path = os.getcwd() + "/logs"
@@ -524,7 +544,9 @@ def main():
 
     app.add_hook("after_request", enable_cors)
     app.add_hook("before_request", setup_sessions)
-    app.add_hook("before_request", manage_sessions) # before every request we want to check to make sure there are no session issues
+
+    if not run_local:
+        app.add_hook("before_request", manage_sessions) # before every request we want to check to make sure there are no session issues
 
     # Login paths
     app.route("/authorized", method="GET", callback=login.load_authorized)
@@ -577,9 +599,11 @@ def main():
     }
     app = SessionMiddleware(app, session_opts)
 
-    session_monitor_thread = threading.Thread(target=session_monitor)
-    session_monitor_thread.setDaemon(True)
-    session_monitor_thread.start()
+
+    if not run_local:
+        session_monitor_thread = threading.Thread(target=session_monitor)
+        session_monitor_thread.setDaemon(True)
+        session_monitor_thread.start()
 
     server = wsgi.Server(
         (args.host, args.port), # bind_addr
@@ -593,6 +617,7 @@ def main():
         server.start()
     finally:
         server.stop()
+
 
 if __name__ == "__main__":
     main()

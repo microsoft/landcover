@@ -121,6 +121,7 @@
     <script src="js/leaflet.js" type="text/javascript"></script>
     <script src="js/leaflet-slider.js" type="text/javascript"></script>
     <script src="js/leaflet-sidebar.min.js" type="text/javascript"></script>
+    <script src="js/leaflet.filelayer.js" type="text/javascript"></script>
     <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js" type="text/javascript"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.js" type="text/javascript"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.14/leaflet.draw.js" type="text/javascript"></script>
@@ -139,7 +140,7 @@
 
     <script type="text/javascript">
         
-
+        var zonePickerControl;
         //----------------------------------------------------------------------
         // Runtime entrance
         //----------------------------------------------------------------------
@@ -253,18 +254,40 @@
             addCustomLogoControl();
             addZoomControls();
             addDrawControls();
-            
             var basemapPickerControl = addBasemapPickerControl(gBasemaps);
             var basemapPickerControlContainer = basemapPickerControl.getContainer();
-            var zonePickerControl = addZonePickerControl(gZonemaps);
+            
+            zonePickerControl = addZonePickerControl(gZonemaps);
             var zonePickerControlContainer = zonePickerControl.getContainer();
+            
             var opacitySlider = addOpacitySlider();
-            addInferenceWindowSizeSlider();
-            addCorrectionWindowSizeSlider();
-            addSharpnessToggleSlider();
+            // addInferenceWindowSizeSlider();
+            // addCorrectionWindowSizeSlider();
+            // addSharpnessToggleSlider();
 
             addSideBar();
 
+
+            var uploadControl = addUploadControl();
+            uploadControl.loader.on('data:loaded', function (e) {
+                var zoneName = e.filename;
+
+                if(zoneName in gZonemaps){ // if there is an entry in gZonemaps with the same filename then we have already loaded this file
+                    console.debug("Error, already loaded this file");
+                }else{
+                    if(gCurrentZoneLayerName !== null){
+                        console.debug("Removing existing zone layer");
+                        gMap.removeLayer(gZonemaps[gCurrentZoneLayerName]);
+                    }
+                    gZoneMapsWeight[zoneName] = 3;
+                    gZonemaps[zoneName] = e.layer;
+                    e.layer.addTo(gMap);
+                    zonePickerControl.addBaseLayer(e.layer, zoneName);
+                }
+            });
+            uploadControl.loader.on('data:error', function (error) {
+                console.error(error); //TODO: alert a reasonable error message
+            });
 
             //----------------------------------------------------------------------
             // Register handlers. These are all defined in `js/handlers.js`
@@ -272,94 +295,34 @@
             
             addInferenceMouseHandlers();
             addDrawControlHandlers();
+            addOpacityKeyHandlers(opacitySlider);
+            addRetrainKeyHandler();
+            addGUIKeyHandlers();
+            
 
-            document.getElementById("map").onselectstart = function(){ return false;} // remove the default behavior of the shift key. TODO: should this be on "document" or "body" instead of "map"?
-            gMap.on('contextmenu',function(e){}); // disables the context menu
-            gMap.on('dblclick',function(e){});
-            gMap.doubleClickZoom.disable();
-            gMap.boxZoom.disable();
+            // $(zonePickerControlContainer).find('input[type=radio]').change(function() {
+            //     var name = $(this).siblings()[0].innerHTML.trim();
+            //     gCurrentZoneLayerName = name;
+            //     console.debug("Switched zone layer to: " + name);
+            // });
 
-            $(zonePickerControlContainer).find('input[type=radio]').change(function() {
-                var name = $(this).siblings()[0].innerHTML.trim();
-                gCurrentZoneLayerName = name;
-                console.debug("Switched zone layer to: " + name);
+            // $(basemapPickerControlContainer).find('input[type=radio]').change(function() {
+            //     var name = $(this).siblings()[0].innerHTML.trim();
+            //     gCurrentBasemapLayerName = name;
+            //     console.debug("Switched basemap layer to: " + name);
+            // });
+
+            gMap.on('baselayerchange', function(e) {
+                //https://gis.stackexchange.com/questions/171911/getting-current-layer-in-control-event-of-leaflet
+                console.log(e);
             });
-
-            $(basemapPickerControlContainer).find('input[type=radio]').change(function() {
-                var name = $(this).siblings()[0].innerHTML.trim();
-                gCurrentBasemapLayerName = name;
-                console.debug("Switched basemap layer to: " + name);
-            });
-
-
-            $(document).keydown(function(e){
-                gShiftKeyDown = e.shiftKey;
-                gCtrlKeyDown = e.ctrlKey;
-            });
-            $(document).keyup(function(e){
-                gShiftKeyDown = e.shiftKey;
-                gCtrlKeyDown = e.ctrlKey;
-            });
-
-            $(document).keydown(function(e) {
-                if(document.activeElement == document.body){
-                    if(e.which == 97 || e.which == 65) { // "a"
-                        gVisible = false;
-                        gMap.getPane('labels').style.opacity = 0.0;
-                        opacitySlider.slider.value = 0;
-                        opacitySlider._updateValue();
-                    } else if(e.which == 115 || e.which == 83) { // "s"
-                        if(gVisible){
-                            gVisible = false;
-                            gMap.getPane('labels').style.opacity = 0.0;
-                            opacitySlider.slider.value = 0;
-                            opacitySlider._updateValue();
-                        }else{
-                            gVisible = true;
-                            gMap.getPane('labels').style.opacity = 1.0;
-                            opacitySlider.slider.value = 100;
-                            opacitySlider._updateValue();
-                        }
-                    } else if(e.which == 100 || e.which == 68) { "d"
-                        gVisible = true;
-                        gMap.getPane('labels').style.opacity = 1.0;
-                        opacitySlider.slider.value = 100
-                        opacitySlider._updateValue();
-                    } else if((e.which == 114 || e.which == 82) && !gCtrlKeyDown){ "r"
-                        doRetrain();
-                    } else if(e.which == 37){ "left arrow"
-                        var currentOpacity = parseFloat(gMap.getPane('labels').style.opacity);
-                        if (currentOpacity >= 0.05){
-                            currentOpacity -= 0.05;
-
-                            gMap.getPane('labels').style.opacity = currentOpacity;
-                            opacitySlider.slider.value = currentOpacity*100;
-                            opacitySlider._updateValue();
-                        }
-                        e.preventDefault()
-                    } else if(e.which == 39){ "right arrow"
-                        var currentOpacity = parseFloat(gMap.getPane('labels').style.opacity);
-                        if (currentOpacity <= 0.95){
-                            currentOpacity += 0.05;
-
-                            gMap.getPane('labels').style.opacity = currentOpacity;
-                            opacitySlider.slider.value = currentOpacity*100;
-                            opacitySlider._updateValue();
-                        }
-                        e.preventDefault()
-                    } else if(e.which == 38 || e.which == 40){
-                        e.preventDefault()
-                    } else if(gCtrlKeyDown && e.which==90){
-                        doUndo();
-                    }
-                }
-            });
-
 
             $("#btnRetrain").click(doRetrain);
             $("#btnUndo").click(doUndo);
             $("#btnReset").click(function(){doReset(true, initialReset=false)});
             $("#btnDownload").click(doDownloadTile);
+
+
             $("#btnNewClass").click(function(){
                 
                 var newClassIdx = CLASSES.length + 1;

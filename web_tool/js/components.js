@@ -212,6 +212,24 @@ var addZonePickerControl = function(zonemaps){
 };
 
 
+var addUploadControl = function(){
+    L.Control.FileLayerLoad.LABEL = '<span class="fa fa-upload"></span>';
+    var uploadControl = L.Control.fileLayerLoad({
+        fitBounds: true,
+        addToMap: false,
+        formats: [
+            '.geojson'
+        ],
+        layerOptions: {
+            style: DEFAULT_ZONE_STYLE(2),
+            onEachFeature: forEachFeatureOnClick,
+            pane: "polygons"
+        }
+    });
+    uploadControl.addTo(gMap);
+    return uploadControl;
+}
+
 var getESRILayer = function(){
     return L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         maxZoom: 20,

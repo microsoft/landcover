@@ -44,8 +44,8 @@ class Session():
     def __init__(self, session_id, run_local, model):
         LOGGER.info("Instantiating a new session object with id: %s" % (session_id))
 
-        self.storage_type = None # this will be "table" or "file"
-        self.storage_path = None # this will be a file path
+        self.storage_type = "file" # this will be "table" or "file"
+        self.storage_path = "data/" # this will be a file path
         self.table_service = None # this will be an instance of TableService
 
         self.run_local = run_local
@@ -123,7 +123,7 @@ class Session():
                 os.makedirs(base_dir, exist_ok=False)
             
             model_fn = os.path.join(base_dir, "%s_model.p" % (snapshot_id))
-            joblib.dump(self.model, model_fn, protocol=pickle.HIGHEST_PROTOCOL)
+            #joblib.dump(self.model, model_fn, protocol=pickle.HIGHEST_PROTOCOL)
 
             if self.storage_type == "file":
                 request_list_fn = os.path.join(base_dir, "%s_request_list.p" % (snapshot_id))

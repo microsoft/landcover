@@ -249,13 +249,15 @@ var getZoneMap = function(zoneSetId, name, url){
 }
 
 var forEachFeatureOnClick = function(feature, layer) {
+    console.debug("clicked")
     layer.on('click', function (e) {
-        currentZone = layer;
+        gCurrentZone = layer;
         for(k in gZonemaps){
             gZonemaps[k].setStyle(DEFAULT_ZONE_STYLE(gZoneMapsWeight[k]));
         }
         layer.setStyle(HIGHLIGHTED_ZONE_STYLE);
         layer.bringToFront();
+        
         var nameKey = e.target.feature.properties["KEY"];
         if (nameKey !== null){
             $("#lblZoneName").html(e.target.feature.properties[nameKey]);

@@ -18,6 +18,7 @@ import bottle
 SESSION_BASE_PATH = './data/session'
 SESSION_FOLDER = SESSION_BASE_PATH + "/" + datetime.datetime.now().strftime('%Y-%m-%d')
 
+
 def manage_session_folders():
     if not os.path.exists(SESSION_BASE_PATH):
         os.makedirs(SESSION_BASE_PATH)
@@ -26,17 +27,20 @@ def manage_session_folders():
         shutil.rmtree(SESSION_BASE_PATH)
         os.makedirs(SESSION_FOLDER)
 
-def authenticated(func):
-    '''Based on suggestion from https://stackoverflow.com/questions/11698473/bottle-hooks-with-beaker-session-middleware-and-checking-logins
-    '''
-    def wrapped(*args, **kwargs):
-        if 'logged_in' in bottle.request.session:
-            return func(*args, **kwargs)
-        else:
-            LOGGER.info("User not logged in")
-            bottle.abort(401, "Sorry, access denied.")
-            #bottle.redirect('/login')
-    return wrapped
+
+def authenticated(LOCAL_MANAGER):
+    def authenticated_inner(func):
+        '''Based on suggestion from https://stackoverflow.com/questions/11698473/bottle-hooks-with-beaker-session-middleware-and-checking-logins
+        '''
+        def wrapped(*args, **kwargs):
+            if ('logged_in' in bottle.request.session) or LOCAL_MANAGER.run_local:
+                return func(*args, **kwargs)
+            else:
+                LOGGER.info("User not logged in")
+                bottle.abort(401, "Sorry, access denied.")
+                #bottle.redirect('/login')
+        return wrapped
+    return authenticated_inner
 
 def load_authorized():
     return bottle.template('redirecting.tpl')
