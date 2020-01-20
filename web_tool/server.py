@@ -611,8 +611,10 @@ def main():
     )
     server.max_request_header_size = 2**13
     server.max_request_body_size = 2**27
-    if login_config.CERT_FILE and login_config.KEY_FILE:
+
+    if login_config.CERT_FILE and login_config.KEY_FILE and not run_local:
         server.ssl_adapter = builtin.BuiltinSSLAdapter(login_config.CERT_FILE, login_config.KEY_FILE, None)
+    
     try:
         server.start()
     finally:
