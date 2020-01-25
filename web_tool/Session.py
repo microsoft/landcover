@@ -4,6 +4,7 @@ import time
 import datetime
 import collections
 import subprocess
+import shutil
 
 import base64
 import json
@@ -21,6 +22,18 @@ from ServerModelsRPC import ModelRPC
 from ServerModelsKerasDense import KerasDenseFineTune
 
 from log import LOGGER
+
+SESSION_BASE_PATH = './data/session'
+SESSION_FOLDER = SESSION_BASE_PATH + "/" + datetime.datetime.now().strftime('%Y-%m-%d')
+
+
+def manage_session_folders():
+    if not os.path.exists(SESSION_BASE_PATH):
+        os.makedirs(SESSION_BASE_PATH)
+    if not os.path.exists(SESSION_FOLDER):
+        shutil.rmtree(SESSION_BASE_PATH)
+        os.makedirs(SESSION_FOLDER)
+
 
 class SessionFactory():
 

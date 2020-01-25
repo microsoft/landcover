@@ -38,20 +38,16 @@ from web_tool import ROOT_DIR
 import bottle 
 bottle.TEMPLATE_PATH.insert(0, "./" + ROOT_DIR + "/views") # let bottle know where we are storing the template files
 
-import requests
-from beaker.middleware import SessionMiddleware
-from cheroot import wsgi
-from cheroot.ssl import builtin
+import cheroot.wsgi
+import beaker.middleware
 
-import login
-import login_config
 from log import setup_logging, LOGGER
 
 
 #---------------------------------------------------------------------------------------
 # Session handling code
 #---------------------------------------------------------------------------------------
-from Session import Session, SessionFactory
+from Session import Session, SessionFactory, manage_session_folders, SESSION_FOLDER
 SESSION_MAP = dict() # keys are bottle.request.session.id and values are corresponding Session() objects
 EXPIRED_SESSION_SET = set()
 
@@ -77,15 +73,14 @@ def manage_sessions():
         bottle.request.session.delete()
         EXPIRED_SESSION_SET.remove(bottle.request.session.id)
     
-    if "logged_in" in bottle.request.session:
-        if bottle.request.session.id in SESSION_MAP:
-            LOGGER.info("Updating last_interaction_time")
-            SESSION_MAP[bottle.request.session.id].last_interaction_time = time.time()
-        else:
-            LOGGER.warning("I don't expect this to happen - someone is logged in but they do not have a `Session` object in SESSION_MAP")
+    if bottle.request.session.id in SESSION_MAP:
+        LOGGER.info("Updating last_interaction_time")
+        SESSION_MAP[bottle.request.session.id].last_interaction_time = time.time()
     else:
-        pass # not logged in, we don't care about this
 
+        #SESSION_MAP[bottle.request.session.id] = session_factory.get_session(bottle.request.session.id)
+        #SESSION_MAP[bottle.request.session.id].spawn_worker()
+        LOGGER.warning("We are getting a request with a bottle.request.session.id = %s, but don't have a SESSION_MAP object" % (bottle.request.session.id))
 
 def session_monitor(session_timeout_seconds=900):
     ''' This is a `Thread()` that is starting when the program is run. It is responsible for finding which of the `Session()` objects
@@ -133,7 +128,6 @@ def do_options():
 #---------------------------------------------------------------------------------------
 
 
-@login.authenticated(LOCAL_MANAGER)
 def do_load():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
@@ -150,7 +144,6 @@ def do_load():
     return json.dumps(data)
 
 
-@login.authenticated(LOCAL_MANAGER)
 def reset_model():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
@@ -170,7 +163,6 @@ def reset_model():
     return json.dumps(data)
 
 
-@login.authenticated(LOCAL_MANAGER)
 def retrain_model():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
@@ -193,7 +185,6 @@ def retrain_model():
     return json.dumps(data)
 
 
-@login.authenticated(LOCAL_MANAGER)
 def record_correction():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
@@ -244,7 +235,6 @@ def record_correction():
     return json.dumps(data)
 
 
-@login.authenticated(LOCAL_MANAGER)
 def do_undo():
     ''' Method called for POST `/doUndo`
     '''
@@ -264,7 +254,6 @@ def do_undo():
     return json.dumps(data)
 
 
-@login.authenticated(LOCAL_MANAGER)
 def pred_patch():
     ''' Method called for POST `/predPatch`'''
     bottle.response.content_type = 'application/json'
@@ -333,7 +322,6 @@ def pred_patch():
     return json.dumps(data)
 
 
-@login.authenticated(LOCAL_MANAGER)
 def pred_tile():
     ''' Method called for POST `/predTile`'''
     bottle.response.content_type = 'application/json'
@@ -414,7 +402,6 @@ def pred_tile():
     return json.dumps(data)
 
 
-@login.authenticated(LOCAL_MANAGER)
 def get_input():
     ''' Method called for POST `/getInput`
     '''
@@ -447,7 +434,6 @@ def get_input():
     return json.dumps(data)
 
 
-@login.authenticated(LOCAL_MANAGER)
 def whoami():
     return str(bottle.request.session) + " " + str(bottle.request.session.id)
 
@@ -544,17 +530,7 @@ def main():
 
     app.add_hook("after_request", enable_cors)
     app.add_hook("before_request", setup_sessions)
-
-    if not run_local:
-        app.add_hook("before_request", manage_sessions) # before every request we want to check to make sure there are no session issues
-
-    # Login paths
-    app.route("/authorized", method="GET", callback=login.load_authorized)
-    app.route("/error", method="GET", callback=login.load_error)
-    app.route("/notAuthorized", method="GET", callback=login.not_authorized)
-    app.route("/login", method="GET", callback=login.do_login)
-    app.route("/logout", method="GET", callback=login.do_logout)
-    app.route("/checkAccess", method="POST", callback=lambda: login.get_accesstoken(SESSION_MAP, session_factory))
+    app.add_hook("before_request", manage_sessions) # before every request we want to check to make sure there are no session issues
 
     # API paths
     app.route("/predPatch", method="OPTIONS", callback=do_options)  # TODO: all of our web requests from index.html fire an OPTIONS call because of https://stackoverflow.com/questions/1256593/why-am-i-getting-an-options-request-instead-of-a-get-request, we should fix this 
@@ -590,31 +566,27 @@ def main():
     app.route("/<filepath:re:.*>", method="GET", callback=get_everything_else)
 
 
-    login.manage_session_folders()
+    manage_session_folders()
     session_opts = {
         'session.type': 'file',
         'session.cookie_expires': 3000,
-        'session.data_dir': login.SESSION_FOLDER,
+        'session.data_dir': SESSION_FOLDER,
         'session.auto': True
     }
-    app = SessionMiddleware(app, session_opts)
+    app = beaker.middleware.SessionMiddleware(app, session_opts)
+
+    session_monitor_thread = threading.Thread(target=session_monitor)
+    session_monitor_thread.setDaemon(True)
+    session_monitor_thread.start()
 
 
-    if not run_local:
-        session_monitor_thread = threading.Thread(target=session_monitor)
-        session_monitor_thread.setDaemon(True)
-        session_monitor_thread.start()
-
-    server = wsgi.Server(
-        (args.host, args.port), # bind_addr
-        app # wsgi_app
+    server = cheroot.wsgi.Server(
+        (args.host, args.port),
+        app
     )
     server.max_request_header_size = 2**13
     server.max_request_body_size = 2**27
 
-    if login_config.CERT_FILE and login_config.KEY_FILE and not run_local:
-        server.ssl_adapter = builtin.BuiltinSSLAdapter(login_config.CERT_FILE, login_config.KEY_FILE, None)
-    
     try:
         server.start()
     finally:
