@@ -235,7 +235,7 @@
     },
     "hcmc_dg": {
         "metadata": {
-            "displayName": "Th\\u1ee7 \\u0110\\u1ee9c District, H\\u1ed3 Ch\\u00ed Minh City, Vietnam",
+            "displayName": "Thu Duc District, Ho Chi Minh City, Vietnam",
             "imageryName": "Digital Globe Imagery",
             "locationName": null
         },
@@ -277,7 +277,7 @@
     },
     "hcmc_sentinel": {
         "metadata": {
-            "displayName": "H\\u1ed3 Ch\\u00ed Minh City, Vietnam",
+            "displayName": "Ho Chi Minh City, Vietnam",
             "imageryName": "Sentinel Imagery",
             "locationName": null
         },
@@ -319,7 +319,7 @@
     },
     "hcmc_sentinel_2017": {
         "metadata": {
-            "displayName": "H\\u1ed3 Ch\\u00ed Minh City, Vietnam",
+            "displayName": "Ho Chi Minh City, Vietnam",
             "imageryName": "Sentinel Imagery",
             "locationName": null
         },
@@ -361,7 +361,7 @@
     },
     "hcmc_spot_2017": {
         "metadata": {
-            "displayName": "H\\u1ed3 Ch\\u00ed Minh City, Vietnam",
+            "displayName": "Ho Chi Minh City, Vietnam",
             "imageryName": "SPOT Imagery",
             "locationName": null
         },
@@ -403,7 +403,7 @@
     },
     "hcmc_spot_2019": {
         "metadata": {
-            "displayName": "H\\u1ed3 Ch\\u00ed Minh City, Vietnam",
+            "displayName": "Ho Chi Minh City, Vietnam",
             "imageryName": "SPOT Imagery",
             "locationName": null
         },
@@ -802,7 +802,7 @@
     },
     "nhabe_pleiades_2017": {
         "metadata": {
-            "displayName": "H\\u1ed3 Ch\\u00ed Minh City, Vietnam",
+            "displayName": "Ho Chi Minh City, Vietnam",
             "imageryName": "Pleadies Imagery",
             "locationName": null
         },
@@ -844,7 +844,7 @@
     },
     "nhabe_pleiades_2019": {
         "metadata": {
-            "displayName": "H\\u1ed3 Ch\\u00ed Minh City, Vietnam",
+            "displayName": "Ho Chi Minh City, Vietnam",
             "imageryName": "Pleiades Imagery",
             "locationName": null
         },
