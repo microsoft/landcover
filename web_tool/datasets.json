@@ -377,7 +377,7 @@
             "args": {
                 "attribution": "Georeferenced Image",
                 "tms": true,
-                "maxNativeZoom": 16,
+                "maxNativeZoom": 19,
                 "maxZoom": 20,
                 "minZoom": 13
             },
@@ -419,7 +419,7 @@
             "args": {
                 "attribution": "Georeferenced Image",
                 "tms": true,
-                "maxNativeZoom": 16,
+                "maxNativeZoom": 19,
                 "maxZoom": 20,
                 "minZoom": 13
             },
@@ -818,7 +818,7 @@
             "args": {
                 "attribution": "Georeferenced Image",
                 "tms": true,
-                "maxNativeZoom": 16,
+                "maxNativeZoom": 19,
                 "maxZoom": 20,
                 "minZoom": 13
             },
@@ -860,7 +860,7 @@
             "args": {
                 "attribution": "Georeferenced Image",
                 "tms": true,
-                "maxNativeZoom": 16,
+                "maxNativeZoom": 19,
                 "maxZoom": 20,
                 "minZoom": 13
             },
