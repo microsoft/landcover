@@ -106,7 +106,6 @@ nav
 @media only screen and (max-width: 600px) {
     body {
         background-image: url(/css/images/highres_world.jpg);
-        background-position: top center;
         font-family: 'Montserrat';
         background-attachment: fixed;
         background-size:cover;
@@ -130,7 +129,6 @@ nav
 @media only screen and (min-width: 600px) {
     body {
         background-image: url(/css/images/highres_world.jpg);
-        background-position: top center;
         font-family: 'Montserrat';
         background-attachment: fixed;
         background-repeat: no-repeat;
@@ -155,7 +153,6 @@ nav
 @media only screen and (min-width: 768px) {
     body {
         background-image: url(/css/images/highres_world.jpg);
-        background-position: top center;
         font-family: 'Montserrat';
         background-attachment: fixed;
         background-repeat: no-repeat;
@@ -182,7 +179,6 @@ nav
         background:#0B0B31;
         background-image: url(/css/images/highres_world.jpg);
         background-repeat: no-repeat;
-        background-position: 100% 0%;
         font-family: 'Montserrat';
         background-attachment: fixed;
         background-size: cover;
@@ -206,7 +202,6 @@ nav
         background:#0B0B31;
         background-image: url(/css/images/highres_world.jpg);
         background-repeat: no-repeat;
-        background-position: 100% 0%;
         font-family: 'Montserrat';
         background-attachment: fixed;
         background-size: cover;
@@ -229,7 +224,6 @@ nav
         background:#0B0B31;
         background-image: url(/css/images/highres_world.jpg);
         background-repeat: no-repeat;
-        background-position: 100% 0%;
         font-family: 'Montserrat';
         background-attachment: fixed;
         background-size: cover;
