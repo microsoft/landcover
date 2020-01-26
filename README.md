@@ -6,7 +6,7 @@ An instance of this tool may be live [here](http://aka.ms/landcoverdemo).
 
 # Setup
 
-The following sections describe how to setup the dependencies (python packages and demo data) for the "web-tool" component of this project. We develop / use this tool on Data Science Virtual Machines for Linux (through Azure) in conjunction with specific AI for Earth projects, so the first set of instructions - "Azure VM setup instructions" - are specific for recreating our internal development environment. The second set of instructions - "Local setup instructions" - should apply more broadly.
+The following sections describe how to setup the dependencies (python packages and demo data) for the "web-tool/" component of this project. We develop / use this tool on Data Science Virtual Machines for Linux (through Azure) in conjunction with specific AI for Earth projects, so the first set of instructions - "Azure VM setup instructions" - are specific for recreating our internal development environment. The second set of instructions - "Local setup instructions" - should apply more broadly.
 
 ## Azure VM setup instructions
 
@@ -80,9 +80,10 @@ conda create -y -n ai4e python=3.6
 conda deactivate
 conda activate ai4e
 conda install -y -c conda-forge keras gdal rasterio fiona shapely scikit-learn matplotlib utm mercantile opencv rtree
-pip install azure waitress cherrypy
+pip3 install --user beaker utm
 pip3 install --user git+https://github.com/bottlepy/bottle.git
-```
+pip3 install --user git+https://github.com/cherrypy/cheroot.git
+``` 
 
 ### Repository setup instructions
 
@@ -106,6 +107,9 @@ git checkout dev
 cp web_tool/endpoints.js web_tool/endpoints.mine.js
 ## Edit `web_tool/endpoints.mine.js` and replace "msrcalebubuntu.eastus.cloudapp.azure.com" with the address of your machine
 nano web_tool/endpoints.mine.js
+
+nano web_tool/SessionHandler.py
+
 ```
 
 # Running an instance of the tool
@@ -114,83 +118,7 @@ Whether you setup the server in an Azure VM or locally, the following steps shou
 - Open a terminal on the machine that you setup (e.g. SSH into the VM using a desktop SSH client)
 - `cd landcover`
 - `export PYTHONPATH=.`
-- `python web_tool/server.py --model keras_dense --model_fn web_tool/data/sentinel_demo_model.h5 --fine_tune_layer -2 --fine_tune_seed_data_fn web_tool/data/sentinel_demo_model_seed_data.npz`
+- ` python web_tool/server.py --port 4444 --storage_type file --storage_path test.csv local`
   - This will start an HTTP server on :4444 that both serves the "frontend" web application and responds to API calls from the "frontend", allowing the web-app to interface with our CNN models (i.e. the "backend").
   - If you have GPU packages setup you can specify a GPU to use with `--gpu GPUID`
-- You should now be able to visit `http://<your machine's address>:4444/index.html` and see the "frontend" interface.
-
-
-<!-- # Design Overview
-
-- "Frontend"
-  - `index.html`, `endpoints.js`
-  - Whenever an user clicks somewhere on the map, the app will query each server defined in `endpoints.js` and show the results overlayed on the map.
-  - Upon new installation, copy `endpoints.js` to `endpoints.mine.js`. This copy allows customizing the back-end server to use, and will be ignored by Git.
-  - When changing the host-name and port number, the URL must end with `/` (eg. `http://msrcalebubuntu.eastus.cloudapp.azure.com:4444/`).
-- "Backend"
-  - Consists of `server.py`, `ServerModels*.py`, `DataLoader.py`
-  - `server.py` starts a bottle server to serve the frontend web application and API 
-    - Can be provided a port via command line argument, must be provided a "model" to serve via command line argument.
-    - The "model" that is provided via the command line argument corresponds to one of the `ServerModels*.py` files. Currently this interface is just an ugly hack.
-  - `DataLoader.py` contains all the code for finding the data assosciated with a given spatial query. -->
-
-
-# API
-
-The "backend" server provides the following API:
-
-### *POST `/predPatch`*
-
-Input example:
-```js
-{
-    "extent": { // definition of bounding box to run model on
-        "xmax": bottomright.x,
-        "xmin": topleft.x,
-        "ymax": topleft.y,
-        "ymin": bottomright.y,
-        "spatialReference": {
-            "latestWkid": 3857 // CRS of the coordinates
-        }
-    },
-    "weights": [0.25, 0.25, 0.25, 0.25], // reweighting of the softmax outputs, there should be one number (per class)
-}
-```
-
-Output example:
-```js
-{
-    "extent": ..., // copied from input
-    "weights": ..., // copied from input
-    "model_name": "Full-US-prerun", // name of the model being served
-    "input_naip": "..." // base64 encoding of input NAIP imagery used to generate the model output, as PNG
-    "output_hard": "..." // base64 encoding of hard class estimates, also as PNG
-    "output_soft": "..." // base64 encoding of soft class estimates, see `utils.class_prediction_to_img()` for how image is generated
-
-}
-```
-
-### *POST `/getInput`*
-
-Input example:
-```js
-{
-    "extent": { // definition of bounding box to run model on
-        "xmax": bottomright.x,
-        "xmin": topleft.x,
-        "ymax": topleft.y,
-        "ymin": bottomright.y,
-        "spatialReference": {
-            "latestWkid": 3857 // CRS of the coordinates
-        }
-    },
-}
-```
-
-Output example:
-```js
-{
-    "extent": ..., // copied from input
-    "input_naip": "..." // base64 encoding of input NAIP imagery used to webpagegenerate the model output, as PNG
-}
-```
+- You should now be able to visit `http://<your machine's address>:4444/` and see the "frontend" interface.
