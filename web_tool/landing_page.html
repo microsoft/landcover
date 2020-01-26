@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="">
+  <meta name="author" content="">
+  <link rel="icon" href="favicon.ico">
+
+  <title>Microsoft AI for Earth</title>
+
+  <!-- Core CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha256-YLGeXaapI0/5IgZopewRJcFXomhRMlYYjugPLSyNjTY=" crossorigin="anonymous" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/all.min.css" integrity="sha256-+N4/V/SbAFiW1MPBCXnfnP9QSN3+Keu+NlB+0ev/YKQ=" crossorigin="anonymous" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Montserrat" />
+
+  <link rel="stylesheet" href="css/login.css" />
+  <link rel="stylesheet" href="css/main.css" />
+
+  <style type="text/css">
+    body {
+      color: white;
+    }
+
+    .thumbnail {
+      height: 300px;
+    }
+
+    .dataset-item {
+      border: 1px solid lightgrey;
+    }
+
+    .dataset-item h5 {
+      margin-top: 5px;
+    }
+
+    .tab-pane{
+      background-color: white;
+      color: #495057;
+      width: 100%;
+      border-radius: 5px;
+    }
+
+    .tab-pane-content{
+      padding: 1rem;
+    }
+
+    .list-group{
+        max-height: 300px;
+        margin-bottom: 10px;
+        overflow-y:scroll;
+        -webkit-overflow-scrolling: touch;
+    }
+  </style>
+
+</head>
+
+<body>
+  <nav class="navbar navbar-expand-lg navbar-inverse">
+    <a class="navbar-brand" href="#"><img class="logo" src="/css/images/Microsoft_logo.png"> Microsoft
+      <span class="logo-divider">|</span> AI for Earth <span class="logo-divider">|</span> Land Cover Mapping</a>
+  </nav>
+
+  <div class="container">
+
+
+    <div class="row mt-4">
+      <div class="col-md-10 mb-4 mt-4">
+        <h4 class="lcm-heading" data-toggle="collapse" data-target="#dataset-row">Select Dataset</h4>
+      
+        <div class="row collapse show" id="dataset-row">
+          <div class="col-5">
+            <!-- List group -->
+            <div class="list-group" id="dataset-tab-list" role="tablist">
+              <!--Populated on load-->
+            </div>
+          </div>
+          <!-- Tab panes -->
+          <div class="col-7">
+            <div class="tab-content" id="dataset-panel-list">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row mt-4">
+      <div class="col-md-10 mb-4 mt-4">
+        <h4 class="lcm-heading" data-toggle="collapse" data-target="#model-row">Select Model</h4>
+      
+        <div class="row collapse show" id="model-row">
+          <div class="col-5">
+            <!-- List group -->
+            <div class="list-group" id="model-tab-list" role="tablist">
+              <!--Populated on load-->
+            </div>
+          </div>
+          <!-- Tab panes -->
+          <div class="col-7">
+            <div class="tab-content" id="model-panel-list">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    
+    <div class="row">
+      <div class="offset-md-3 col-md-4 mb-4 mt-4">
+        <button type="button" class="btn btn-success" id="button-start">Start Server</button>
+      </div>
+    </div>
+
+  </div>
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.4.1/js/bootstrap.bundle.min.js" integrity="sha256-OUFW7hFO0/r5aEGTQOz9F/aXQOt+TwqI1Z4fbVvww04=" crossorigin="anonymous"></script>
+  <script type="text/javascript">
+
+    var selectedDataset = null;
+    var selectedModel = null;
+
+    var datasets = null;
+    var models = null;
+
+    var main = function () {
+      // Populate the datasets
+      for (dsName in datasets) {
+        var dataset = datasets[dsName];
+        var tab = `<a class="list-group-item list-group-item-action" data-toggle="list" data-name="${dsName}" href="#dataset-${dsName}"  role="tab">${dataset["metadata"]["displayName"]} - ${dataset["metadata"]["imageryName"]}</a>`;
+        var panel = `
+            <div class="tab-pane" id="dataset-${dsName}" role="tabpanel">
+              <div class="tab-pane-content">
+                <span class="tab-title">Location: </span><span class="tab-text">${dataset["metadata"]["displayName"]}</span><br>
+                <span class="tab-title">Imagery Source: </span><span class="tab-text">${dataset["metadata"]["imageryName"]}</span><br>
+                <!--<img src="${dataset["previewFn"]}" class="thumbnail" />-->
+              </div>
+            </div>
+        `;
+
+        $("#dataset-tab-list").append(tab);
+        $("#dataset-panel-list").append(panel);
+      }
+
+      for (modelName in models) {
+        var model = models[modelName];
+        var tab = `<a class="list-group-item list-group-item-action" data-toggle="list" data-name="${modelName}" href="#model-${modelName}"  role="tab">${model["metadata"]["displayName"]}</a>`;
+        var panel = `
+            <div class="tab-pane" id="model-${modelName}" role="tabpanel">
+              <div class="tab-pane-content">
+                <span class="tab-title">Model name: </span><span class="tab-text">${model["metadata"]["displayName"]}</span><br>
+                <span class="tab-title">Input shape: </span><span class="tab-text">${model["model"]["inputShape"]}</span><br>
+                <span class="tab-title">Number of parameters: </span><span class="tab-text">${model["model"]["numParameters"]}</span><br>
+              </div>
+            </div>
+        `;
+
+        $("#model-tab-list").append(tab);
+        $("#model-panel-list").append(panel);
+      }
+
+
+
+      // On dataset tab change
+      $('#dataset-tab-list a[data-toggle="list"]').on('shown.bs.tab', function (e) {
+        console.debug("Selected dataset: " + $(e.target).data("name"));
+        selectedDataset = $(e.target).data("name");
+      })
+
+      // On model tab change
+      $('#model-tab-list a[data-toggle="list"]').on('shown.bs.tab', function (e) {
+        console.debug("Selected model: " + $(e.target).data("name"));
+        selectedModel = $(e.target).data("name");
+      })
+
+
+      $("#button-start").click(function () {
+        if (selectedDataset !== null && selectedModel !== null) {
+
+          var request = {
+            "dataset": selectedDataset,
+            "model": selectedModel
+          }
+
+          $.ajax({
+            type: "POST",
+            url: window.location.origin + "/createSession",
+            data: JSON.stringify(request),
+            success: function(data, textStatus, jqXHR){
+              window.location.href = `/lg_platform.html?dataset=${selectedDataset}&model=${selectedModel}`;
+            },
+            error: function(jqXHR, textStatus){
+              // TODO: Notify fail
+            },
+            dataType: "json",
+            contentType: "application/json"
+          });
+        }else{
+          // TODO: Notify fail
+        }
+      })
+    }
+
+    $(document).ready(function () {
+      var data1 = $.getJSON('datasets.json');
+      var data2 = $.getJSON('models.json');
+
+      Promise.all([data1, data2]).then(function (results) {
+        datasets = results[0];
+        models = results[1];
+        main();
+      });
+    });
+  </script>
+
+</body>
+
+</html>

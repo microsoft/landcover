@@ -4,12 +4,16 @@ import numpy as np
 
 import sklearn.base
 from sklearn.neural_network import MLPClassifier
-from xgboost import XGBClassifier
-from keras import optimizers
+from sklearn.ensemble import RandomForestClassifier
+
+import tensorflow as tf
+import keras
+import keras.backend as K
+import keras.models
+import keras.optimizers
 
 from ServerModelsAbstract import BackendModel
-
-from web_tool.frontend_server import ROOT_DIR
+from web_tool import ROOT_DIR
 
 AUGMENT_MODEL = MLPClassifier(
     hidden_layer_sizes=(),
@@ -22,33 +26,27 @@ AUGMENT_MODEL = MLPClassifier(
     n_iter_no_change=10
 )
 
-
 class KerasDenseFineTune(BackendModel):
 
     def __init__(self, model_fn, gpuid, superres=False, verbose=False):
 
-        # Load model
-        os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-        os.environ["CUDA_VISIBLE_DEVICES"] = str(gpuid)
-        import keras
-        import keras.models
-        import keras.backend as K
-
         self.model_fn = model_fn
         
-        tmodel = keras.models.load_model(self.model_fn, custom_objects={
-            "jaccard_loss":keras.metrics.mean_squared_error, 
-            "loss":keras.metrics.mean_squared_error
-        })
+        with tf.device('/gpu:%d' % gpuid):
+            tmodel = keras.models.load_model(self.model_fn, compile=False, custom_objects={
+                "jaccard_loss":keras.metrics.mean_squared_error, 
+                "loss":keras.metrics.mean_squared_error
+            })
 
-        feature_layer_idx = None
-        if superres:
-            feature_layer_idx = -4
-        else:
-            feature_layer_idx = -3
-        
-        self.model = keras.models.Model(inputs=tmodel.inputs, outputs=[tmodel.outputs[0], tmodel.layers[feature_layer_idx].output])
-        self.model.compile("sgd","mse")
+            feature_layer_idx = None
+            if superres:
+                feature_layer_idx = -4
+            else:
+                feature_layer_idx = -3
+            
+            self.model = keras.models.Model(inputs=tmodel.inputs, outputs=[tmodel.outputs[0], tmodel.layers[feature_layer_idx].output])
+            self.model.compile("sgd","mse")
+            self.model._make_predict_function()	# have to initialize before threading
 
         self.output_channels = self.model.output_shape[0][3]
         self.output_features = self.model.output_shape[1][3]
@@ -74,18 +72,18 @@ class KerasDenseFineTune(BackendModel):
 
         self.undo_stack = []
 
-        seed_x_fn = ""
-        seed_y_fn = ""
-        if superres:
-            seed_x_fn = ROOT_DIR + "/data/seed_data_hr+sr_x.npy"
-            seed_y_fn = ROOT_DIR + "/data/seed_data_hr+sr_y.npy"
-        else:
-            seed_x_fn = ROOT_DIR + "/data/seed_data_hr_x.npy"
-            seed_y_fn = ROOT_DIR + "/data/seed_data_hr_y.npy"
-        for row in np.load(seed_x_fn):
-            self.augment_base_x_train.append(row)
-        for row in np.load(seed_y_fn):
-            self.augment_base_y_train.append(row)
+        # seed_x_fn = ""
+        # seed_y_fn = ""
+        # if superres:
+        #     seed_x_fn = ROOT_DIR + "/data/seed_data_hr+sr_x.npy"
+        #     seed_y_fn = ROOT_DIR + "/data/seed_data_hr+sr_y.npy"
+        # else:
+        #     seed_x_fn = ROOT_DIR + "/data/seed_data_hr_x.npy"
+        #     seed_y_fn = ROOT_DIR + "/data/seed_data_hr_y.npy"
+        # for row in np.load(seed_x_fn):
+        #     self.augment_base_x_train.append(row)
+        # for row in np.load(seed_y_fn):
+        #     self.augment_base_y_train.append(row)
 
         for row in self.augment_base_x_train:
             self.augment_x_train.append(row)
@@ -337,7 +335,7 @@ class KerasBackPropFineTune(BackendModel):
 
         for i in range(num_layers-last_k_layers, num_layers):
             self.model.layers[i].trainable = True
-        self.model.compile(optimizers.Adam(lr=learning_rate, amsgrad=True), "categorical_crossentropy")
+        self.model.compile(keras.optimizers.Adam(lr=learning_rate, amsgrad=True), "categorical_crossentropy")
 
         if len(self.batch_x) > 0:
 

@@ -4,26 +4,35 @@
 var doRetrain = function(){
     var request = {
         "type": "retrain",
-        "dataset": DATASET,
+        "dataset": gCurrentDataset,
         "experiment": EXP_NAME,
-        "retrainArgs": retrainArgs
+        "retrainArgs": gRetrainArgs,
+        "SESSION": SESSION_ID
     };
     $.ajax({
         type: "POST",
-        url: BACKEND_URL + "retrainModel",
+        url: gBackendURL + "retrainModel",
         data: JSON.stringify(request),
         success: function(data, textStatus, jqXHR){
             if(data["success"]){
                 notifySuccess(data, textStatus, jqXHR, 5000);
-                retrainCounts += 1;
+                gRetrainCounts += 1;
 
-                $("#label-retrains").html(retrainCounts);
-                for( k in labelCounts){
-                    labelCounts[k] = 0;
-                    $("#label-counts-"+k).html("0");
+                if(data["cached_model"] !== null){
+                    var url = new URL(window.location.href);
+                    url.searchParams.set("cachedModel", data["cached_model"])
+                    $("#lblURL").val(url.toString());
+                }else{
+                    $("#lblURL").val("Debug mode - no model checkpoints");
                 }
 
-                var t = currentSelection._latlngs[0];
+                $("#label-retrains").html(gRetrainCounts);
+                $(".classCounts").html("0")
+                for(c in CLASSES){
+                    CLASSES[c]["count"] = 0;
+                }
+
+                var t = gCurrentSelection._latlngs[0];
                 var curSelPoly = [
                     [t[0]["lat"], t[0]["lng"]],
                     [t[1]["lat"], t[1]["lng"]],
@@ -44,27 +53,29 @@ var doRetrain = function(){
 //-----------------------------------------------------------------
 // Reset backend server state
 //-----------------------------------------------------------------
-var doReset = function(notify=true){
+var doReset = function(notify=true, initialReset=false){
     var request = {
         "type": "reset",
-        "dataset": DATASET,
-        "experiment": EXP_NAME
+        "dataset": gCurrentDataset,
+        "experiment": EXP_NAME,
+        "initialReset": initialReset,
+        "SESSION": SESSION_ID
     };
     $.ajax({
         type: "POST",
-        url: BACKEND_URL + "resetModel",
+        url: gBackendURL + "resetModel",
         data: JSON.stringify(request),
         success: function(data, textStatus, jqXHR){
             if(data["success"] && notify){
                 notifySuccess(data, textStatus, jqXHR);
                 
                 $("#label-retrains").html("0");
-
-                for( k in labelCounts){
-                    labelCounts[k] = 0;
-                    $("#label-counts-"+k).html("0");
+                $(".classCounts").html("0")
+                for(c in CLASSES){
+                    CLASSES[c]["count"] = 0;
                 }
             }
+            $("#lblURL").val("");
         },
         error: notifyFail,
         dataType: "json",
@@ -78,38 +89,37 @@ var doReset = function(notify=true){
 // Download tile
 //-----------------------------------------------------------------
 var doDownloadTile = function(){
-    var t = currentSelection._latlngs[0];
-    var polygon = [
-        [t[0]["lat"], t[0]["lng"]],
-        [t[1]["lat"], t[1]["lng"]],
-        [t[2]["lat"], t[2]["lng"]],
-        [t[3]["lat"], t[3]["lng"]]
-    ];
 
-    var topleft = L.latLng(polygon[0][0], polygon[0][1]);
-    var topleftProjected = L.CRS.EPSG3857.project(topleft);
-    var bottomright = L.latLng(polygon[2][0], polygon[2][1]);
-    var bottomrightProjected = L.CRS.EPSG3857.project(bottomright);
+    var polygon = null;
+    if(gCurrentCustomPolygon !== null){
+        polygon = gCurrentCustomPolygon;
+    }else if(gCurrentZone !== null){
+        polygon = gCurrentZone;
+    }else{
+        new Noty({
+            type: "info",
+            text: "You must select a zone or draw a polygon to download data",
+            layout: 'topCenter',
+            timeout: 3000,
+            theme: 'metroui'
+        }).show();
+        return
+    }
 
     var request = {
         "type": "download",
-        "dataset": DATASET,
+        "dataset": gCurrentDataset,
         "experiment": EXP_NAME,
-        "extent": {
-            "xmax": bottomrightProjected.x,
-            "xmin": topleftProjected.x,
-            "ymax": topleftProjected.y,
-            "ymin": bottomrightProjected.y,
-            "spatialReference": {
-                "latestWkid": 3857
-            }
-        },
-        "colors": colorList
+        "polygon": polygon.toGeoJSON(),
+        "classes": CLASSES,
+        "zoneLayerName": null,
+        "SESSION": SESSION_ID
     };
 
+    var outputLayer = L.imageOverlay("", polygon.getBounds(), {pane: "labels"}).addTo(gMap);
     $.ajax({
         type: "POST",
-        url: BACKEND_URL + "predTile",
+        url: gBackendURL + "predTile",
         data: JSON.stringify(request),
         timeout: 0,
         success: function(data, textStatus, jqXHR){
@@ -122,9 +132,13 @@ var doDownloadTile = function(){
             }).show();
             var pngURL = window.location.origin + "/" + data["downloadPNG"];
             var tiffURL = window.location.origin + "/" + data["downloadTIFF"];
+            var statisticsURL = window.location.origin + "/" + data["downloadStatistics"];
             $("#lblPNG").html("<a href='"+pngURL+"' target='_blank'>Download PNG</a>");
             $("#lblTIFF").html("<a href='"+tiffURL+"' target='_blank'>Download TIFF</a>");
-            
+            $("#lblStatistics").html("<a href='"+statisticsURL+"' target='_blank'>Download Class Statistics</a>");
+
+            outputLayer.setUrl(pngURL);
+
         },
         error: notifyFail,
         dataType: "json",
@@ -153,7 +167,7 @@ var doSendCorrection = function(polygon, idx){
     
     var request = {
         "type": "correction",
-        "dataset": DATASET,
+        "dataset": gCurrentDataset,
         "experiment": EXP_NAME,
         "extent": {
             "xmax": bottomrightProjected.x,
@@ -164,25 +178,20 @@ var doSendCorrection = function(polygon, idx){
                 "latestWkid": 3857
             }
         },
-        "colors": colorList,
-        "value" : selectedClassIdx
+        "classes": CLASSES,
+        "value" : gSelectedClassIdx,
+        "SESSION": SESSION_ID
     };
 
 
     $.ajax({
         type: "POST",
-        url: BACKEND_URL + "recordCorrection",
+        url: gBackendURL + "recordCorrection",
         data: JSON.stringify(request),
         success: function(data, textStatus, jqXHR){
-            console.debug("Successfully recorded correction");
-            console.debug(data);
-
-            labelName = findClassByIdx(data["value"])
-            console.debug(labelName)
-            //labelCounts[data["value"]] += data["count"];
-            labelCounts[labelName] += 1;
-
-            $("#label-counts-"+labelName).html(labelCounts[labelName]);
+            var labelIdx = data["value"];
+            CLASSES[labelIdx]["count"] += 1;
+            renderClassCount(CLASSES[labelIdx]["name"], CLASSES[labelIdx]["count"]);
             animateSuccessfulCorrection(10, 80);
         },
         error: notifyFail,
@@ -198,30 +207,26 @@ var doUndo = function(){
 
     var request = {
         "type": "undo",
-        "dataset": DATASET,
+        "dataset": gCurrentDataset,
         "experiment": EXP_NAME,
+        "SESSION": SESSION_ID
     };
 
-    if(!undoInProgress){
+    if(!gUndoInProgress){
         $.ajax({
             type: "POST",
-            url: BACKEND_URL + "doUndo",
+            url: gBackendURL + "doUndo",
             data: JSON.stringify(request),
             success: function(data, textStatus, jqXHR){
                 
-                // remove previously added point
-                console.debug(data);
-
                 for(var i=0;i<data["count"];i++){
-                    var removedPoint = userPointList.pop();
-                    map.removeLayer(removedPoint[0]);
-                    var labelName = findClassByIdx(removedPoint[1]);
-
-                    labelCounts[labelName] -= 1;
-                    $("#label-counts-"+labelName).html(labelCounts[labelName]);
+                    var removedPoint = gUserPointList.pop();
+                    gMap.removeLayer(removedPoint[0]);
+                    
+                    var labelIdx = removedPoint[1];
+                    CLASSES[labelIdx]["count"] -= 1;
+                    renderClassCount(CLASSES[labelIdx]["name"], CLASSES[labelIdx]["count"]);
                 }
-
-                // 
 
                 // alert success
                 new Noty({
@@ -234,7 +239,7 @@ var doUndo = function(){
             }, 
             error: notifyFail,
             always: function(){
-                undoInProgress = false;
+                gUndoInProgress = false;
             },
             dataType: "json",
             contentType: "application/json"
@@ -257,28 +262,28 @@ var doUndo = function(){
 //-----------------------------------------------------------------
 var requestPatches = function(polygon){
     // Setup placeholders for the predictions from the current click to be saved to
-    currentPatches.push({
+    gCurrentPatches.push({
         "naipImg": null,
-        "imageLayer": L.imageOverlay("", L.polygon(polygon).getBounds(), {pane: "labels"}).addTo(map),
+        "imageLayer": L.imageOverlay("", L.polygon(polygon).getBounds(), {pane: "labels"}).addTo(gMap),
         "patches": [],
-        "activeImgIdx": activeImgIdx
+        "activeImgIdx": gActiveImgIdx
     });
-    var idx = currentPatches.length-1;
+    var idx = gCurrentPatches.length-1;
     
-    requestInputPatch(idx, polygon, BACKEND_URL);
+    requestInputPatch(idx, polygon, gBackendURL);
 
-    currentPatches[idx]["patches"].push({
+    gCurrentPatches[idx]["patches"].push({
         "srcs": null
     });
-    requestPatch(idx, polygon, 0, BACKEND_URL);
+    requestPatch(idx, polygon, 0, gBackendURL);
 
     // The following code is for connecting to multiple backends at once
     // for(var i=0; i<ENDPOINTS.length; i++){
     //     //console.debug("Running requestPatch on " + ENDPOINTS[i]["url"]);
-    //     currentPatches[idx]["patches"].push({
+    //     gCurrentPatches[idx]["patches"].push({
     //         "srcs": null
     //     });
-    //     requestPatch(idx, polygon, i, BACKEND_URL); //TODO: this should be changed if we want to have a web tool that queries different backends
+    //     requestPatch(idx, polygon, i, gBackendURL); //TODO: this should be changed if we want to have a web tool that queries different backends
     // }
 };
 
@@ -290,7 +295,7 @@ var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
 
     var request = {
         "type": "runInference",
-        "dataset": DATASET,
+        "dataset": gCurrentDataset,
         "experiment": EXP_NAME,
         "extent": {
             "xmax": bottomrightProjected.x,
@@ -301,8 +306,11 @@ var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
                 "latestWkid": 3857
             }
         },
-        "colors": colorList,
+        "classes": CLASSES,
+        "SESSION": SESSION_ID
     };
+
+    console.debug(serviceURL);
     
     $.ajax({
         type: "POST",
@@ -311,24 +319,31 @@ var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
         success: function(data, textStatus, jqXHR){
             var resp = data;
 
-            var srcs = [
-                "data:image/png;base64," + resp.output_soft,
-                "data:image/png;base64," + resp.output_hard,
-            ];
+            var srcs = {
+                "soft": "data:image/png;base64," + resp.output_soft,
+                "hard": "data:image/png;base64," + resp.output_hard,
+            };
             
-            var img = $("#exampleImage_"+currentImgIdx);
-            img.attr("src", srcs[soft0_hard1]);
-            img.attr("data-name", resp.model_name);                    
+            // Display the result on the map if we are the currently selected model
+            let tSelection = gDisplayHard ? "hard" : "soft";
+            if(currentImgIdx == gCurrentPatches[idx]["activeImgIdx"]){
+                gCurrentPatches[idx]["imageLayer"].setUrl(srcs[tSelection]);
+            }
 
-            if(currentImgIdx == currentPatches[idx]["activeImgIdx"]){
-                img.addClass("active");
+            // Save the resulting data in all cases
+            gCurrentPatches[idx]["patches"][currentImgIdx]["srcs"] = srcs;
 
-                if(pred0_naip1 == 0){
-                    //var imageLayer = L.imageOverlay(srcs[soft0_hard1], L.polygon(polygon).getBounds()).addTo(map);
-                    currentPatches[idx]["imageLayer"].setUrl(srcs[soft0_hard1]);
+            // Update the right panel if we are the current "last item", we need to check for this because the order we send out requests to the API isn't necessarily the order they will come back
+            if(idx == gCurrentPatches.length-1){
+                var img = $("#exampleImage_"+currentImgIdx);
+                img.attr("src", srcs[tSelection]);
+                img.attr("data-name", resp.model_name);                    
+                
+                if(currentImgIdx == gCurrentPatches[idx]["activeImgIdx"]){
+                    img.addClass("active");
                 }
             }
-            currentPatches[idx]["patches"][currentImgIdx]["srcs"] = srcs;
+
         },
         error: notifyFail,
         dataType: "json",
@@ -349,7 +364,7 @@ var requestInputPatch = function(idx, polygon, serviceURL){
 
     var request = {
         "type": "getInput",
-        "dataset": DATASET,
+        "dataset": gCurrentDataset,
         "experiment": EXP_NAME,
         "extent": {
             "xmax": bottomrightProjected.x,
@@ -359,7 +374,8 @@ var requestInputPatch = function(idx, polygon, serviceURL){
             "spatialReference": {
                 "latestWkid": 3857
             }
-        }
+        },
+        "SESSION": SESSION_ID
     };
 
     $.ajax({
@@ -369,15 +385,70 @@ var requestInputPatch = function(idx, polygon, serviceURL){
         success: function(data, textStatus, jqXHR){
             var resp = data;
             var naipImg = "data:image/png;base64," + resp.input_naip;
-            currentPatches[idx]["naipImg"] = naipImg 
-            $("#inputImage").attr("src", naipImg);
 
-            if(pred0_naip1 == 1){
-                //var imageLayer = L.imageOverlay(naipImg, L.polygon(polygon).getBounds()).addTo(map);
-                currentPatches[idx]["imageLayer"].setUrl(naipImg);
+            gCurrentPatches[idx]["naipImg"] = naipImg
+            
+            // Update the right panel if we are the current "last item", we need to check for this because the order we send out requests to the API isn't necessarily the order they will come back
+            if(idx == gCurrentPatches.length-1){
+                $("#inputImage").attr("src", naipImg);
             }
         },
         error: notifyFail,
+        dataType: "json",
+        contentType: "application/json"
+    });
+};
+
+
+
+//-----------------------------------------------------------------
+// Load a saved model state from the backend
+//-----------------------------------------------------------------
+var doLoad = function(cachedModel){
+    var request = {
+        "type": "load",
+        "dataset": gCurrentDataset,
+        "experiment": EXP_NAME,
+        "cachedModel": cachedModel,
+        "SESSION": SESSION_ID
+    };
+    $.ajax({
+        type: "POST",
+        url: gBackendURL + "doLoad",
+        data: JSON.stringify(request),
+        success: function(data, textStatus, jqXHR){
+            console.debug(data);
+
+            new Noty({
+                type: "success",
+                text: "Successfully loaded checkpoint!",
+                layout: 'topCenter',
+                timeout: 4000,
+                theme: 'metroui'
+            }).show();
+
+        },
+        error: notifyFail,
+        dataType: "json",
+        contentType: "application/json"
+    });
+};
+
+
+//-----------------------------------------------------------------
+// Load a saved model state from the backend
+//-----------------------------------------------------------------
+var doKillSession = function () {
+    $.ajax({
+        type: "POST",
+        url: window.location.origin + "/killSession",
+        data: JSON.stringify({}),
+        success: function (data, textStatus, jqXHR) {
+            window.location.href = "/";
+        },
+        error: function (jqXHR, textStatus) {
+            // TODO: Notify fail
+        },
         dataType: "json",
         contentType: "application/json"
     });

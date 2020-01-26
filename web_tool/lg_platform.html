@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="icon" href="favicon.ico">
+
+    <title>Microsoft AI for Earth - Land cover mapping platform</title>
+
+    <!-- Core CSS -->
+    <link href="css/leaflet.css" rel="stylesheet" />
+    <link href="css/leaflet-slider.css" rel="stylesheet" />
+    <link href="css/leaflet-sidebar.css" rel="stylesheet" />
+    <link href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.14/leaflet.draw.css">
+    <link href="css/noty.css" rel="stylesheet">
+
+    <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet">
+    <link href="css/main.css" rel="stylesheet">
+    
+
+</head>
+
+<body>
+
+    <div id="map"></div>
+
+    <div id="privacy" class="leaflet-container">
+        <a href="https://privacy.microsoft.com/en-US/privacystatement" target="_blank">Privacy Statement</a>
+    </div>
+    
+    <div id="sidebar" class="sidebar">
+    
+        <!-- Tab panes -->
+        <div class="sidebar-content">
+
+            <!-- Start of "home" tab -->
+            <div class="sidebar-pane" id="home">
+                <div style="text-align: center; margin-bottom:10px;" id="inputImages">
+                    <h3 id="lblModelInput">Model Input</h3>
+                    <img id="inputImage">
+                </div>
+
+                <div style="text-align: center; margin-bottom:10px; width:100%;" id="exampleImages">
+                    <h3>Land Cover Predictions</h3>
+                    <div id="exampleImageList">
+                    </div>
+                </div>
+
+                <div style="text-align: left; margin-bottom:10px; width:100%; padding-left:30px;">
+                    <span>Name of zone: <span id="lblZoneName">none selected</span></span>
+                </div>
+
+                <div style="margin-bottom:10px;">
+
+                    <h3 style="text-align: center; margin-top:20px;">Correction type:</h3>
+                    <div style="padding-left:20px">
+                        <div id="classList">
+                            <div class="radio">
+                                <button class="circle jscolor" data-class-name="Water" data-jscolor="{valueElement:null,value:'0000FF',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
+                                <label class="selected"><input type="radio" name="radClasses" class="radNewClass" value="Water" checked><span class="className">Water</span> (<span class="classCounts">0</span> samples since last retrain)</label>
+                            </div>
+                            <div class="radio">
+                                <button class="circle jscolor" data-class-name="Tree Canopy" data-jscolor="{valueElement:null,value:'008000',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
+                                <label><input type="radio" name="radClasses" class="radNewClass" value="Tree Canopy"><span class="className">Tree Canopy</span> (<span class="classCounts">0</span> samples since last retrain)</label>
+                            </div>
+                            <div class="radio">
+                                <button class="circle jscolor" data-class-name="Field" data-jscolor="{valueElement:null,value:'80FF80',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
+                                <label><input type="radio" name="radClasses" class="radNewClass" value="Field"><span class="className">Field</span> (<span class="classCounts">0</span> samples since last retrain)</label>
+                            </div>
+                            <div class="radio">
+                                <button class="circle jscolor" data-class-name="Built" data-jscolor="{valueElement:null,value:'806060',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
+                                <label><input type="radio" name="radClasses" class="radNewClass" value="Built"><span class="className">Built</span> (<span class="classCounts">0</span> samples since last retrain)</label>
+                            </div>
+                        </div>
+                        <div style="text-align: center; margin-top:10px; margin-bottom:20px;">
+                            <button id="btnNewClass" style="background-color: gray; border-color: white;"> Add new class</button>
+                        </div>
+
+                        <div style="text-align: center; margin-top:10px;">
+                            <button id="btnRetrain">Retrain (<span id="label-retrains">0</span> times)</button>
+                        </div>
+                        <div style="text-align: center; margin-top:10px;">
+                            <button id="btnUndo">Undo</button>
+                        </div>
+                        <div style="text-align: center; margin-top:10px;">
+                            <button id="btnReset">Reset</button>
+                        </div>
+                        <div style="text-align: center; margin-top:10px;">
+                            <button id="btnDownload">Download</button>
+                        </div>
+
+                        <div style="text-align: center; margin-top:10px;">
+                            <input type="text" id="lblURL" value="" placeholder="Visit this URL to start from a saved checkpoint" readonly="readonly"/>
+                        </div>
+
+                        <div style="text-align: center; margin-top:5px;">
+                            <div id="lblPNG"></div>
+                            <div id="lblTIFF"></div>
+                            <div id="lblStatistics"></div>
+                        </div>
+
+                        <div style="text-align: center; margin-top:10px;">
+                            <button id="btnKillSession">End Session</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- End of "home" tab -->
+        </div>
+    </div>
+
+    <!-- Core JavaScript
+    ================================================== -->
+    <script src="js/jquery-3.3.1.min.js"></script>
+    <script src="js/noty.js" type="text/javascript"></script>
+    <script src="js/jscolor.js" type="text/javascript"></script>
+
+    <!-- Leaflet JavaScript
+    ================================================== -->
+    <script src="js/leaflet.js" type="text/javascript"></script>
+    <script src="js/leaflet-slider.js" type="text/javascript"></script>
+    <script src="js/leaflet-sidebar.min.js" type="text/javascript"></script>
+    <script src="js/leaflet.filelayer.js" type="text/javascript"></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.js" type="text/javascript"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.14/leaflet.draw.js" type="text/javascript"></script>
+
+    <!-- Application JavaScript
+    ================================================== -->
+    <script src="js/components.js" type="text/javascript"></script>
+    <script src="js/handlers.js" type="text/javascript"></script>
+    <script src="js/main.js" type="text/javascript"></script>
+    <script src="js/utils.js" type="text/javascript"></script>
+    <script src="js/globals.js" type="text/javascript"></script>
+
+    <!-- List of backend URLS to query
+    ================================================== -->
+    <script src="endpoints.mine.js" type="text/javascript"></script>
+
+    <script type="text/javascript">
+        
+        var zonePickerControl;
+        //----------------------------------------------------------------------
+        // Runtime entrance
+        //----------------------------------------------------------------------
+        $(document).ready(function(){
+
+            //----------------------------------------------------------------------
+            // Parse URL arguments
+            //----------------------------------------------------------------------
+            let args = getURLArguments()
+            EXP_NAME = args.userID
+            gBackendURL = SERVERS[args.backendID]["url"];
+            
+            if(!(args.dataset in DATASETS) && (args.dataset !== null)){
+                args.dataset = null;
+                new Noty({
+                    type: "error",
+                    text: "Requested dataset doesn't exist, using default",
+                    layout: 'topCenter',
+                    timeout: 5000,
+                    theme: 'metroui'
+                }).show();
+            }
+            if(args.dataset === null){
+                args.dataset = "esri_world_imagery";
+            }
+            gCurrentDataset = args.dataset;
+
+            if(args.cachedModel !== null){
+                doLoad(args.cachedModel); // load a cached version of the model
+            }else{
+                //doReset(false, true); // reset the backend server
+            }
+            
+            //----------------------------------------------------------------------
+            // Start user study if necessary
+            //----------------------------------------------------------------------
+            var userStudy = false;
+            if(args.maxTime !== null){
+                runUserStudyTimer(args.maxTime);
+                userStudy = true;
+            }
+
+            //----------------------------------------------------------------------
+            // Load the dataset specific shapes
+            //----------------------------------------------------------------------
+            // TODO: This needs to be refactored out of main() somehow. e.g. If I want to create a new interface that handles zone clicks differently then it should be easy to do, while currently I would have to break everything about how zones are currently handled.
+            if(DATASETS[gCurrentDataset]["shapeLayers"] !== null){
+                for(zoneSetId in DATASETS[gCurrentDataset]["shapeLayers"]){
+                    // for each shapeLayer in the current dataset we need to load the GeoJSON in `zoneMaps`
+
+                    var zoneName = DATASETS[gCurrentDataset]["shapeLayers"][zoneSetId]["name"];
+                    gZoneMapsWeight[zoneName] = DEFAULT_ZONE_LINE_WEIGHTS[zoneSetId];
+                    gZonemaps[zoneName] = L.geoJSON(null, {
+                        style: DEFAULT_ZONE_STYLE(gZoneMapsWeight[zoneName]),
+                        onEachFeature: forEachFeatureOnClick,
+                        pane: "polygons"
+                    });
+                    
+                    getZoneMap(zoneSetId, zoneName, DATASETS[gCurrentDataset]["shapeLayers"][zoneSetId]["shapesFn"]);
+                }
+            }
+
+            //----------------------------------------------------------------------
+            // Setup map layers
+            //----------------------------------------------------------------------
+
+            // Create the basemap for the current dataset
+            var baseLayer = L.tileLayer(DATASETS[gCurrentDataset]["basemapLayer"]["url"], DATASETS[gCurrentDataset]["basemapLayer"]["args"]);
+            
+            // This is the list of basemaps that will be displayed on the control in bottom left of GUI
+            gCurrentBasemapLayerName = DATASETS[gCurrentDataset]["metadata"]["imageryName"];
+            gBasemaps[DATASETS[gCurrentDataset]["metadata"]["imageryName"]] = baseLayer;
+            gBasemaps["OpenStreetMap"] = getOSMLayer();
+            gBasemaps["ESRI World Imagery"] = getESRILayer();
+
+
+            // Setup the initial layers to be displayed on the map. This consists of the basemap from the dataset and, if defined, the first shape layer.
+            var initialLayers = [baseLayer];
+            if(DATASETS[gCurrentDataset]["shapeLayers"] !== null){
+                initialLayers.push(gZonemaps[DATASETS[gCurrentDataset]["shapeLayers"][0]["name"]]);
+                gCurrentZoneLayerName = DATASETS[gCurrentDataset]["shapeLayers"][0]["name"];
+            }
+
+            // Setup the global map object
+            gMap = L.map('map', {
+                zoomControl: false,
+                crs: L.CRS.EPSG3857, // this is the projection CRS (EPSG:3857), but it is different than the data CRS (EPSG:4326). See https://gis.stackexchange.com/questions/225765/leaflet-map-crs-is-3857-but-coordinates-4326/225786.
+                center: DATASETS[gCurrentDataset]["basemapLayer"]["initialLocation"],
+                zoom: DATASETS[gCurrentDataset]["basemapLayer"]["initialZoom"],
+                keyboard: false,
+                minZoom: baseLayer.options.minZoom,
+                layers: initialLayers
+            });
+            gMap.createPane('customPolygons');
+            gMap.getPane('customPolygons').style.zIndex = 2001;
+
+            gMap.createPane('polygons');
+            gMap.getPane('polygons').style.zIndex = 2000;
+
+            gMap.createPane('labels');
+            gMap.getPane('labels').style.zIndex = 201;
+
+            gMap.createPane('downloadOutput');
+            gMap.getPane('downloadOutput').style.zIndex = 200;
+
+
+
+            //----------------------------------------------------------------------
+            // Create UI components. These are all defined in `js/components.js`.
+            //----------------------------------------------------------------------
+            addCustomLogoControl();
+            addZoomControls();
+            addDrawControls();
+            var basemapPickerControl = addBasemapPickerControl(gBasemaps);
+            var basemapPickerControlContainer = basemapPickerControl.getContainer();
+            
+            zonePickerControl = addZonePickerControl(gZonemaps);
+            var zonePickerControlContainer = zonePickerControl.getContainer();
+            
+            var opacitySlider = addOpacitySlider();
+            // addInferenceWindowSizeSlider();
+            // addCorrectionWindowSizeSlider();
+            // addSharpnessToggleSlider();
+
+            addSideBar();
+
+
+            var uploadControl = addUploadControl();
+            uploadControl.loader.on('data:loaded', function (e) {
+                var zoneName = e.filename;
+
+                if(zoneName in gZonemaps){ // if there is an entry in gZonemaps with the same filename then we have already loaded this file
+                    console.debug("Error, already loaded this file");
+                }else{
+                    if(gCurrentZoneLayerName !== null){
+                        console.debug("Removing existing zone layer");
+                        gMap.removeLayer(gZonemaps[gCurrentZoneLayerName]);
+                    }
+                    gZoneMapsWeight[zoneName] = 3;
+                    gZonemaps[zoneName] = e.layer;
+                    e.layer.addTo(gMap);
+                    zonePickerControl.addBaseLayer(e.layer, zoneName);
+                }
+            });
+            uploadControl.loader.on('data:error', function (error) {
+                console.error(error); //TODO: alert a reasonable error message
+            });
+
+            //----------------------------------------------------------------------
+            // Register handlers. These are all defined in `js/handlers.js`
+            //----------------------------------------------------------------------
+            
+            addInferenceMouseHandlers();
+            addDrawControlHandlers();
+            addOpacityKeyHandlers(opacitySlider);
+            addRetrainKeyHandler();
+            addGUIKeyHandlers();
+            
+
+            // $(zonePickerControlContainer).find('input[type=radio]').change(function() {
+            //     var name = $(this).siblings()[0].innerHTML.trim();
+            //     gCurrentZoneLayerName = name;
+            //     console.debug("Switched zone layer to: " + name);
+            // });
+
+            // $(basemapPickerControlContainer).find('input[type=radio]').change(function() {
+            //     var name = $(this).siblings()[0].innerHTML.trim();
+            //     gCurrentBasemapLayerName = name;
+            //     console.debug("Switched basemap layer to: " + name);
+            // });
+
+            gMap.on('baselayerchange', function(e) {
+                //https://gis.stackexchange.com/questions/171911/getting-current-layer-in-control-event-of-leaflet
+                console.log(e);
+            });
+
+            $("#btnRetrain").click(doRetrain);
+            $("#btnUndo").click(doUndo);
+            $("#btnReset").click(function(){doReset(true, initialReset=false)});
+            $("#btnDownload").click(doDownloadTile);
+
+            $("#btnKillSession").click(doKillSession)
+
+
+            $("#btnNewClass").click(function(){
+                
+                var newClassIdx = CLASSES.length + 1;
+                var newColor = getRandomColor();
+
+                var newClassElement =  $("<div class='radio'>");
+                var newLabel = $("<label><input type='radio' name='radClasses' class='radNewClass' value='Class "+newClassIdx+"'><span class='className'>Class "+newClassIdx+"</span> (<span class='classCounts'>0</span> samples since last retrain)<i class='fa fa-edit ml-1 classNameEdit'></i></label>");
+
+                var newPicker = document.createElement('button');
+                newPicker.classList.add("circle");
+                newPicker.classList.add("jscolor");
+                newPicker.setAttribute("data-class-name", "Class "+newClassIdx);
+                var output = new jscolor(newPicker, {
+                    valueElement: null,
+                    value: newColor.substr(1),
+                    position:'left',
+                    zIndex:2001,
+                    closable:true,
+                    closeText:'Close',
+                    onFineChange:'updateClassColor(this)'
+                });
+
+                newClassElement.append(newPicker);
+                newClassElement.append(newLabel);        
+            
+                $("#classList").append(newClassElement);
+
+                CLASSES.push({
+                    "name": "Class " + newClassIdx,
+                    "color": newColor,
+                    "count": 0
+                });
+
+            });
+
+            //----------------------------------------------------------------------
+            // Setup radio button change detection
+            //----------------------------------------------------------------------
+            $(document).on('change', '.radNewClass', function(){
+
+                $('.radio label').removeClass("selected");
+                $(this).parent().addClass("selected");
+
+                gSelectedClassIdx = findClassByName(this.value);
+                console.debug(this.value + " " + gSelectedClassIdx);
+            });
+
+            $(document).on('click', '.classNameEdit', function(){
+                var oldName = $(this).siblings(".className").html();
+                var newName = prompt("New label name for '"+oldName+"'");
+                $(this).siblings(".className").html(newName);
+                $(this).siblings(".radNewClass").val(newName);
+                
+                $(this).parent().siblings(".jscolor").attr("data-class-name", newName);
+
+                var classIdx = findClassByName(oldName)
+                CLASSES[classIdx]["name"] = newName;
+
+
+            });
+            
+            //----------------------------------------------------------------------
+            // Setup the example images list
+            //----------------------------------------------------------------------
+            
+            //for(var i=0; i<SERVERS.length; i++){
+            for(var i=0; i<1; i++){
+                var img = $("<img class='exampleImage'>");
+                img.attr("im-id", i);
+                img.attr("id", "exampleImage_"+i);
+                $("#exampleImageList").append(img);
+            }
+
+            $(".exampleImage").click(function(){
+                $(".exampleImage").removeClass("active");
+                $(this).addClass("active");
+                
+                var idx = gCurrentPatches.length-1;
+                gActiveImgIdx = $(this).attr("im-id");
+
+                var srcs = gCurrentPatches[idx]["patches"][gActiveImgIdx]["srcs"];
+                let tSelection = gDisplayHard ? "hard" : "soft";
+                gCurrentPatches[idx]["imageLayer"].setUrl(srcs[tSelection]);
+                gCurrentPatches[idx]["activeImgIdx"] = gActiveImgIdx;
+                $(this).attr("src", srcs[tSelection]);
+            });
+
+        });
+
+    </script>
+</body>
+
+</html>

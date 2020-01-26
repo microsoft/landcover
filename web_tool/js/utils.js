@@ -1,6 +1,6 @@
 var findClassByName = function(name){
-    for(var i=0; i<classList.length; i++){
-        if(classList[i]["name"] == name){
+    for(var i=0; i<CLASSES.length; i++){
+        if(CLASSES[i]["name"] == name){
             return i;
         }
     }
@@ -8,38 +8,45 @@ var findClassByName = function(name){
 };
 
 var findClassByIdx = function(idx){
-    return classList[idx]["name"];
+    return CLASSES[idx]["name"];
+}
+
+var renderClassCount = function(name, count){
+    $(".radNewClass[value='"+name+"']").siblings(".classCounts").html(count);
 }
 
 var updateClassColor = function(obj){
     var className = $(obj.targetElement).attr("data-class-name");
     var classIdx = findClassByName(className);
-    colorList[classIdx] = '#' + obj;
-};
-
-var updateClassLabel = function(obj){
-    var className = $(obj.targetElement).attr("data-class-name");
-    var classIdx = findClassByName(className);
-    colorList[classIdx] = '#' + obj;
+    CLASSES[classIdx]["color"] = '#' + obj;
 };
 
 var getRandomColor = function(){
     // From https://stackoverflow.com/questions/1484506/random-color-generator
-    var letters = '0123456789ABCDEF';
-    var color = '#';
-    for (var i = 0; i < 6; i++) {
+    let letters = '0123456789ABCDEF';
+    let color = '#';
+    for (let i = 0; i < 6; i++) {
         color += letters[Math.floor(Math.random() * 16)];
     }
     return color;
 };
 
+var getRandomString = function(length=8){
+    let alphabet = "abcdefghijklmnopqrstuvwxyz1234567890";
+    let str = "";
+    for(let i=0; i<length; i++){
+        str += alphabet[Math.floor(Math.random() * alphabet.length)];
+    }
+    return str;
+}
+
 var animateSuccessfulCorrection = function(countdown, time){
-    animating = true;
-    selectionBox.setStyle({weight:countdown})
+    gAnimating = true;
+    gSelectionBox.setStyle({weight:countdown})
     if(countdown > 2){
         window.setTimeout(function(){animateSuccessfulCorrection(countdown-1);}, time);
     }else{
-        animating = false;
+        gAnimating = false;
     }
 }
 
@@ -65,6 +72,16 @@ var notifyFail = function(jqXHR, textStatus, errorThrown, timeout=2000){
     new Noty({
         type: "error",
         text: "Error in processing server: " + response.error,
+        layout: 'topCenter',
+        timeout: timeout,
+        theme: 'metroui'
+    }).show();
+};
+
+var notifyFailMessage = function(message, timeout=2000){
+    new Noty({
+        type: "error",
+        text: message,
         layout: 'topCenter',
         timeout: timeout,
         theme: 'metroui'
@@ -175,6 +192,7 @@ var getURLArguments = function(){
     var maxTime = url.searchParams.get("maxTime");
     var backendID = url.searchParams.get("backendID");
     var dataset = url.searchParams.get("dataset");
+    var cachedModel = url.searchParams.get("cachedModel");
 
     /// trainingSetID will override dataset
     if(trainingSetID === null){
@@ -208,6 +226,7 @@ var getURLArguments = function(){
         modelID: modelID,
         maxTime: maxTime,
         backendID: backendID,
+        cachedModel: cachedModel,
         dataset: dataset
     }
 }
@@ -215,3 +234,33 @@ var getURLArguments = function(){
 var generateRandInt = function() {
     return Math.floor( Math.random() * 200000 ) + 1;
 };
+
+var getZoneMap = function(zoneSetId, name, url){
+    $.ajax({
+        dataType: "json",
+        url: url,
+        success: function(data) {
+            for(k in data.features){
+                data.features[k].properties["KEY"] = DATASETS[gCurrentDataset]["shapeLayers"][zoneSetId]["zoneNameKey"];
+            }
+            gZonemaps[name].addData(data);
+        }
+    });
+}
+
+var forEachFeatureOnClick = function(feature, layer) {
+    console.debug("clicked")
+    layer.on('click', function (e) {
+        gCurrentZone = layer;
+        for(k in gZonemaps){
+            gZonemaps[k].setStyle(DEFAULT_ZONE_STYLE(gZoneMapsWeight[k]));
+        }
+        layer.setStyle(HIGHLIGHTED_ZONE_STYLE);
+        layer.bringToFront();
+        
+        var nameKey = e.target.feature.properties["KEY"];
+        if (nameKey !== null){
+            $("#lblZoneName").html(e.target.feature.properties[nameKey]);
+        }
+    });
+}

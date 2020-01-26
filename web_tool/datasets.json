@@ -1,0 +1,1301 @@
+{
+    "airbus": {
+        "metadata": {
+            "displayName": "Virginia, USA",
+            "imageryName": "Airbus Imagery",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/airbus_epsg4326.tif",
+            "padding": 0.003
+        },
+        "basemapLayer": {
+            "initialZoom": 14,
+            "url": "tiles/airbus/{z}/{x}/{y}.png",
+            "initialLocation": [ 36.8, -76.12 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": true,
+                "maxNativeZoom": 18,
+                "maxZoom": 21,
+                "minZoom": 13
+            },
+            "bounds": [ [ 36.882932, -76.2623637 ], [ 36.7298842, -76.0249016 ] ]
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/airbus-data-grid-epsg4326.geojson",
+                "zoneNameKey": "id",
+                "name": "Grid"
+            }
+        ]
+    },
+    "atimur": {
+        "metadata": {
+            "displayName": "Sumatra",
+            "imageryName": "Planet/Sentinel",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/atimur_merged.tif",
+            "padding": 500
+        },
+        "basemapLayer": {
+            "initialZoom": 10,
+            "url": "tiles/atimur_rgb/{z}/{x}/{y}.png",
+            "initialLocation": [ 4.182874009000159, 97.4187026807719 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": true,
+                "maxNativeZoom": 16,
+                "maxZoom": 20,
+                "minZoom": 8
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/atimur_grid_05degrees.geojson",
+                "zoneNameKey": "id",
+                "name": "Atimur"
+            }
+        ]
+    },
+    "chesapeake": {
+        "metadata": {
+            "displayName": "Maryland, USA",
+            "imageryName": "NAIP Imagery",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "USA_LAYER",
+            "path": null,
+            "padding": 20
+        },
+        "basemapLayer": {
+            "initialZoom": 10,
+            "url": "tiles/chesapeake_test/{z}/{x}/{y}.png",
+            "initialLocation": [ 38.11437, -75.9998 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": true,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "minZoom": 2
+            },
+            "bounds": null
+        },
+        "shapeLayers": null
+    },
+    "esri_world_imagery": {
+        "metadata": {
+            "displayName": "ESRI World Imagery",
+            "imageryName": "ESRI World Imagery",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "BASEMAP",
+            "path": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+            "padding": 0.0005
+        },
+        "basemapLayer": {
+            "initialZoom": 4,
+            "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+            "initialLocation": [ 38, -88 ],
+            "args": {
+                "attribution": "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
+                "maxZoom": 20,
+                "minZoom": 4
+            },
+            "bounds": null
+        },
+        "shapeLayers": null
+    },
+    "esri_world_imagery_naip": {
+        "metadata": {
+            "displayName": "ESRI World Imagery",
+            "imageryName": "ESRI World Imagery",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "USA_LAYER",
+            "path": null,
+            "padding": 20
+        },
+        "basemapLayer": {
+            "initialZoom": 4,
+            "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+            "initialLocation": [ 38, -88 ],
+            "args": {
+                "attribution": "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
+                "maxZoom": 20,
+                "minZoom": 4
+            },
+            "bounds": null
+        },
+        "shapeLayers": null
+    },
+    "florida_keys_2010_wmts": {
+        "metadata": {
+            "displayName": "Florida Keys, 2010",
+            "imageryName": "NAIP 2010",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/florida_keys_2010.vrt",
+            "padding": 20
+        },
+        "basemapLayer": {
+            "initialZoom": 10,
+            "url": "http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:florida_keys_2010_rgb&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}",
+            "initialLocation": [ 24.7007, -81.3847 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": false,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "minZoom": 8
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/florida_keys_tiles.geojson",
+                "zoneNameKey": "location",
+                "name": "NAIP tiles"
+            }
+        ]
+    },
+    "florida_keys_2013_wmts": {
+        "metadata": {
+            "displayName": "Florida Keys, 2013",
+            "imageryName": "NAIP 2013",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/florida_keys_2013.vrt",
+            "padding": 20
+        },
+        "basemapLayer": {
+            "initialZoom": 10,
+            "url": "http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:florida_keys_2013_rgb&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}",
+            "initialLocation": [ 24.7007, -81.3847 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": false,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "minZoom": 8
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/florida_keys_tiles.geojson",
+                "zoneNameKey": "location",
+                "name": "NAIP tiles"
+            }
+        ]
+    },
+    "florida_keys_2015_wmts": {
+        "metadata": {
+            "displayName": "Florida Keys, 2015",
+            "imageryName": "NAIP 2015",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/florida_keys_2015.vrt",
+            "padding": 20
+        },
+        "basemapLayer": {
+            "initialZoom": 10,
+            "url": "http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:florida_keys_2015_rgb&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}",
+            "initialLocation": [ 24.7007, -81.3847 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": false,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "minZoom": 8
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/florida_keys_tiles.geojson",
+                "zoneNameKey": "location",
+                "name": "NAIP tiles"
+            }
+        ]
+    },
+    "hcmc_dg": {
+        "metadata": {
+            "displayName": "Thu Duc District, Ho Chi Minh City, Vietnam",
+            "imageryName": "Digital Globe Imagery",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/HCMC.tif",
+            "padding": 0
+        },
+        "basemapLayer": {
+            "initialZoom": 14,
+            "url": "tiles/HCMC/{z}/{x}/{y}.png",
+            "initialLocation": [ 10.838, 106.75 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": true,
+                "maxNativeZoom": 18,
+                "maxZoom": 21,
+                "minZoom": 14
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/hcmc_digital-globe_admin_1_clipped.geojson",
+                "zoneNameKey": "NAME_1",
+                "name": "Provinces"
+            },
+            {
+                "shapesFn": "shapes/hcmc_digital-globe_admin_2_clipped.geojson",
+                "zoneNameKey": "NAME_2",
+                "name": "Districts"
+            },
+            {
+                "shapesFn": "shapes/hcmc_digital-globe_admin_3_clipped.geojson",
+                "zoneNameKey": "NAME_3",
+                "name": "Wards"
+            }
+        ]
+    },
+    "hcmc_sentinel": {
+        "metadata": {
+            "displayName": "Ho Chi Minh City, Vietnam",
+            "imageryName": "Sentinel Imagery",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/hcmc_sentinel.tif",
+            "padding": 1100
+        },
+        "basemapLayer": {
+            "initialZoom": 11,
+            "url": "tiles/hcmc_sentinel_tiles/{z}/{x}/{y}.png",
+            "initialLocation": [ 10.682, 106.752 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": true,
+                "maxNativeZoom": 16,
+                "maxZoom": 20,
+                "minZoom": 10
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/hcmc_sentinel_admin_1_clipped.geojson",
+                "zoneNameKey": "NAME_1",
+                "name": "Provinces"
+            },
+            {
+                "shapesFn": "shapes/hcmc_sentinel_admin_2_clipped.geojson",
+                "zoneNameKey": "NAME_2",
+                "name": "Districts"
+            },
+            {
+                "shapesFn": "shapes/hcmc_sentinel_admin_3_clipped.geojson",
+                "zoneNameKey": "NAME_3",
+                "name": "Wards"
+            }
+        ]
+    },
+    "hcmc_sentinel_2017": {
+        "metadata": {
+            "displayName": "Ho Chi Minh City, Vietnam",
+            "imageryName": "Sentinel Imagery",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/hcmc_sentinel_2017_01_08.tif",
+            "padding": 1100
+        },
+        "basemapLayer": {
+            "initialZoom": 11,
+            "url": "tiles/hcmc_sentinel_2017_01_08/{z}/{x}/{y}.png",
+            "initialLocation": [ 10.682, 106.752 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": true,
+                "maxNativeZoom": 16,
+                "maxZoom": 20,
+                "minZoom": 10
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/hcmc_sentinel_admin_1_clipped.geojson",
+                "zoneNameKey": "NAME_1",
+                "name": "Provinces"
+            },
+            {
+                "shapesFn": "shapes/hcmc_sentinel_admin_2_clipped.geojson",
+                "zoneNameKey": "NAME_2",
+                "name": "Districts"
+            },
+            {
+                "shapesFn": "shapes/hcmc_sentinel_admin_3_clipped.geojson",
+                "zoneNameKey": "NAME_3",
+                "name": "Wards"
+            }
+        ]
+    },
+    "hcmc_spot_2017": {
+        "metadata": {
+            "displayName": "Ho Chi Minh City, Vietnam",
+            "imageryName": "SPOT Imagery",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/nhabe_spot_stacked_2017.tif",
+            "padding": 10
+        },
+        "basemapLayer": {
+            "initialZoom": 13,
+            "url": "tiles/spot6_2017_02_12/{z}/{x}/{y}.png",
+            "initialLocation": [ 10.682, 106.752 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": true,
+                "maxNativeZoom": 19,
+                "maxZoom": 20,
+                "minZoom": 13
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/hcmc_sentinel_admin_1_clipped.geojson",
+                "zoneNameKey": "NAME_1",
+                "name": "Provinces"
+            },
+            {
+                "shapesFn": "shapes/hcmc_sentinel_admin_2_clipped.geojson",
+                "zoneNameKey": "NAME_2",
+                "name": "Districts"
+            },
+            {
+                "shapesFn": "shapes/hcmc_sentinel_admin_3_clipped.geojson",
+                "zoneNameKey": "NAME_3",
+                "name": "Wards"
+            }
+        ]
+    },
+    "hcmc_spot_2019": {
+        "metadata": {
+            "displayName": "Ho Chi Minh City, Vietnam",
+            "imageryName": "SPOT Imagery",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/nhabe_spot_stacked_2019.tif",
+            "padding": 10
+        },
+        "basemapLayer": {
+            "initialZoom": 13,
+            "url": "tiles/spot6_2019_02_10/{z}/{x}/{y}.png",
+            "initialLocation": [ 10.682, 106.752 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": true,
+                "maxNativeZoom": 19,
+                "maxZoom": 20,
+                "minZoom": 13
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/hcmc_sentinel_admin_1_clipped.geojson",
+                "zoneNameKey": "NAME_1",
+                "name": "Provinces"
+            },
+            {
+                "shapesFn": "shapes/hcmc_sentinel_admin_2_clipped.geojson",
+                "zoneNameKey": "NAME_2",
+                "name": "Districts"
+            },
+            {
+                "shapesFn": "shapes/hcmc_sentinel_admin_3_clipped.geojson",
+                "zoneNameKey": "NAME_3",
+                "name": "Wards"
+            }
+        ]
+    },
+    "la_coast_2010_wmts": {
+        "metadata": {
+            "displayName": "LA Coast, 2010",
+            "imageryName": "NAIP 2010",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/la_coast_2010.vrt",
+            "padding": 20
+        },
+        "basemapLayer": {
+            "initialZoom": 10,
+            "url": "http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:la_coast_2010_rgb&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}",
+            "initialLocation": [ 29.598, -90.559 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": false,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "minZoom": 8
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/la_coast_29090_2010_tiles.geojson",
+                "zoneNameKey": "location",
+                "name": "NAIP tiles"
+            }
+        ]
+    },
+    "la_coast_2013_wmts": {
+        "metadata": {
+            "displayName": "LA Coast, 2013",
+            "imageryName": "NAIP 2013",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/la_coast_2013.vrt",
+            "padding": 20
+        },
+        "basemapLayer": {
+            "initialZoom": 10,
+            "url": "http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:la_coast_2013_rgb&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}",
+            "initialLocation": [ 29.598, -90.559 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": false,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "minZoom": 8
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/la_coast_29090_2010_tiles.geojson",
+                "zoneNameKey": "location",
+                "name": "NAIP tiles"
+            }
+        ]
+    },
+    "la_coast_2015_wmts": {
+        "metadata": {
+            "displayName": "LA Coast, 2015",
+            "imageryName": "NAIP 2015",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/la_coast_2015.vrt",
+            "padding": 20
+        },
+        "basemapLayer": {
+            "initialZoom": 10,
+            "url": "http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:la_coast_2015_rgb&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}",
+            "initialLocation": [ 29.598, -90.559 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": false,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "minZoom": 8
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/la_coast_29090_2010_tiles.geojson",
+                "zoneNameKey": "location",
+                "name": "NAIP tiles"
+            }
+        ]
+    },
+    "la_coast_embed_2010_wmts": {
+        "metadata": {
+            "displayName": "LA Coast, 2010",
+            "imageryName": "Embedded NLCD 2010",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/la_coast_2010.vrt",
+            "padding": 20
+        },
+        "basemapLayer": {
+            "initialZoom": 10,
+            "url": "http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:la_coast_embed_2010&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}",
+            "initialLocation": [ 29.598, -90.559 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": false,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "minZoom": 8
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/la_coast_29090_2010_tiles.geojson",
+                "zoneNameKey": "location",
+                "name": "NAIP tiles"
+            }
+        ]
+    },
+    "la_coast_embed_2013_wmts": {
+        "metadata": {
+            "displayName": "LA Coast, 2013",
+            "imageryName": "Embedded NLCD 2013",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/la_coast_2013.vrt",
+            "padding": 20
+        },
+        "basemapLayer": {
+            "initialZoom": 10,
+            "url": "http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:la_coast_embed_2013&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}",
+            "initialLocation": [ 29.598, -90.559 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": false,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "minZoom": 8
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/la_coast_29090_2010_tiles.geojson",
+                "zoneNameKey": "location",
+                "name": "NAIP tiles"
+            }
+        ]
+    },
+    "la_coast_nlcd_2011_wmts": {
+        "metadata": {
+            "displayName": "LA Coast, NLCD Ground Truth 2011",
+            "imageryName": "Ground Truth",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/la_coast_2013.vrt",
+            "padding": 20
+        },
+        "basemapLayer": {
+            "initialZoom": 10,
+            "url": "http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:la_coast_nlcd_2011&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}",
+            "initialLocation": [ 29.598, -90.559 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": false,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "minZoom": 8
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/la_coast_29090_2010_tiles.geojson",
+                "zoneNameKey": "location",
+                "name": "NAIP tiles"
+            }
+        ]
+    },
+    "la_coast_nlcd_2013_wmts": {
+        "metadata": {
+            "displayName": "LA Coast, NLCD Ground Truth 2013",
+            "imageryName": "Ground Truth",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/la_coast_2013.vrt",
+            "padding": 20
+        },
+        "basemapLayer": {
+            "initialZoom": 10,
+            "url": "http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:la_coast_nlcd_2013&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}",
+            "initialLocation": [ 29.598, -90.559 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": false,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "minZoom": 8
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/la_coast_29090_2010_tiles.geojson",
+                "zoneNameKey": "location",
+                "name": "NAIP tiles"
+            }
+        ]
+    },
+    "la_coast_nlcd_2016_wmts": {
+        "metadata": {
+            "displayName": "LA Coast, NLCD Ground Truth 2016",
+            "imageryName": "Ground Truth",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/la_coast_2013.vrt",
+            "padding": 20
+        },
+        "basemapLayer": {
+            "initialZoom": 10,
+            "url": "http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:la_coast_nlcd_2016&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}",
+            "initialLocation": [ 29.598, -90.559 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": false,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "minZoom": 8
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/la_coast_29090_2010_tiles.geojson",
+                "zoneNameKey": "location",
+                "name": "NAIP tiles"
+            }
+        ]
+    },
+    "la_coast_nlcd_wmts": {
+        "metadata": {
+            "displayName": "LA Coast, NLCD Ground Truth Old",
+            "imageryName": "Ground Truth",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/la_coast_2013.vrt",
+            "padding": 20
+        },
+        "basemapLayer": {
+            "initialZoom": 10,
+            "url": "http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:la_coast_nlcd&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}",
+            "initialLocation": [ 29.598, -90.559 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": false,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "minZoom": 8
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/la_coast_29090_2010_tiles.geojson",
+                "zoneNameKey": "location",
+                "name": "NAIP tiles"
+            }
+        ]
+    },
+    "la_coast_output_change_29090_wmts": {
+        "metadata": {
+            "displayName": "Change Test",
+            "imageryName": "NAIP 2010",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/la_coast_2010.vrt",
+            "padding": 20
+        },
+        "basemapLayer": {
+            "initialZoom": 10,
+            "url": "http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:output_change_29090&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}",
+            "initialLocation": [ 29.598, -90.559 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": false,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "minZoom": 8
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/la_coast_29090_2010_tiles.geojson",
+                "zoneNameKey": "location",
+                "name": "NAIP tiles"
+            }
+        ]
+    },
+    "leuser": {
+        "metadata": {
+            "displayName": "Sumatra",
+            "imageryName": "Planet",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/merged_4m_rgb.tif",
+            "padding": 500
+        },
+        "basemapLayer": {
+            "initialZoom": 10,
+            "url": "tiles/leuser/{z}/{x}/{y}.png",
+            "initialLocation": [ 4.182874009000159, 97.4187026807719 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": true,
+                "maxNativeZoom": 16,
+                "maxZoom": 20,
+                "minZoom": 8
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/btoru_aoi_extent.geojson",
+                "zoneNameKey": "MINX",
+                "name": "Btoru"
+            },
+            {
+                "shapesFn": "shapes/atimur_aoi_extent.geojson",
+                "zoneNameKey": "MINX",
+                "name": "Atimur"
+            }
+        ]
+    },
+    "nhabe_pleiades_2017": {
+        "metadata": {
+            "displayName": "Ho Chi Minh City, Vietnam",
+            "imageryName": "Pleadies Imagery",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/nhabe_pleiades_2017.tif",
+            "padding": 0
+        },
+        "basemapLayer": {
+            "initialZoom": 13,
+            "url": "tiles/pleadies_2017_06_15/{z}/{x}/{y}.png",
+            "initialLocation": [ 10.682, 106.752 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": true,
+                "maxNativeZoom": 19,
+                "maxZoom": 20,
+                "minZoom": 13
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/hcmc_sentinel_admin_1_clipped.geojson",
+                "zoneNameKey": "NAME_1",
+                "name": "Provinces"
+            },
+            {
+                "shapesFn": "shapes/hcmc_sentinel_admin_2_clipped.geojson",
+                "zoneNameKey": "NAME_2",
+                "name": "Districts"
+            },
+            {
+                "shapesFn": "shapes/hcmc_sentinel_admin_3_clipped.geojson",
+                "zoneNameKey": "NAME_3",
+                "name": "Wards"
+            }
+        ]
+    },
+    "nhabe_pleiades_2019": {
+        "metadata": {
+            "displayName": "Ho Chi Minh City, Vietnam",
+            "imageryName": "Pleiades Imagery",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/nhabe_pleiades_2019.tif",
+            "padding": 0
+        },
+        "basemapLayer": {
+            "initialZoom": 13,
+            "url": "tiles/pleadies_2019_02_10/{z}/{x}/{y}.png",
+            "initialLocation": [ 10.682, 106.752 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": true,
+                "maxNativeZoom": 19,
+                "maxZoom": 20,
+                "minZoom": 13
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/hcmc_sentinel_admin_1_clipped.geojson",
+                "zoneNameKey": "NAME_1",
+                "name": "Provinces"
+            },
+            {
+                "shapesFn": "shapes/hcmc_sentinel_admin_2_clipped.geojson",
+                "zoneNameKey": "NAME_2",
+                "name": "Districts"
+            },
+            {
+                "shapesFn": "shapes/hcmc_sentinel_admin_3_clipped.geojson",
+                "zoneNameKey": "NAME_3",
+                "name": "Wards"
+            }
+        ]
+    },
+    "nv_2010_wmts": {
+        "metadata": {
+            "displayName": "Nevada, 2010",
+            "imageryName": "NAIP 2010",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/nv_2010_rgb.vrt",
+            "padding": 20
+        },
+        "basemapLayer": {
+            "initialZoom": 10,
+            "url": "http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:nv_2010_rgb&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}",
+            "initialLocation": [ 36.568, -114.475 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": false,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "minZoom": 8
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/nv_2010_tiles.geojson",
+                "zoneNameKey": "location",
+                "name": "NAIP tiles"
+            }
+        ]
+    },
+    "nv_2013_wmts": {
+        "metadata": {
+            "displayName": "Nevada, 2013",
+            "imageryName": "NAIP 2013",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/nv_2010_rgb.vrt",
+            "padding": 20
+        },
+        "basemapLayer": {
+            "initialZoom": 10,
+            "url": "http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:nv_2013_rgb&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}",
+            "initialLocation": [ 36.568, -114.475 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": false,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "minZoom": 8
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/nv_2010_tiles.geojson",
+                "zoneNameKey": "location",
+                "name": "NAIP tiles"
+            }
+        ]
+    },
+    "nv_2015_wmts": {
+        "metadata": {
+            "displayName": "Nevada, 2015",
+            "imageryName": "NAIP 2015",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/nv_2010_rgb.vrt",
+            "padding": 20
+        },
+        "basemapLayer": {
+            "initialZoom": 10,
+            "url": "http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:nv_2015_rgb&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}",
+            "initialLocation": [ 36.568, -114.475 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": false,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "minZoom": 8
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/nv_2010_tiles.geojson",
+                "zoneNameKey": "location",
+                "name": "NAIP tiles"
+            }
+        ]
+    },
+    "nv_2017_wmts": {
+        "metadata": {
+            "displayName": "Nevada, 2017",
+            "imageryName": "NAIP 2017",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/nv_2010_rgb.vrt",
+            "padding": 20
+        },
+        "basemapLayer": {
+            "initialZoom": 10,
+            "url": "http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:nv_2017_rgb&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}",
+            "initialLocation": [ 36.568, -114.475 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": false,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "minZoom": 8
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/nv_2010_tiles.geojson",
+                "zoneNameKey": "location",
+                "name": "NAIP tiles"
+            }
+        ]
+    },
+    "nv_embed_2010_wmts": {
+        "metadata": {
+            "displayName": "Nevada, 2010",
+            "imageryName": "Embedded NLCD 2010",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/nv_2010_rgb.vrt",
+            "padding": 20
+        },
+        "basemapLayer": {
+            "initialZoom": 10,
+            "url": "http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:nv_embed_2010&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}",
+            "initialLocation": [ 36.568, -114.475 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": false,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "minZoom": 8
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/nv_2010_tiles.geojson",
+                "zoneNameKey": "location",
+                "name": "NAIP tiles"
+            }
+        ]
+    },
+    "nv_embed_2013_wmts": {
+        "metadata": {
+            "displayName": "Nevada, 2013",
+            "imageryName": "Embedded NLCD 2013",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/nv_2010_rgb.vrt",
+            "padding": 20
+        },
+        "basemapLayer": {
+            "initialZoom": 10,
+            "url": "http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:nv_embed_2013&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}",
+            "initialLocation": [ 36.568, -114.475 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": false,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "minZoom": 8
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/nv_2010_tiles.geojson",
+                "zoneNameKey": "location",
+                "name": "NAIP tiles"
+            }
+        ]
+    },
+    "nv_embed_2015_wmts": {
+        "metadata": {
+            "displayName": "Nevada, 2015",
+            "imageryName": "Embedded NLCD 2015",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/nv_2010_rgb.vrt",
+            "padding": 20
+        },
+        "basemapLayer": {
+            "initialZoom": 10,
+            "url": "http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:nv_embed_2015&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}",
+            "initialLocation": [ 36.568, -114.475 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": false,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "minZoom": 8
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/nv_2010_tiles.geojson",
+                "zoneNameKey": "location",
+                "name": "NAIP tiles"
+            }
+        ]
+    },
+    "nv_embed_2017_wmts": {
+        "metadata": {
+            "displayName": "Nevada, 2017",
+            "imageryName": "Embedded NLCD 2017",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/nv_2010_rgb.vrt",
+            "padding": 20
+        },
+        "basemapLayer": {
+            "initialZoom": 10,
+            "url": "http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:nv_embed_2017&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}",
+            "initialLocation": [ 36.568, -114.475 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": false,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "minZoom": 8
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/nv_2010_tiles.geojson",
+                "zoneNameKey": "location",
+                "name": "NAIP tiles"
+            }
+        ]
+    },
+    "nv_nlcd_wmts": {
+        "metadata": {
+            "displayName": "Nevada, NLCD Ground Truth Old",
+            "imageryName": "Ground Truth",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/nv_2010_rgb.vrt",
+            "padding": 20
+        },
+        "basemapLayer": {
+            "initialZoom": 10,
+            "url": "http://msrcalebgeoserver.eastus.cloudapp.azure.com:8080/geoserver/gwc/service/wmts?layer=local:nv_nlcd_old&style=&tilematrixset=EPSG:3857&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix=EPSG:3857:{z}&TileCol={x}&TileRow={y}",
+            "initialLocation": [ 36.568, -114.475 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": false,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "minZoom": 8
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/nv_2010_tiles.geojson",
+                "zoneNameKey": "location",
+                "name": "NAIP tiles"
+            }
+        ]
+    },
+    "user_study_5": {
+        "metadata": {
+            "displayName": "User Study Area 5",
+            "imageryName": "NAIP Imagery",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/user_study_5.tif",
+            "padding": 20
+        },
+        "basemapLayer": {
+            "initialZoom": 13,
+            "url": "tiles/user_study_5/{z}/{x}/{y}.png",
+            "initialLocation": [ 42.44826961830236, -75.11042900120714 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": true,
+                "maxNativeZoom": 18,
+                "maxZoom": 20,
+                "minZoom": 13
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/user_study_5_outline.geojson",
+                "zoneNameKey": null,
+                "name": "Area boundary"
+            }
+        ]
+    },
+    "yangon_lidar": {
+        "metadata": {
+            "displayName": "Yangon, Myanmar",
+            "imageryName": "LiDAR Imagery",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/yangon_lidar.tif",
+            "padding": 20
+        },
+        "basemapLayer": {
+            "initialZoom": 15,
+            "url": "tiles/yangon_lidar/{z}/{x}/{y}.png",
+            "initialLocation": [ 16.787, 96.145 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": true,
+                "maxNativeZoom": 20,
+                "maxZoom": 21,
+                "minZoom": 10
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/yangon_lidar_admin_1_clipped.geojson",
+                "zoneNameKey": "ST",
+                "name": "States"
+            },
+            {
+                "shapesFn": "shapes/yangon_lidar_admin_2_clipped.geojson",
+                "zoneNameKey": "DT",
+                "name": "Districts"
+            },
+            {
+                "shapesFn": "shapes/yangon_lidar_admin_3_clipped.geojson",
+                "zoneNameKey": "TS",
+                "name": "Townships"
+            },
+            {
+                "shapesFn": "shapes/yangon_lidar_admin_4_clipped.geojson",
+                "zoneNameKey": "Ward",
+                "name": "Wards"
+            }
+        ]
+    },
+    "yangon_sentinel": {
+        "metadata": {
+            "displayName": "Yangon, Myanmar",
+            "imageryName": "Sentinel Imagery",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/yangon.tif",
+            "padding": 1100
+        },
+        "basemapLayer": {
+            "initialZoom": 10,
+            "url": "tiles/yangon/{z}/{x}/{y}.png",
+            "initialLocation": [ 16.66177, 96.326427 ],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": true,
+                "maxNativeZoom": 16,
+                "maxZoom": 20,
+                "minZoom": 10
+            },
+            "bounds": null
+        },
+        "shapeLayers": [
+            {
+                "shapesFn": "shapes/yangon_sentinel_admin_1_clipped.geojson",
+                "zoneNameKey": "ST",
+                "name": "States"
+            },
+            {
+                "shapesFn": "shapes/yangon_sentinel_admin_2_clipped.geojson",
+                "zoneNameKey": "DT",
+                "name": "Districts"
+            },
+            {
+                "shapesFn": "shapes/yangon_sentinel_admin_3_clipped.geojson",
+                "zoneNameKey": "TS",
+                "name": "Townships"
+            },
+            {
+                "shapesFn": "shapes/yangon_sentinel_admin_4_clipped.geojson",
+                "zoneNameKey": "Ward",
+                "name": "Wards"
+            }
+        ]
+    }
+}

@@ -219,3 +219,10 @@ a.leaflet-control-slider-toggle {
 .ml-1{
     margin-left:10px;
 }
+
+#lblURL{
+    width: 85%;
+    padding: 12px 20px;
+    margin: 8px 0;
+    box-sizing: border-box;
+}

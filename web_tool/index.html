@@ -54,22 +54,22 @@
 
                     <h3 style="text-align: center; margin-top:20px;">Correction type:</h3>
                     <div style="padding-left:20px">
-                        <div id="classList" class="classList">
+                        <div id="classList">
                             <div class="radio">
-                                <button class="circle jscolor" data-class-name="water" data-jscolor="{valueElement:null,value:'0000FF',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
-                                <label class="selected"><input type="radio" name="new-class" class="radNewClass" value="water" checked>Water (<span id="label-counts-water">0</span> samples since last retrain)</label>
+                                <button class="circle jscolor" data-class-name="Water" data-jscolor="{valueElement:null,value:'0000FF',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
+                                <label class="selected"><input type="radio" name="radClasses" class="radNewClass" value="Water" checked><span class="className">Water</span> (<span class="classCounts">0</span> samples since last retrain)</label>
                             </div>
                             <div class="radio">
-                                <button class="circle jscolor" data-class-name="forest" data-jscolor="{valueElement:null,value:'008000',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
-                                <label><input type="radio" name="new-class" class="radNewClass" value="forest">Tree Canopy (<span id="label-counts-forest">0</span> samples since last retrain)</label>
+                                <button class="circle jscolor" data-class-name="Forest" data-jscolor="{valueElement:null,value:'008000',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
+                                <label><input type="radio" name="radClasses" class="radNewClass" value="Forest"><span class="className">Forest</span> (<span class="classCounts">0</span> samples since last retrain)</label>
                             </div>
                             <div class="radio">
-                                <button class="circle jscolor" data-class-name="field" data-jscolor="{valueElement:null,value:'80FF80',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
-                                <label><input type="radio" name="new-class" class="radNewClass" value="field">Field (<span id="label-counts-field">0</span> samples since last retrain)</label>
+                                <button class="circle jscolor" data-class-name="Field" data-jscolor="{valueElement:null,value:'80FF80',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
+                                <label><input type="radio" name="radClasses" class="radNewClass" value="Field"><span class="className">Field</span> (<span class="classCounts">0</span> samples since last retrain)</label>
                             </div>
                             <div class="radio">
-                                <button class="circle jscolor" data-class-name="built" data-jscolor="{valueElement:null,value:'806060',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
-                                <label><input type="radio" name="new-class" class="radNewClass" value="built">Built (<span id="label-counts-built">0</span> samples since last retrain)</label>
+                                <button class="circle jscolor" data-class-name="Built" data-jscolor="{valueElement:null,value:'806060',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
+                                <label><input type="radio" name="radClasses" class="radNewClass" value="Built"><span class="className">Built</span> (<span class="classCounts">0</span> samples since last retrain)</label>
                             </div>
                         </div>
                         <div style="text-align: center; margin-top:10px; margin-bottom:20px;">
@@ -91,6 +91,7 @@
                         <div style="text-align: center; margin-top:5px;">
                             <div id="lblPNG"></div>
                             <div id="lblTIFF"></div>
+                            <div id="lblStatistics"></div>
                         </div>
                     </div>
                 </div>
@@ -117,7 +118,9 @@
     ================================================== -->
     <script src="js/main.js" type="text/javascript"></script>
     <script src="js/utils.js" type="text/javascript"></script>
-    <script src="js/tile_layers.js" type="text/javascript"></script>
+    <script src="js/datasets.js" type="text/javascript"></script>
+    <script src="js/globals.js" type="text/javascript"></script>
+
 
     <!-- List of backend URLS to query
     ================================================== -->
@@ -125,68 +128,7 @@
     <script src="endpoints.mine.js" type="text/javascript"></script>
 
     <script type="text/javascript">
-        //----------------------------------------------------------------------
-        // Standard implementation globals
-        //----------------------------------------------------------------------
-        var BACKEND_URL = "";
-        var EXP_NAME = "TEST";
-        var DATASET = null;
-        var START_CENTER = null;
-        var START_ZOOM = null;
-
-        var SELECTION_SIZE = 300; // in meters, probably
-        var CORRECTION_SIZE = 1;
-
-        var selectionBox = null;
-        var currentSelection = null;
-
-        var rightMouseDown = false;
-        var shiftKeyDown = false;
-        var ctrlKeyDown = false;
-
-        var currentPatches = [];
-
-        var visible = true;
-        var opacitySlider;
-        
-        var soft0_hard1 = 1;
-        var pred0_naip1 = 0;
-        var activeImgIdx = 0;
-
-        var colorList = [
-            "#0000FF",
-            "#008000",
-            "#80FF80",
-            "#806060"
-        ]
-        var selectedClassIdx = 0;
-        var classList = [
-            {"name": "water"},
-            {"name": "forest"},
-            {"name": "field"},
-            {"name": "built"}
-        ];
-        var labelCounts = {
-            "water": 0,
-            "forest": 0,
-            "field": 0,
-            "built": 0
-        };
-        var retrainCounts = 0
-
-        var retrainArgs = {
-        };
-
-        var map = null;
-        var animating = false;
-       
-        var numClicks = 0;
-
-        var userPointList = []
-
-        var heatmap = null;
-        var undoInProgress = false;
-        
+    
         //----------------------------------------------------------------------
         // Runtime entrance
         //----------------------------------------------------------------------
@@ -222,7 +164,7 @@
             }
             DATASET = args.dataset;
             
-            doReset(false); // reset the backend server
+            doReset(false, initialReset=true); // reset the backend server
             
             //----------------------------------------------------------------------
             // Start user study if necessary
@@ -231,6 +173,20 @@
             if(args.maxTime !== null){
                 runUserStudyTimer(args.maxTime);
                 userStudy = true;
+            }
+
+            //----------------------------------------------------------------------
+            // Load the dataset specific shapes
+            //----------------------------------------------------------------------
+
+            if(tileLayers[DATASET]["shapes"] !== null){
+                for(zoneSetId in tileLayers[DATASET]["shapes"]){
+                    zoneMaps[tileLayers[DATASET]["shapes"][zoneSetId]["name"]] = L.geoJSON(null, {
+                        style: DEFAULT_ZONE_STYLE,
+                        onEachFeature: forEachFeatureOnClick
+                    });
+                    getZoneMap(zoneSetId, tileLayers[DATASET]["shapes"][zoneSetId]["name"], tileLayers[DATASET]["shapes"][zoneSetId]["shapes_fn"]);
+                }
             }
 
             //----------------------------------------------------------------------
@@ -248,16 +204,19 @@
 
 
             if((DATASET != "esri_world_imagery") && (DATASET != "esri_world_imagery_naip")){
-                interestingLocations = [
-                    L.marker(tileLayers[DATASET]["location"][0]).bindPopup(tileLayers[DATASET]["location"][2])
-                ];
+                interestingLocations = [];
             }
             var baseLayer = tileLayers[DATASET]["tileObject"];
             START_CENTER = tileLayers[DATASET]["location"][0];
             START_ZOOM = tileLayers[DATASET]["location"][1];
 
-            
             var cities = L.layerGroup(interestingLocations);
+
+            var initialLayers = [baseLayer];
+            if(tileLayers[DATASET]["shapes"] !== null){
+                initialLayers.push(zoneMaps[tileLayers[DATASET]["shapes"][0]["name"]]);
+                currentZoneLayerName = tileLayers[DATASET]["shapes"][0]["name"];
+            }
 
             map = L.map('map', {
                 zoomControl: false,
@@ -266,7 +225,7 @@
                 zoom: START_ZOOM,
                 keyboard: false,
                 minZoom: baseLayer.options.minZoom,
-                layers: [baseLayer, cities, heatmap]
+                layers: initialLayers
             });
             map.createPane('labels');
             map.getPane('labels').style.zIndex = 200;
@@ -276,28 +235,6 @@
                     map.setView(e.latlng, 13);
                 });
             }
-
-            //----------------------------------------------------------------------
-            // Load the dataset specific shapes
-            //----------------------------------------------------------------------
-            if(tileLayers[DATASET]["shapes"] !== null){
-                $.ajax({
-                    dataType: "json",
-                    url: tileLayers[DATASET]["shapes"],
-                    success: function(data) {
-                        console.debug(data);
-                        L.geoJSON(data, {
-                            style: {
-                                "fillOpacity": 0,
-                                "color": "#00ff00",
-                                "weight": 3,
-                                "opacity": 1
-                            }
-                        }).addTo(map);
-                    }
-                });
-            }
-
 
             //---------------------------------------------------------------------
             // Setup AI4E Branding
@@ -315,7 +252,8 @@
             L.Control.geocoder({
                 collapsed: false,
                 position:'topleft',
-                defaultMarkGeocode: true
+                defaultMarkGeocode: false,
+
             }).addTo(map);
             
             //----------------------------------------------------------------------
@@ -527,7 +465,7 @@
                             var rect = L.rectangle(
                                 [curSelPoly[0], curSelPoly[2]],
                                 {
-                                    color: colorList[selectedClassIdx],
+                                    color: classes[selectedClassIdx]["color"],
                                     weight: 1,
                                     opacity: 1
                                     //pane: "labels"
@@ -565,76 +503,76 @@
             });
 
             $(document).keydown(function(e) {
-                if(e.which == 97 || e.which == 65) { // "a"
-                    visible = false;
-                    map.getPane('labels').style.opacity = 0.0;
-                    opacitySlider.slider.value = 0;
-                    opacitySlider._updateValue();
-                } else if(e.which == 115 || e.which == 83) { // "s"
-                    if(visible){
+                if(document.activeElement == document.body){
+                    if(e.which == 97 || e.which == 65) { // "a"
                         visible = false;
                         map.getPane('labels').style.opacity = 0.0;
                         opacitySlider.slider.value = 0;
                         opacitySlider._updateValue();
-                    }else{
+                    } else if(e.which == 115 || e.which == 83) { // "s"
+                        if(visible){
+                            visible = false;
+                            map.getPane('labels').style.opacity = 0.0;
+                            opacitySlider.slider.value = 0;
+                            opacitySlider._updateValue();
+                        }else{
+                            visible = true;
+                            map.getPane('labels').style.opacity = 1.0;
+                            opacitySlider.slider.value = 100;
+                            opacitySlider._updateValue();
+                        }
+                    } else if(e.which == 100 || e.which == 68) { "d"
                         visible = true;
                         map.getPane('labels').style.opacity = 1.0;
-                        opacitySlider.slider.value = 100;
+                        opacitySlider.slider.value = 100
                         opacitySlider._updateValue();
-                    }
-                } else if(e.which == 100 || e.which == 68) { "d"
-                    visible = true;
-                    map.getPane('labels').style.opacity = 1.0;
-                    opacitySlider.slider.value = 100
-                    opacitySlider._updateValue();
-                } else if((e.which == 114 || e.which == 82) && !ctrlKeyDown){ "r"
-                    doRetrain();
-                } else if(e.which == 37){ "left arrow"
-                    var currentOpacity = parseFloat(map.getPane('labels').style.opacity);
-                    if (currentOpacity >= 0.05){
-                        currentOpacity -= 0.05;
+                    } else if((e.which == 114 || e.which == 82) && !ctrlKeyDown){ "r"
+                        doRetrain();
+                    } else if(e.which == 37){ "left arrow"
+                        var currentOpacity = parseFloat(map.getPane('labels').style.opacity);
+                        if (currentOpacity >= 0.05){
+                            currentOpacity -= 0.05;
 
-                        map.getPane('labels').style.opacity = currentOpacity;
-                        opacitySlider.slider.value = currentOpacity*100;
-                        opacitySlider._updateValue();
-                    }
-                    e.preventDefault()
-                } else if(e.which == 39){ "right arrow"
-                    var currentOpacity = parseFloat(map.getPane('labels').style.opacity);
-                    if (currentOpacity <= 0.95){
-                        currentOpacity += 0.05;
+                            map.getPane('labels').style.opacity = currentOpacity;
+                            opacitySlider.slider.value = currentOpacity*100;
+                            opacitySlider._updateValue();
+                        }
+                        e.preventDefault()
+                    } else if(e.which == 39){ "right arrow"
+                        var currentOpacity = parseFloat(map.getPane('labels').style.opacity);
+                        if (currentOpacity <= 0.95){
+                            currentOpacity += 0.05;
 
-                        map.getPane('labels').style.opacity = currentOpacity;
-                        opacitySlider.slider.value = currentOpacity*100;
-                        opacitySlider._updateValue();
+                            map.getPane('labels').style.opacity = currentOpacity;
+                            opacitySlider.slider.value = currentOpacity*100;
+                            opacitySlider._updateValue();
+                        }
+                        e.preventDefault()
+                    } else if(e.which == 38 || e.which == 40){
+                        e.preventDefault()
+                    } else if(ctrlKeyDown && e.which==90){
+                        doUndo();
                     }
-                    e.preventDefault()
-                } else if(e.which == 38 || e.which == 40){
-                    e.preventDefault()
-                } else if(ctrlKeyDown && e.which==90){
-                    doUndo();
                 }
             });
 
 
             $("#btnRetrain").click(doRetrain);
             $("#btnUndo").click(doUndo);
-            $("#btnReset").click(doReset);
+            $("#btnReset").click(function(){doReset(true, initialReset=false)});
             $("#btnDownload").click(doDownloadTile);
             $("#btnNewClass").click(function(){
                 
-                var newClassIdx = classList.length + 1;
+                var newClassIdx = classes.length + 1;
                 var newColor = getRandomColor();
 
-                
                 var newClassElement =  $("<div class='radio'>");
-                //var newPicker = $("<button class=\"circle jscolor\" data-class-name=\"class-"+newClassIdx+"\" data-jscolor=\"{valueElement:null,value:'"+newColor.substring(1)+"',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}\"></button>");
-                var newLabel = $("<label><input type='radio' name='new-class' class='radNewClass' value='class-"+newClassIdx+"'><span id='label-name-class-"+newClassIdx+"' class='label-name'>Class "+newClassIdx+"</span> (<span id='label-counts-class-"+newClassIdx+"'>0</span> samples since last retrain)<i class='fa fa-edit ml-1 label-name-edit'></i></label>");
-
+                var newLabel = $("<label><input type='radio' name='radClasses' class='radNewClass' value='Class "+newClassIdx+"'><span class='className'>Class "+newClassIdx+"</span> (<span class='classCounts'>0</span> samples since last retrain)<i class='fa fa-edit ml-1 classNameEdit'></i></label>");
 
                 var newPicker = document.createElement('button');
                 newPicker.classList.add("circle");
-                newPicker.setAttribute("data-class-name", "class-"+newClassIdx);
+                newPicker.classList.add("jscolor");
+                newPicker.setAttribute("data-class-name", "Class "+newClassIdx);
                 var output = new jscolor(newPicker, {
                     valueElement: null,
                     value: newColor.substr(1),
@@ -650,11 +588,11 @@
             
                 $("#classList").append(newClassElement);
 
-                classList.push({
-                    "name": "class-" + newClassIdx
+                classes.push({
+                    "name": "Class " + newClassIdx,
+                    "color": newColor,
+                    "count": 0
                 });
-                colorList.push(newColor)
-                labelCounts["class-" + newClassIdx] = 0;
 
             });
 
@@ -670,10 +608,14 @@
                 console.debug(this.value + " " + selectedClassIdx);
             });
 
-            $(document).on('click', '.label-name-edit', function(){
-                var oldName = $(this).siblings(".label-name").html();
+            $(document).on('click', '.classNameEdit', function(){
+                var oldName = $(this).siblings(".className").html();
                 var newName = prompt("New label name for '"+oldName+"'");
-                $(this).siblings(".label-name").html(newName);
+                $(this).siblings(".className").html(newName);
+                $(this).siblings(".radNewClass").val(newName);
+
+                var classIdx = findClassByName(oldName)
+                classes[classIdx]["name"] = newName;
             });
             
             //----------------------------------------------------------------------
