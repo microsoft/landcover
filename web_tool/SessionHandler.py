@@ -23,12 +23,17 @@ def session_monitor(session_handler, session_timeout_seconds=900):
     '''
     LOGGER.info("Starting session monitor thread")
     while True:
+        session_ids_to_kill = []
         for session_id, session in session_handler._SESSION_MAP.items():
             #LOGGER.info("SESSION MONITOR - Checking session (%s) for activity" % (session_id))
             time_inactive = time.time() - session.last_interaction_time
             if time_inactive > session_timeout_seconds:
-                LOGGER.info("SESSION MONITOR - Session (%s) has been inactive for over %d seconds, destroying" % (session_id, session_timeout_seconds))
-                session_handler.kill_session(session_id)
+                session_ids_to_kill.append(session_id)
+        
+        for session_id in session_ids_to_kill
+            LOGGER.info("SESSION MONITOR - Session (%s) has been inactive for over %d seconds, destroying" % (session_id, session_timeout_seconds))
+            session_handler.kill_session(session_id)
+        
         time.sleep(5)
 
 
