@@ -11,38 +11,61 @@ import argparse
 
 import numpy as np
 
-import pickle
+import rpyc
+from rpyc.utils.server import OneShotServer, ThreadedServer
 
 from ServerModelsKerasDense import KerasDenseFineTune
+from Utils import serialize, deserialize
 
 from log import setup_logging, LOGGER
-import pika
 
+
+class MyService(rpyc.Service):
+
+    def __init__(self, model):
+        self.model = model
+        
+    def on_connect(self, conn):
+        pass
+
+    def on_disconnect(self, conn):
+        pass
+
+    def exposed_run(self, naip_data, extent, on_tile=False):
+        naip_data = deserialize(naip_data) # need to serialize/deserialize numpy arrays
+        output = self.model.run(naip_data, extent, on_tile)
+        return serialize(output) # need to serialize/deserialize numpy arrays
+
+    def exposed_retrain(self):
+        return self.model.retrain()
+
+    def exposed_add_sample(self, tdst_row, bdst_row, tdst_col, bdst_col, class_idx):
+        return self.model.add_sample(tdst_row, bdst_row, tdst_col, bdst_col, class_idx)
+
+    def exposed_undo(self):
+        return self.model.undo()
+
+    def exposed_reset(self):
+        return self.model.reset()
 
 def main():
+    global MODEL
     parser = argparse.ArgumentParser(description="AI for Earth Land Cover Worker")
 
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debugging", default=False)
 
-
-    # TODO: add support for consuming work for a single sessionID
-    parser.add_argument("--session-id", action="store", type=str, help="Name of session we are listenning to", default="*")
-
-    parser.add_argument("--host", action="store", dest="host", type=str, help="RabbitMQ server", default="localhost")
-    parser.add_argument("--user",  action="store", type=str, help="RabbitMQ server username", default="guest")
-    parser.add_argument("--password",  action="store", type=str, help="RabbitMQ server password", default="guest")
-
+    parser.add_argument("--port", action="store", type=int, help="Port we are listenning on", default=0)
     parser.add_argument("--model", action="store", dest="model",
         choices=[
             "keras_dense"
         ],
         help="Model to use", required=True
     )
-    parser.add_argument("--fine_tune_seed_data_fn", action="store", dest="fine_tune_seed_data_fn", type=str, help="Path to npz containing seed data to use", default=None)
-    parser.add_argument("--fine_tune_layer", action="store", dest="fine_tune_layer", type=int, help="Layer of model to fine tune", default=-2)
     parser.add_argument("--model_fn", action="store", dest="model_fn", type=str, help="Model fn to use", default=None)
+    parser.add_argument("--fine_tune_layer", action="store", dest="fine_tune_layer", type=int, help="Layer of model to fine tune", default=-2)
+    parser.add_argument("--fine_tune_seed_data_fn", action="store", dest="fine_tune_seed_data_fn", type=str, help="Path to npz containing seed data to use", default=None)
     
-    parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", default=None)
+    parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", required=True)
 
     args = parser.parse_args(sys.argv[1:])
 
@@ -56,71 +79,13 @@ def main():
     os.environ["CUDA_VISIBLE_DEVICES"] = "" if args.gpuid is None else str(args.gpuid)
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
-    model = None
     if args.model == "keras_dense":
         model = KerasDenseFineTune(args.model_fn, args.gpuid, args.fine_tune_layer, args.fine_tune_seed_data_fn)
     else:
         raise NotImplementedError("The given model type is not implemented yet.")
 
-
-    credentials = pika.PlainCredentials(args.user, args.password)
-    connection = pika.BlockingConnection(
-        pika.ConnectionParameters(host=args.host, credentials=credentials)
-    )
-
-    channel = connection.channel()
-
-    channel.exchange_declare(exchange='rpc_exchange', exchange_type='direct')
-
-    result = channel.queue_declare(queue=args.session_id, exclusive=False)
-    queue_name = result.method.queue
-    channel.queue_bind(exchange='rpc_exchange', queue=queue_name, routing_key=args.session_id)
-
-    def on_request(ch, method, props, body):
-        method_name, args = pickle.loads(body)
-
-        LOGGER.info("Received request: %s" % (method_name))
-
-        response = None
-        if method_name == "run":
-            response = model.run(*args)
-        elif method_name == "retrain":
-            response = model.retrain()
-        elif method_name == "add_sample":
-            response = model.add_sample(*args)
-        elif method_name == "reset":
-            response = model.reset()
-        elif method_name == "undo":
-            response = model.undo()
-        else:
-            raise ValueError("Invalid request received")
-
-        if response is None: # For some reason I don't understand, if we don't return actual data then "process_data_events()" in ServerModelsRPC.py will hang
-            response = 1
-
-        LOGGER.info("Before publish")
-
-        ch.basic_publish(
-            exchange='rpc_exchange',
-            routing_key=props.reply_to,
-            properties=pika.BasicProperties(
-                correlation_id=props.correlation_id
-            ),
-            body=pickle.dumps(response)
-        )
-
-        LOGGER.info("After publish")
-
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-
-        LOGGER.info("After ack")
-
-
-    channel.basic_qos(prefetch_count=1)
-    channel.basic_consume(queue=queue_name, on_message_callback=on_request)
-
-    LOGGER.info("Awaiting requests")
-    channel.start_consuming()
-
+    t = OneShotServer(MyService(model), port=args.port)
+    t.start()
+   
 if __name__ == "__main__":
     main()

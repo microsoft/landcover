@@ -103,6 +103,10 @@
                             <div id="lblTIFF"></div>
                             <div id="lblStatistics"></div>
                         </div>
+
+                        <div style="text-align: center; margin-top:10px;">
+                            <button id="btnKillSession">End Session</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -321,6 +325,8 @@
             $("#btnUndo").click(doUndo);
             $("#btnReset").click(function(){doReset(true, initialReset=false)});
             $("#btnDownload").click(doDownloadTile);
+
+            $("#btnKillSession").click(doKillSession)
 
 
             $("#btnNewClass").click(function(){

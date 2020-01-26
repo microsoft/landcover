@@ -43,19 +43,13 @@ import beaker.middleware
 
 from log import setup_logging, LOGGER
 
+from Session import Session, manage_session_folders, SESSION_FOLDER
+from SessionHandler import SessionHandler
+SESSION_HANDLER = None
+
 
 #---------------------------------------------------------------------------------------
-# Session handling code
 #---------------------------------------------------------------------------------------
-from Session import Session, SessionFactory, manage_session_folders, SESSION_FOLDER
-SESSION_MAP = dict() # keys are bottle.request.session.id and values are corresponding Session() objects
-EXPIRED_SESSION_SET = set()
-
-class LocalManager():
-    def __init__(self, run_local):
-        self.run_local = run_local
-LOCAL_MANAGER = LocalManager(False)
-DEFAULT_SESSION = None
 
 
 def setup_sessions():
@@ -69,38 +63,15 @@ def manage_sessions():
     '''This method is called before every request. Checks to see if there a session assosciated with the current request.
     If there is then update the last interaction time on that session.
     '''
-    if bottle.request.session.id in EXPIRED_SESSION_SET: # Someone is trying to use a session that we have deleted due to inactivity
-        bottle.request.session.delete()
-        EXPIRED_SESSION_SET.remove(bottle.request.session.id)
-    
-    if bottle.request.session.id in SESSION_MAP:
-        LOGGER.info("Updating last_interaction_time")
-        SESSION_MAP[bottle.request.session.id].last_interaction_time = time.time()
+
+    if SESSION_HANDLER.is_expired(bottle.request.session.id): # Someone is trying to use a session that we have deleted due to inactivity
+        SESSION_HANDLER.cleanup_expired_session(bottle.request.session.id)
+        bottle.request.session.delete() # TODO: I'm not sure how the actual session is deleted on the client side
+        LOGGER.info("Cleaning up an out of date session")
+    elif not SESSION_HANDLER.is_active(bottle.request.session.id):
+        LOGGER.warning("We are getting a request that doesn't have an active session")
     else:
-
-        #SESSION_MAP[bottle.request.session.id] = session_factory.get_session(bottle.request.session.id)
-        #SESSION_MAP[bottle.request.session.id].spawn_worker()
-        LOGGER.warning("We are getting a request with a bottle.request.session.id = %s, but don't have a SESSION_MAP object" % (bottle.request.session.id))
-
-def session_monitor(session_timeout_seconds=900):
-    ''' This is a `Thread()` that is starting when the program is run. It is responsible for finding which of the `Session()` objects
-    in `SESSION_MAP` haven't been used recently and killing them.
-    '''
-    LOGGER.info("Starting session monitor thread")
-    while True:
-        session_ids_to_delete = []
-        for session_id, session in SESSION_MAP.items():
-            LOGGER.info("SESSION MONITOR - Checking session (%s) for activity" % (session_id))
-            time_inactive = time.time() - session.last_interaction_time
-            if time_inactive > session_timeout_seconds:
-                LOGGER.info("SESSION MONITOR - Session (%s) has been inactive for over %d seconds, destroying" % (session_id, session_timeout_seconds))
-                EXPIRED_SESSION_SET.add(session_id)
-                session_ids_to_delete.append(session_id) 
-        
-        for session_id in session_ids_to_delete:
-            SESSION_MAP[session_id].kill_worker()
-            del SESSION_MAP[session_id]
-        time.sleep(5)
+        SESSION_HANDLER.touch_session(bottle.request.session.id) # let the SESSION_HANDLER know that this session has activity
 
 
 #---------------------------------------------------------------------------------------
@@ -128,14 +99,36 @@ def do_options():
 #---------------------------------------------------------------------------------------
 
 
+def create_session():
+    bottle.response.content_type = 'application/json'
+    data = bottle.request.json
+
+    SESSION_HANDLER.create_session(bottle.request.session.id, data["model"])
+    
+    bottle.response.status = 200
+    return json.dumps(data)
+
+
+def kill_session():
+    bottle.response.content_type = 'application/json'
+    data = bottle.request.json
+
+    SESSION_HANDLER.kill_session(bottle.request.session.id)
+    SESSION_HANDLER.cleanup_expired_session(bottle.request.session.id)
+    bottle.request.session.delete()
+
+    bottle.response.status = 200
+    return json.dumps(data)
+
+
 def do_load():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
     
     cached_model = data["cachedModel"]
 
-    SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).reset(False, from_cached=cached_model)
-    SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).load(cached_model)
+    SESSION_HANDLER.get_session(bottle.request.session.id).reset(False, from_cached=cached_model)
+    SESSION_HANDLER.get_session(bottle.request.session.id).load(cached_model)
 
     data["message"] = "Loaded new model from %s" % (cached_model)
     data["success"] = True
@@ -151,10 +144,10 @@ def reset_model():
     
     initial_reset = data.get("initialReset", False)
     if not initial_reset:
-        SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).add_entry(data) # record this interaction
-        SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).save(data["experiment"])
+        SESSION_HANDLER.get_session(bottle.request.session.id).add_entry(data) # record this interaction
+        SESSION_HANDLER.get_session(bottle.request.session.id).save(data["experiment"])
 
-    SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).reset()
+    SESSION_HANDLER.get_session(bottle.request.session.id).reset()
 
     data["message"] = "Reset model"
     data["success"] = True
@@ -168,13 +161,13 @@ def retrain_model():
     data = bottle.request.json
     data["remote_address"] = bottle.request.client_ip
     
-    success, message = SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).model.retrain(**data["retrainArgs"])
+    success, message = SESSION_HANDLER.get_session(bottle.request.session.id).model.retrain(**data["retrainArgs"])
     
     if success:
         bottle.response.status = 200
-        encoded_model_fn = SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).save(data["experiment"])
+        encoded_model_fn = SESSION_HANDLER.get_session(bottle.request.session.id).save(data["experiment"])
         data["cached_model"] = encoded_model_fn 
-        SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).add_entry(data) # record this interaction
+        SESSION_HANDLER.get_session(bottle.request.session.id).add_entry(data) # record this interaction
     else:
         data["error"] = message
         bottle.response.status = 500
@@ -190,7 +183,7 @@ def record_correction():
     data = bottle.request.json
     data["remote_address"] = bottle.request.client_ip
 
-    SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).add_entry(data) # record this interaction
+    SESSION_HANDLER.get_session(bottle.request.session.id).add_entry(data) # record this interaction
 
     #
     tlat, tlon = data["extent"]["ymax"], data["extent"]["xmin"]
@@ -205,7 +198,7 @@ def record_correction():
     xs, ys = fiona.transform.transform(origin_crs, "epsg:4326", [tlon], [tlat])
 
     #
-    naip_crs, naip_transform, naip_index = SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).current_transform
+    naip_crs, naip_transform, naip_index = SESSION_HANDLER.get_session(bottle.request.session.id).current_transform
 
     xs, ys = fiona.transform.transform(origin_crs, naip_crs.to_dict(), [tlon,blon], [tlat,blat])
     
@@ -224,7 +217,7 @@ def record_correction():
     tdst_row, bdst_row = min(tdst_row, bdst_row), max(tdst_row, bdst_row)
     tdst_col, bdst_col = min(tdst_col, bdst_col), max(tdst_col, bdst_col)
 
-    SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).model.add_sample(tdst_row, bdst_row, tdst_col, bdst_col, class_idx)
+    SESSION_HANDLER.get_session(bottle.request.session.id).model.add_sample(tdst_row, bdst_row, tdst_col, bdst_col, class_idx)
     num_corrected = (bdst_row-tdst_row) * (bdst_col-tdst_col)
 
     data["message"] = "Successfully submitted correction"
@@ -242,10 +235,10 @@ def do_undo():
     data = bottle.request.json
     data["remote_address"] = bottle.request.client_ip
 
-    SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).add_entry(data) # record this interaction
+    SESSION_HANDLER.get_session(bottle.request.session.id).add_entry(data) # record this interaction
 
     # Forward the undo command to the backend model
-    success, message, num_undone = SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).model.undo()
+    success, message, num_undone = SESSION_HANDLER.get_session(bottle.request.session.id).model.undo()
     data["message"] = message
     data["success"] = success
     data["count"] = num_undone
@@ -260,7 +253,7 @@ def pred_patch():
     data = bottle.request.json
     data["remote_address"] = bottle.request.client_ip
 
-    SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).add_entry(data) # record this interaction
+    SESSION_HANDLER.get_session(bottle.request.session.id).add_entry(data) # record this interaction
 
     # Inputs
     extent = data["extent"]
@@ -285,7 +278,7 @@ def pred_patch():
 
     naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DATASETS[dataset]["data_loader"].get_data_from_extent(extent)
     naip_data = np.rollaxis(naip_data, 0, 3) # we do this here instead of get_data_by_extent because not all GeoDataTypes will have a channel dimension
-    SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).current_transform = (naip_crs, naip_transform, naip_index)
+    SESSION_HANDLER.get_session(bottle.request.session.id).current_transform = (naip_crs, naip_transform, naip_index)
 
     # ------------------------------------------------------
     # Step 3
@@ -293,7 +286,7 @@ def pred_patch():
     #   Apply reweighting
     #   Fix padding
     # ------------------------------------------------------
-    output = SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).model.run(naip_data, extent, False)
+    output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(naip_data, extent, False)
     assert len(output.shape) == 3, "The model function should return an image shaped as (height, width, num_classes)"
     assert (output.shape[2] < output.shape[0] and output.shape[2] < output.shape[1]), "The model function should return an image shaped as (height, width, num_classes)" # assume that num channels is less than img dimensions
 
@@ -328,7 +321,7 @@ def pred_tile():
     data = bottle.request.json
     data["remote_address"] = bottle.request.client_ip
 
-    SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).add_entry(data) # record this interaction
+    SESSION_HANDLER.get_session(bottle.request.session.id).add_entry(data) # record this interaction
 
     # Inputs
     geom = data["polygon"]
@@ -349,7 +342,7 @@ def pred_tile():
         bottle.response.status = 400
         return json.dumps({"error": "Cannot currently download imagery with 'Basemap' based datasets"})
 
-    output = SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).model.run(naip_data, geom, True)
+    output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(naip_data, geom, True)
     output_hard = output.argmax(axis=2)
     print("Finished, output dimensions:", output.shape)
 
@@ -409,7 +402,7 @@ def get_input():
     data = bottle.request.json
     data["remote_address"] = bottle.request.client_ip
 
-    SESSION_MAP.get(bottle.request.session.id, DEFAULT_SESSION).add_entry(data) # record this interaction
+    SESSION_HANDLER.get_session(bottle.request.session.id).add_entry(data) # record this interaction
 
     # Inputs
     extent = data["extent"]
@@ -443,16 +436,7 @@ def whoami():
 
 
 def get_landing_page():
-    if 'logged_in' in bottle.request.session:
-        return bottle.static_file("landing_page.html", root="./" + ROOT_DIR + "/")
-    else:
-        return bottle.template("front_page.tpl")
-
-def get_root_app():
-    if 'logged_in' in bottle.request.session:
-        return bottle.static_file("lg_platform.html", root="./" + ROOT_DIR + "/")
-    else:
-        return bottle.template("front_page.tpl")
+    return bottle.static_file("landing_page.html", root="./" + ROOT_DIR + "/")
 
 def get_favicon():
     return
@@ -466,7 +450,7 @@ def get_everything_else(filepath):
 
 
 def main():
-    global DEFAULT_SESSION, LOCAL_MANAGER
+    global SESSION_HANDLER
     parser = argparse.ArgumentParser(description="AI for Earth Land Cover")
 
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debugging", default=False)
@@ -486,17 +470,6 @@ def main():
 
     subparsers = parser.add_subparsers(dest="subcommand", help='Help for subcommands') # TODO: If we use Python3.7 we can use the required keyword here
     parser_a = subparsers.add_parser('local', help='For running models on the local server')
-    parser_a.add_argument("--model", action="store", dest="model",
-        choices=[
-            "keras_dense"
-        ],
-        help="Model to use", required=True
-    )
-    parser_a.add_argument("--fine_tune_seed_data_fn", action="store", dest="fine_tune_seed_data_fn", type=str, help="Path to npz containing seed data to use", default=None)
-    parser_a.add_argument("--fine_tune_layer", action="store", dest="fine_tune_layer", type=int, help="Layer of model to fine tune", default=-2)
-    parser_a.add_argument("--model_fn", action="store", dest="model_fn", type=str, help="Model fn to use", default=None)
-    parser_a.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", default=None)
-
 
     parser_b = subparsers.add_parser('remote', help='For running models with RPC calls')
     parser.add_argument("--remote_host", action="store", dest="remote_host", type=str, help="RabbitMQ host", default="0.0.0.0")
@@ -516,13 +489,12 @@ def main():
     else:
         print("Must specify 'local' or 'remote' on command line")
         return
-    LOCAL_MANAGER.run_local = run_local
-    session_factory = SessionFactory(run_local, args)
-    DEFAULT_SESSION = session_factory.get_session(0)
+    SESSION_HANDLER = SessionHandler(run_local, args)
+    SESSION_HANDLER.start_monitor()
 
     # Setup logging
     log_path = os.getcwd() + "/logs"
-    setup_logging(log_path, "server")
+    setup_logging(log_path, "server") # TODO: don't delete logs
 
 
     # Setup the bottle server 
@@ -533,7 +505,7 @@ def main():
     app.add_hook("before_request", manage_sessions) # before every request we want to check to make sure there are no session issues
 
     # API paths
-    app.route("/predPatch", method="OPTIONS", callback=do_options)  # TODO: all of our web requests from index.html fire an OPTIONS call because of https://stackoverflow.com/questions/1256593/why-am-i-getting-an-options-request-instead-of-a-get-request, we should fix this 
+    app.route("/predPatch", method="OPTIONS", callback=do_options) # TODO: all of our web requests from index.html fire an OPTIONS call because of https://stackoverflow.com/questions/1256593/why-am-i-getting-an-options-request-instead-of-a-get-request, we should fix this 
     app.route('/predPatch', method="POST", callback=pred_patch)
 
     app.route("/predTile", method="OPTIONS", callback=do_options)
@@ -557,11 +529,16 @@ def main():
     app.route("/doLoad", method="OPTIONS", callback=do_options)
     app.route("/doLoad", method="POST", callback=do_load)
 
+    app.route("/createSession", method="OPTIONS", callback=do_options)
+    app.route("/createSession", method="POST", callback=create_session)
+
+    app.route("/killSession", method="OPTIONS", callback=do_options)
+    app.route("/killSession", method="POST", callback=kill_session)
+
     app.route("/whoami", method="GET", callback=whoami)
 
     # Content paths
     app.route("/", method="GET", callback=get_landing_page)
-    app.route("/app", method="GET", callback=get_root_app)
     app.route("/favicon.ico", method="GET", callback=get_favicon)
     app.route("/<filepath:re:.*>", method="GET", callback=get_everything_else)
 
@@ -574,11 +551,6 @@ def main():
         'session.auto': True
     }
     app = beaker.middleware.SessionMiddleware(app, session_opts)
-
-    session_monitor_thread = threading.Thread(target=session_monitor)
-    session_monitor_thread.setDaemon(True)
-    session_monitor_thread.start()
-
 
     server = cheroot.wsgi.Server(
         (args.host, args.port),

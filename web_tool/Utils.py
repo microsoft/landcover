@@ -1,7 +1,16 @@
+import io
 import threading
 
 import numpy as np
 
+def serialize(array):
+    with io.BytesIO() as f:
+        np.save(f, array)
+        return f.getvalue()
+
+def deserialize(data):
+    with io.BytesIO(data) as f:
+        return np.load(f)
 
 class AtomicCounter:
     ''' From https://gist.github.com/benhoyt/8c8a8d62debe8e5aa5340373f9c509c7 '''

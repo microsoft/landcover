@@ -14,12 +14,8 @@ import pickle
 import numpy as np
 
 import joblib
-import pika
 
 from Utils import get_random_string, AtomicCounter
-
-from ServerModelsRPC import ModelRPC
-from ServerModelsKerasDense import KerasDenseFineTune
 
 from log import LOGGER
 
@@ -35,33 +31,15 @@ def manage_session_folders():
         os.makedirs(SESSION_FOLDER)
 
 
-class SessionFactory():
-
-    def __init__(self, local, args):
-
-        self.local = local
-        self.args = args
-    
-    def get_session(self, session_id):
-
-        if self.local:
-            args = self.args
-            model = KerasDenseFineTune(args.model_fn, args.gpuid, args.fine_tune_layer, args.fine_tune_seed_data_fn)
-        else:
-            model = ModelRPC(session_id)
-        return Session(session_id, self.local, model)
-
-
 class Session():
 
-    def __init__(self, session_id, run_local, model):
+    def __init__(self, session_id, model):
         LOGGER.info("Instantiating a new session object with id: %s" % (session_id))
 
         self.storage_type = "file" # this will be "table" or "file"
         self.storage_path = "data/" # this will be a file path
         self.table_service = None # this will be an instance of TableService
 
-        self.run_local = run_local
         self.model = model
         self.current_transform = ()
 
@@ -73,28 +51,6 @@ class Session():
         self.session_id = session_id
         self.creation_time = time.time()
         self.last_interaction_time = self.creation_time
-
-    def spawn_worker(self):
-        if self.run_local:
-            pass
-        else:
-            # TODO: instead of spawning a local worker provision a VM that autostarts a worker
-            command = [
-                "/usr/bin/env", "python", "web_tool/worker.py",
-                "--model", "keras_dense",
-                "--model_fn", "web_tool/data/sentinel_demo_model.h5",
-                "--fine_tune_layer", "-2",
-                "--gpu", "0",
-                "--session-id", self.session_id
-            ]
-            process = subprocess.Popen(command, shell=False)
-            self.worker = process
-
-    def kill_worker(self):
-        if self.run_local:
-            del self.model
-        else:
-            self.worker.kill()
 
     def reset(self, soft=False, from_cached=None):
         if not soft:

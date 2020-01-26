@@ -433,3 +433,23 @@ var doLoad = function(cachedModel){
         contentType: "application/json"
     });
 };
+
+
+//-----------------------------------------------------------------
+// Load a saved model state from the backend
+//-----------------------------------------------------------------
+var doKillSession = function () {
+    $.ajax({
+        type: "POST",
+        url: window.location.origin + "/killSession",
+        data: JSON.stringify({}),
+        success: function (data, textStatus, jqXHR) {
+            window.location.href = "/";
+        },
+        error: function (jqXHR, textStatus) {
+            // TODO: Notify fail
+        },
+        dataType: "json",
+        contentType: "application/json"
+    });
+};

@@ -178,7 +178,27 @@
 
       $("#button-start").click(function () {
         if (selectedDataset !== null && selectedModel !== null) {
-          window.location.href = `/lg_platform.html?dataset=${selectedDataset}&model=${selectedModel}`;
+
+          var request = {
+            "dataset": selectedDataset,
+            "model": selectedModel
+          }
+
+          $.ajax({
+            type: "POST",
+            url: window.location.origin + "/createSession",
+            data: JSON.stringify(request),
+            success: function(data, textStatus, jqXHR){
+              window.location.href = `/lg_platform.html?dataset=${selectedDataset}&model=${selectedModel}`;
+            },
+            error: function(jqXHR, textStatus){
+              // TODO: Notify fail
+            },
+            dataType: "json",
+            contentType: "application/json"
+          });
+        }else{
+          // TODO: Notify fail
         }
       })
     }
