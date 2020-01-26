@@ -30,7 +30,7 @@ def session_monitor(session_handler, session_timeout_seconds=900):
             if time_inactive > session_timeout_seconds:
                 session_ids_to_kill.append(session_id)
         
-        for session_id in session_ids_to_kill
+        for session_id in session_ids_to_kill:
             LOGGER.info("SESSION MONITOR - Session (%s) has been inactive for over %d seconds, destroying" % (session_id, session_timeout_seconds))
             session_handler.kill_session(session_id)
         
