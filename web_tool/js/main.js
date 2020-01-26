@@ -212,7 +212,7 @@ var doUndo = function(){
         "SESSION": SESSION_ID
     };
 
-    if(!undoInProgress){
+    if(!gUndoInProgress){
         $.ajax({
             type: "POST",
             url: gBackendURL + "doUndo",
@@ -239,7 +239,7 @@ var doUndo = function(){
             }, 
             error: notifyFail,
             always: function(){
-                undoInProgress = false;
+                gUndoInProgress = false;
             },
             dataType: "json",
             contentType: "application/json"
