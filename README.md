@@ -43,13 +43,6 @@ conda deactivate
 - `rm web_tool_data_install.sh` (to keep the project directory clean!)
 - Edit `web_tool/endpoints.mine.js` and replace "msrcalebubuntu.eastus.cloudapp.azure.com" with the address of your VM (find/change your VM's host name or IP address in the Azure portal).
 
-### RabbitMQ setup instructions
-
-- Install following the script from https://www.rabbitmq.com/install-debian.html#apt-bintray-quick-start
-  - Replace "bionic" with "xenial" in the "deb https://dl.bintray.com/rabbitmq-erlang/debian bionic erlang-21.x" and "deb https://dl.bintray.com/rabbitmq/debian bionic main" lines (as the DSVM is "xenial")
-- For management `rabbitmq-plugins enable rabbitmq_management`
-  - For port forwarding `ssh -L 15672:localhost:15672 HOSTNAME`, then visit http://localhost:15672
-
 
 ## Local setup instructions
 
@@ -80,7 +73,7 @@ conda create -y -n ai4e python=3.6
 conda deactivate
 conda activate ai4e
 conda install -y -c conda-forge keras gdal rasterio fiona shapely scikit-learn matplotlib utm mercantile opencv rtree
-pip3 install --user beaker utm
+pip3 install --user beaker utm pytz rpyc
 pip3 install --user git+https://github.com/bottlepy/bottle.git
 pip3 install --user git+https://github.com/cherrypy/cheroot.git
 ``` 
@@ -108,8 +101,8 @@ cp web_tool/endpoints.js web_tool/endpoints.mine.js
 ## Edit `web_tool/endpoints.mine.js` and replace "msrcalebubuntu.eastus.cloudapp.azure.com" with the address of your machine
 nano web_tool/endpoints.mine.js
 
+## Edit `self._WORKERS` of the SessionHandler class in SessionHandler.py to include the GPU resources you want to use on your machine. By default this is set to use GPU IDs 0 through 4.
 nano web_tool/SessionHandler.py
-
 ```
 
 # Running an instance of the tool
@@ -118,7 +111,7 @@ Whether you setup the server in an Azure VM or locally, the following steps shou
 - Open a terminal on the machine that you setup (e.g. SSH into the VM using a desktop SSH client)
 - `cd landcover`
 - `export PYTHONPATH=.`
-- ` python web_tool/server.py --port 4444 --storage_type file --storage_path test.csv local`
+- `python web_tool/server.py --port 4444 --storage_type file --storage_path test.csv local`
   - This will start an HTTP server on :4444 that both serves the "frontend" web application and responds to API calls from the "frontend", allowing the web-app to interface with our CNN models (i.e. the "backend").
-  - If you have GPU packages setup you can specify a GPU to use with `--gpu GPUID`
+  - The tool comes preloaded with a dataset (defined in `web_tool/datasets.json`) and two models (defined in `web_tool/models.json`).
 - You should now be able to visit `http://<your machine's address>:4444/` and see the "frontend" interface.
