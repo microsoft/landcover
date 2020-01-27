@@ -96,7 +96,6 @@ cd ~
 
 # Finally, setup and run the server using the demo model
 cd landcover
-git checkout dev
 cp web_tool/endpoints.js web_tool/endpoints.mine.js
 ## Edit `web_tool/endpoints.mine.js` and replace "msrcalebubuntu.eastus.cloudapp.azure.com" with the address of your machine
 nano web_tool/endpoints.mine.js
