@@ -21,28 +21,48 @@ We develop / use the tool on Data Science Virtual Machines for Linux (Ubuntu) im
 ```bash
 sudo apt-get update
 sudo apt-get install blobfuse
-conda activate py35
-conda install rasterio fiona shapely rtree
-pip install --user --upgrade mercantile rasterio cherrypy
-pip install --user git+https://github.com/bottlepy/bottle.git
+
+conda config --set channel_priority strict
+conda create -y -n ai4e python=3.6
+## make sure `which python` points to the python installation in our new environment
 conda deactivate
+conda activate ai4e
+conda install -y -c conda-forge gdal rasterio fiona shapely opencv rtree
 ```
 - Log out and log back in
 - Visit the Microsoft AI for Earth [Azure storage account](https://portal.azure.com/#blade/Microsoft_Azure_Storage/FileShareMenuBlade/overview/storageAccountId/%2Fsubscriptions%2Fc9726640-cf74-4111-92f5-0d1c87564b93%2FresourceGroups%2FLandcover2%2Fproviders%2FMicrosoft.Storage%2FstorageAccounts%2Fmslandcoverstorageeast/path/vm-fileshare) (your account will need to be given access first)
-  - Download the `web-tool/mount_remotes_for_deployment.sh` and `web-tool/web_tool_data_install.sh` scripts to the home directory
+  - Download the `web-tool/mount_remotes_for_deployment.sh` and `web-tool/web_tool_data_install.sh` scripts to the home directory of the VM
   - Run the `mount_remotes_for_deployment.sh` script to mount the necessary blob storage containers (note: you will need to run this script every time you restart the VM)
 
 ### Repository setup instructions
 
 - SSH into the VM using a desktop SSH client
-- `git clone git@github.com:microsoft/landcover.git` (clone this repository)
-- `mv web_tool_data_install.sh landcover/`
-- `cd landcover`
-- Edit `web_tool_data_install.sh` as appropriate. This script will copy the necessary data files from the `web-tool-data` blob container to the project directory,  however you probably don't need _all_ the data in `web-tool-data/web_tool/tiles/` as these files can be large and are project instance specific.
-- `./web_tool_data_install.sh`
-- `rm web_tool_data_install.sh` (to keep the project directory clean!)
-- Edit `web_tool/endpoints.mine.js` and replace "msrcalebubuntu.eastus.cloudapp.azure.com" with the address of your VM (find/change your VM's host name or IP address in the Azure portal).
+```bash
+# Get this repository
+git clone git@github.com:microsoft/landcover.git
 
+mv web_tool_data_install.sh landcover/
+cd landcover
+# Edit `web_tool_data_install.sh` as appropriate. This script will copy the necessary data files from the `web-tool-data` blob container to the project directory,  however you probably don't need _all_ the data in `web-tool-data/web_tool/tiles/` as these files can be large and are project instance specific.
+bash web_tool_data_install.sh
+rm web_tool_data_install.sh
+cd ~
+
+# install the project required files
+cd landcover/
+python -m pip install -r requirements.txt
+cd ~
+
+# Finally, setup and run the server using the demo model
+cd landcover
+cp web_tool/endpoints.js web_tool/endpoints.mine.js
+## Edit `web_tool/endpoints.mine.js` and replace "msrcalebubuntu.eastus.cloudapp.azure.com" with the address of your machine (find/change your VM's host name or IP address in the Azure portal)
+nano web_tool/endpoints.mine.js
+
+## Edit `self._WORKERS` of the SessionHandler class in SessionHandler.py to include the GPU resources you want to use on your machine. By default this is set to use GPU IDs 0 through 4. Check `nvidia-smi` to see GPU information.
+nano web_tool/SessionHandler.py
+cd ~
+```
 
 ## Local setup instructions
 
@@ -106,6 +126,7 @@ nano web_tool/endpoints.mine.js
 
 ## Edit `self._WORKERS` of the SessionHandler class in SessionHandler.py to include the GPU resources you want to use on your machine. By default this is set to use GPU IDs 0 through 4.
 nano web_tool/SessionHandler.py
+cd ~
 ```
 
 # Running an instance of the tool
