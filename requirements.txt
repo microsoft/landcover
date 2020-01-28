@@ -16,5 +16,5 @@ scikit-image==0.16.2
 scikit-learn==0.22.1
 scipy==1.4.1
 Shapely==1.7.0
-tensorflow-gpu==2.1.0
+tensorflow-gpu==2.0.0
 utm==0.5.0
