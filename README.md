@@ -65,6 +65,8 @@ exit
 sudo apt update
 sudo apt install -y unzip libgl1
 
+# Make sure CUDA is installed
+
 # Create a new conda environment for running the web tool
 ## setting strict channel_priority seems to be a very important step - else all the gdal dependencies are very broken
 conda config --set channel_priority strict
@@ -72,10 +74,7 @@ conda create -y -n ai4e python=3.6
 ## make sure `which python` points to the python installation in our new environment
 conda deactivate
 conda activate ai4e
-conda install -y -c conda-forge keras gdal rasterio fiona shapely scikit-learn matplotlib utm mercantile opencv rtree
-pip3 install --user beaker utm pytz rpyc
-pip3 install --user git+https://github.com/bottlepy/bottle.git
-pip3 install --user git+https://github.com/cherrypy/cheroot.git
+conda install -y -c conda-forge gdal rasterio fiona shapely opencv rtree
 ``` 
 
 ### Repository setup instructions
@@ -93,6 +92,10 @@ cd landcover/web_tool/tiles/
 unzip -q hcmc_sentinel_tiles.zip
 cd ~
 
+# install the project required files
+cd landcover/
+python -m pip install -r requirements.txt
+cd ~
 
 # Finally, setup and run the server using the demo model
 cd landcover
