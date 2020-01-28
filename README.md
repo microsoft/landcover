@@ -61,11 +61,12 @@ rm Anaconda3-2019.07-Linux-x86_64.sh
 ## logout and log back in
 exit
 
+# Install CUDA if needed; note this may require a reboot
+## https://www.tensorflow.org/install/gpu#install_cuda_with_apt
+
 # Install unzip and a library that opencv will need
 sudo apt update
 sudo apt install -y unzip libgl1
-
-# Make sure CUDA is installed
 
 # Create a new conda environment for running the web tool
 ## setting strict channel_priority seems to be a very important step - else all the gdal dependencies are very broken
