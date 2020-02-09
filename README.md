@@ -104,7 +104,7 @@ conda install -y -c conda-forge gdal rasterio fiona shapely opencv rtree
 # Get the project and demo project data
 git clone https://github.com/microsoft/landcover.git
 
-wget -O landcover.zip "https://www.dropbox.com/s/tyh5qo8edog9vdh/landcover.zip?dl=1"
+wget -O landcover.zip "https://www.dropbox.com/s/s0v4x00z9jki5t0/landcover.zip?dl=1"
 unzip landcover.zip
 rm landcover.zip
 
