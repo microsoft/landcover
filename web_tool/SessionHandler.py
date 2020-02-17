@@ -53,10 +53,10 @@ class SessionHandler():
 
     def __init__(self, local, args):
         self._WORKERS = [ # TODO: I hardcode that there are 4 GPUs available on the local machine
-            {"type": "local", "gpu_id": 0},
-            {"type": "local", "gpu_id": 1},
-            {"type": "local", "gpu_id": 2},
-            {"type": "local", "gpu_id": 3}
+            {"type": "local", "gpu_id": None},
+            {"type": "local", "gpu_id": None},
+            {"type": "local", "gpu_id": None},
+            {"type": "local", "gpu_id": None}
         ]
 
         self._WORKER_POOL = Queue()
@@ -104,9 +104,10 @@ class SessionHandler():
             "--model", "keras_dense",
             "--model_fn", model_fn,
             "--fine_tune_layer", str(fine_tune_layer),
-            "--gpu", str(gpu_id),
             "--port", str(port)
         ]
+        if gpu_id is not None:
+            command.append("--gpu %d" % (gpu_id))
         process = subprocess.Popen(command, shell=False)
         return process
 
@@ -134,7 +135,7 @@ class SessionHandler():
                 "worker": worker,
                 "process": process
             }
-            LOGGER.info("Created a local worker for (%s) on GPU %d" % (session_id, gpu_id))
+            LOGGER.info("Created a local worker for (%s) on GPU %s" % (session_id, str(gpu_id)))
 
         elif worker["type"] == "remote":
             raise NotImplementedError("Remote workers aren't implemented yet")

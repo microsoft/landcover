@@ -65,7 +65,7 @@ def main():
     parser.add_argument("--fine_tune_layer", action="store", dest="fine_tune_layer", type=int, help="Layer of model to fine tune", default=-2)
     parser.add_argument("--fine_tune_seed_data_fn", action="store", dest="fine_tune_seed_data_fn", type=str, help="Path to npz containing seed data to use", default=None)
     
-    parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", required=True)
+    parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", required=False)
 
     args = parser.parse_args(sys.argv[1:])
 
