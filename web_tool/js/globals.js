@@ -37,12 +37,20 @@ var DATASETS = (function () {
     return json;
 })();
 
-var CLASSES = [
-    {"name": "Water", "color": "#0000FF", "count": 0},
-    {"name": "Tree Canopy", "color": "#008000", "count": 0},
-    {"name": "Field", "color": "#80FF80", "count": 0},
-    {"name": "Built", "color": "#806060", "count": 0},
-];
+var MODELS = (function () {
+    var json = null;
+    $.ajax({
+        'async': false,
+        'url': 'models.json',
+        'dataType': "json",
+        'success': function(data){
+            json = data;
+        }
+    });
+    return json;
+})();
+
+var CLASSES = [];
 
 //GUI elements
 var gSelectionBox = null;
@@ -55,6 +63,7 @@ var gCurrentZone = null;
 var gCurrentZoneLayerName = null;
 var gCurrentBasemapLayerName = null;
 var gCurrentDataset = null;
+var gCurrentModel = null;
 var gCurrentCustomPolygon = null; // this holds the current active leaflet `L.Layer` object for the custom polygon that the user can create
 
 

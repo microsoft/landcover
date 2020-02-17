@@ -189,7 +189,7 @@
             url: window.location.origin + "/createSession",
             data: JSON.stringify(request),
             success: function(data, textStatus, jqXHR){
-              window.location.href = `/lg_platform.html?dataset=${selectedDataset}`;
+              window.location.href = `/lg_platform.html?dataset=${selectedDataset}&model=${selectedModel}`;
             },
             error: function(jqXHR, textStatus){
               // TODO: Notify fail
