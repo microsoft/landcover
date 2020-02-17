@@ -64,7 +64,7 @@ def main():
     parser.add_argument("--model_fn", action="store", dest="model_fn", type=str, help="Model fn to use", default=None)
     parser.add_argument("--fine_tune_layer", action="store", dest="fine_tune_layer", type=int, help="Layer of model to fine tune", default=-2)
     
-    parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", required=True)
+    parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", required=False)
 
     args = parser.parse_args(sys.argv[1:])
 
