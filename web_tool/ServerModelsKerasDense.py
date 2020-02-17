@@ -11,6 +11,24 @@ import tensorflow.keras as keras
 from ServerModelsAbstract import BackendModel
 from web_tool import ROOT_DIR
 
+import scipy.optimize
+
+def softmax(z):
+    assert len(z.shape) == 2
+    shift = np.max(z, axis=1, keepdims=True)
+    e_z = np.exp(z - shift)
+    denominator = np.sum(e_z, axis=1, keepdims=True)
+    return e_z / denominator
+
+def pred(X, W, b):
+    return softmax(X@W + b)
+
+def nll(X, W, b, y):
+    if len(X.shape) == 1:
+        X = X[np.newaxis,:]
+    y_pred = pred(X, W, b)  
+    loss = (-np.log(y_pred)) * y #y is one hot encoded, so we zero out everything except for the "correct" class
+    return np.sum(loss)
 
 
 class KerasDenseFineTune(BackendModel):
@@ -26,7 +44,7 @@ class KerasDenseFineTune(BackendModel):
         n_iter_no_change=50
     )
 
-    def __init__(self, model_fn, gpuid, fine_tune_layer, fine_tune_seed_data_fn, verbose=False):
+    def __init__(self, model_fn, gpuid, fine_tune_layer, verbose=False):
 
         self.model_fn = model_fn
         
@@ -67,26 +85,46 @@ class KerasDenseFineTune(BackendModel):
 
         self.undo_stack = []
 
-        self.use_seed_data = None
-        if fine_tune_seed_data_fn is not None:
-            self.use_seed_data = True
+        ## Setting up "seed" data
+        self.use_seed_data = True
 
-            data  = np.load(fine_tune_seed_data_fn)
-            seed_x = data["seed_x"]
-            seed_y = data["seed_y"]
+        # Find the weights of the last convolutional layer, assume this is 1x1 convs (or a dense layer) with bias
+        for layer_idx in range(-1,-5,-1):
+            weights = tmodel.layers[layer_idx].get_weights()
+            if len(weights) == 2:
+                W = weights[0]
+                W = W.squeeze()
+                b = weights[1]
+                break
 
-            for row in seed_x:
-                self.augment_base_x_train.append(row)
-            for row in seed_y:
-                self.augment_base_y_train.append(row)
+        num_features, num_classes = W.shape
+        for y_idx in range(1,num_classes):
+            X = np.random.random((num_features))
 
-            for row in self.augment_base_x_train:
-                self.augment_x_train.append(row)
-            for row in self.augment_base_y_train:
-                self.augment_y_train.append(row) 
+            y = np.zeros((1,num_classes), dtype=np.float32)
+            y[0,y_idx] = 1
 
-        else:
-            self.use_seed_data = False
+            bounds = [
+                (-1,1)
+                for i in range(num_features)
+            ]
+
+            result = scipy.optimize.minimize(nll, X, args=(W,b,y), options={"maxiter":5}, bounds=bounds)
+
+            X = result.x[np.newaxis,:]
+
+            print("Class %d\tObjective %0.2f, Prediction %s" % (
+                y_idx, nll(X,W,b,y), str(pred(X,W,b).round(2))
+            ))
+
+            self.augment_base_x_train.append(X)
+            self.augment_base_y_train.append([y_idx-1])
+
+        # Add seed data to normal training data
+        for row in self.augment_base_x_train:
+            self.augment_x_train.append(row)
+        for row in self.augment_base_y_train:
+            self.augment_y_train.append(row)
      
 
     def run(self, naip_data, extent, on_tile=False):
@@ -134,6 +172,9 @@ class KerasDenseFineTune(BackendModel):
     def retrain(self, **kwargs):
         x_train = np.concatenate(self.augment_x_train, axis=0)
         y_train = np.concatenate(self.augment_y_train, axis=0)
+
+        print(x_train.shape)
+        print(y_train.shape)
         
         vals, counts = np.unique(y_train, return_counts=True)
 

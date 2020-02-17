@@ -11,6 +11,7 @@
             "fn": "web_tool/data/sentinel_demo_model.h5"
         }
     },
+
     "naip_demo": {
         "metadata": {
             "displayName": "NAIP Supervised"
@@ -21,6 +22,76 @@
             "numParameters": 7790949,
             "inputShape": [240,240,4],
             "fn": "web_tool/data/naip_demo_model.h5"
+        },
+        "classes":[
+            {"label": "Water", "color": "#0000FF"},
+            {"label": "Tree Canopy", "color": "#008000"},
+            {"label": "Field", "color": "#80FF80"},
+            {"label": "Built", "color": "#806060"}
+        ]
+    },
+
+    "autoencoder_demo": {
+        "metadata": {
+            "displayName": "Autoencoder Unsupervised"
+        },
+        "model": {
+            "type": "keras_dense",
+            "fineTuneLayer": -2,
+            "numParameters": 4329024,
+            "inputShape": [150,150,64],
+            "fn": "web_tool/data/autoencoder_demo.h5"
         }
+    },
+
+    "naip_all_test": {
+        "metadata": {
+            "displayName": "NAIP HR All Supervised"
+        },
+        "model": {
+            "type": "keras_dense",
+            "fineTuneLayer": -3,
+            "numParameters": 7790949,
+            "inputShape": [240,240,4],
+            "fn": "web_tool/data/naip_hr_all_model.h5"
+        },
+        "classes":[
+            {"label": "Water", "color": "#0000FF"},
+            {"label": "Tree Canopy", "color": "#008000"},
+            {"label": "Field", "color": "#80FF80"},
+            {"label": "Built", "color": "#806060"}
+        ]
+    },
+
+    "naip_hr_test": {
+        "metadata": {
+            "displayName": "Land use model"
+        },
+        "model": {
+            "type": "keras_dense",
+            "fineTuneLayer": -3,
+            "numParameters": 5992145,
+            "inputShape": [240,240,4],
+            "fn": "/home/caleb/code/land-cover/results/land_use_experiments/md_and_de_1m_2013_test/model_05.h5"
+        },
+        "classes": [
+            {"label":"Impervious, Road","color":"#000000"},
+            {"label":"Impervious, Non-Road","color":"#730000"},
+            {"label":"Tree Canopy over Impervious","color":"#55ff00"},
+            {"label":"Water","color":"#0070ff"},
+            {"label":"Tidal Wetlands","color":"#00ffc5"},
+            {"label":"Floodplain Wetlands","color":"#00e6a9"},
+            {"label":"Other Wetlands","color":"#00b786"},
+            {"label":"Forest","color":"#267300"},
+            {"label":"Tree Canopy over Turf","color":"#aaff00"},
+            {"label":"Mixed Open","color":"#a87000"},
+            {"label":"Fractional Turf (small)","color":"#ffbee8"},
+            {"label":"Fractional Turf (medium)","color":"#e5abd1"},
+            {"label":"Fractional Turf (large)","color":"#99728b"},
+            {"label":"Fractional Impervious","color":"#c500ff"},
+            {"label":"Turf Grass","color":"#ffff73"},
+            {"label":"Cropland","color":"#e69800"},
+            {"label":"Pasture","color":"#e69800"}
+        ]
     }
 }

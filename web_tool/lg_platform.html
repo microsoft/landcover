@@ -60,7 +60,7 @@
                     <h3 style="text-align: center; margin-top:20px;">Correction type:</h3>
                     <div style="padding-left:20px">
                         <div id="classList">
-                            <div class="radio">
+                            <!-- <div class="radio">
                                 <button class="circle jscolor" data-class-name="Water" data-jscolor="{valueElement:null,value:'0000FF',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
                                 <label class="selected"><input type="radio" name="radClasses" class="radNewClass" value="Water" checked><span class="className">Water</span> (<span class="classCounts">0</span> samples since last retrain)</label>
                             </div>
@@ -75,7 +75,7 @@
                             <div class="radio">
                                 <button class="circle jscolor" data-class-name="Built" data-jscolor="{valueElement:null,value:'806060',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
                                 <label><input type="radio" name="radClasses" class="radNewClass" value="Built"><span class="className">Built</span> (<span class="classCounts">0</span> samples since last retrain)</label>
-                            </div>
+                            </div> -->
                         </div>
                         <div style="text-align: center; margin-top:10px; margin-bottom:20px;">
                             <button id="btnNewClass" style="background-color: gray; border-color: white;"> Add new class</button>
@@ -171,6 +171,7 @@
                 args.dataset = "esri_world_imagery";
             }
             gCurrentDataset = args.dataset;
+            gCurrentModel = args.model;
 
             if(args.cachedModel !== null){
                 doLoad(args.cachedModel); // load a cached version of the model
@@ -191,7 +192,7 @@
             // Load the dataset specific shapes
             //----------------------------------------------------------------------
             // TODO: This needs to be refactored out of main() somehow. e.g. If I want to create a new interface that handles zone clicks differently then it should be easy to do, while currently I would have to break everything about how zones are currently handled.
-            if(DATASETS[gCurrentDataset]["shapeLayers"] !== null){
+            if(DATASETS[gCurrentDataset]["shapeLayers"] !== null  && DATASETS[gCurrentDataset]["shapeLayers"].length !== 0){
                 for(zoneSetId in DATASETS[gCurrentDataset]["shapeLayers"]){
                     // for each shapeLayer in the current dataset we need to load the GeoJSON in `zoneMaps`
 
@@ -206,6 +207,50 @@
                     getZoneMap(zoneSetId, zoneName, DATASETS[gCurrentDataset]["shapeLayers"][zoneSetId]["shapesFn"]);
                 }
             }
+
+
+            //----------------------------------------------------------------------
+            // Load the specific model classes
+            //----------------------------------------------------------------------
+            
+            for(var i=0;i<MODELS[gCurrentModel]["classes"].length;i++){
+                var currentClass = MODELS[gCurrentModel]["classes"][i];
+                
+                console.debug(currentClass)
+
+                var newClassIdx = CLASSES.length + 1;
+                var newColor = currentClass["color"];
+
+                var newClassElement =  $("<div class='radio'>");
+                var newLabel = $("<label><input type='radio' name='radClasses' class='radNewClass' value='Class "+newClassIdx+"'><span class='className'>"+currentClass["label"]+"</span> (<span class='classCounts'>0</span> samples since last retrain)<i class='fa fa-edit ml-1 classNameEdit'></i></label>");
+
+                var newPicker = document.createElement('button');
+                newPicker.classList.add("circle");
+                newPicker.classList.add("jscolor");
+                newPicker.setAttribute("data-class-name", "Class "+newClassIdx);
+                var output = new jscolor(newPicker, {
+                    valueElement: null,
+                    value: newColor.substr(1),
+                    position:'left',
+                    zIndex:2001,
+                    closable:true,
+                    closeText:'Close',
+                    onFineChange:'updateClassColor(this)'
+                });
+
+                newClassElement.append(newPicker);
+                newClassElement.append(newLabel);        
+            
+                $("#classList").append(newClassElement);
+
+                CLASSES.push({
+                    "name": "Class " + newClassIdx,
+                    "color": newColor,
+                    "count": 0
+                });
+            }
+        
+
 
             //----------------------------------------------------------------------
             // Setup map layers
@@ -223,7 +268,7 @@
 
             // Setup the initial layers to be displayed on the map. This consists of the basemap from the dataset and, if defined, the first shape layer.
             var initialLayers = [baseLayer];
-            if(DATASETS[gCurrentDataset]["shapeLayers"] !== null){
+            if(DATASETS[gCurrentDataset]["shapeLayers"] !== null && DATASETS[gCurrentDataset]["shapeLayers"].length !== 0){
                 initialLayers.push(gZonemaps[DATASETS[gCurrentDataset]["shapeLayers"][0]["name"]]);
                 gCurrentZoneLayerName = DATASETS[gCurrentDataset]["shapeLayers"][0]["name"];
             }
@@ -331,7 +376,7 @@
 
             $("#btnNewClass").click(function(){
                 
-                var newClassIdx = CLASSES.length + 1;
+                var newClassIdx = CLASSES.length;
                 var newColor = getRandomColor();
 
                 var newClassElement =  $("<div class='radio'>");

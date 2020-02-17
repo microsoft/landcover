@@ -40,5 +40,31 @@
                 "name": "Wards"
             }
         ]
+    },
+    "naip_maryland": {
+        "metadata": {
+            "displayName": "Maryland-2017",
+            "imageryName": "NAIP Imagery",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "CUSTOM",
+            "path": "tiles/m_3807537_ne_18_1_20170611.mrf",
+            "padding": 20
+        },
+        "basemapLayer": {
+            "initialZoom": 11,
+            "url": "tiles/m_3807537_ne_18_1_20170611_tiles/{z}/{x}/{y}.png",
+            "initialLocation": [ 38.477018, -75.402312],
+            "args": {
+                "attribution": "Georeferenced Image",
+                "tms": true,
+                "maxNativeZoom": 16,
+                "maxZoom": 20,
+                "minZoom": 10
+            },
+            "bounds": null
+        },
+        "shapeLayers": null
     }
 }
