@@ -146,7 +146,17 @@ def main():
     
     print("Loading data")
 
-    all_data = (np.array([np.rollaxis(rasterio.open(in_file, "r").read(), 0, 3) for in_file in args.input_fn]))
+    all_data = []
+    # (np.array([np.rollaxis(rasterio.open(in_file, "r").read(), 0, 3) for in_file in args.input_fn]))
+    for in_file in args.input_fn:
+        f = rasterio.open(in_file, "r")
+        temp = f.read()
+        temp = np.rollaxis(temp, 0, 3)
+        all_data.append(np.array(temp))
+        f.close()
+
+    all_data = np.array(all_data)
+    all_data_shape = all_data.shape
 
     # data = np.concatenate([
     #     data,
@@ -154,79 +164,107 @@ def main():
     # ], axis=2)
 
     # assert data.shape[2] == 4
-    print("Loaded data with shape:", all_data.shape)
+    print("Loaded data with shape:", all_data_shape)
 
-    print("Fitting KMeans model for labels")
-    num_classes = 64
-    kmeans = MiniBatchKMeans(n_clusters=num_classes, verbose=1, init_size=2**16, n_init=20, batch_size=2**14, compute_labels=False)
+    # Extract color features from each file
+    all_data_color_features = []
+    data_shapes_index = []
+    count = 0
+
     for data in all_data:
         data_original_shape = data.shape
         data_color_features = data.reshape(-1,data_original_shape[2])
         mask = (data_color_features == 0).sum(axis=1) != data_original_shape[2]
-        kmeans = kmeans.fit(data_color_features[mask])
-    # #labels = kmeans.fit_predict(data_color_features)
-    # labels = manual_kmeans_predict(data_color_features, cluster_centers=kmeans.cluster_centers_)
-    # data_color_labels = labels.reshape(data_original_shape[:2])
+        all_data_color_features.append(data_color_features[mask])
+        data_shapes_index.append(data_original_shape)
+        count += 1
 
-    # print("Extracting training samples")
-    # n_samples = 5000
-    # height, width = 150, 150
-    # x_all = np.zeros((n_samples, height, width, data_original_shape[2]), dtype=np.float32)
-    # y_all = np.zeros((n_samples, height, width), dtype=np.float32)
+    # Set all data color features to numpy array
+    all_data_color_features = np.array(np.vstack(all_data_color_features))
+    print("Total shape: {}".format(all_data_color_features.shape))
 
-    # for i in range(n_samples):
-    #     x = np.random.randint(0, data.shape[1]-width)
-    #     y = np.random.randint(0, data.shape[0]-height)
-        
-    #     while np.any((data[y:y+height, x:x+width, :] == 0).sum(axis=2) == data_original_shape[2]):
-    #         x = np.random.randint(0, data.shape[1]-width)
-    #         y = np.random.randint(0, data.shape[0]-height)
-        
-    #     img = data[y:y+height, x:x+width, :].astype(np.float32)
-    #     target = data_color_labels[y:y+height, x:x+width].copy()
-        
-    #     x_all[i] = img
-    #     y_all[i] = target
+    # Fit KMeans on all data color features
+    print("Fitting KMeans model for labels")
+    num_classes = 64
+    kmeans = MiniBatchKMeans(n_clusters=num_classes, verbose=1, init_size=2**16, n_init=20, batch_size=2**14, compute_labels=False)
+    kmeans = kmeans.fit(all_data_color_features)
+    labels = manual_kmeans_predict(all_data_color_features, cluster_centers=kmeans.cluster_centers_)
+    
+    # Separate labels per file (Used since files have variable sizes)
+    all_data_color_labels = []
+    for data_shape in data_shapes_index:
+        lbl_count = data_shape[0] * data_shape[1]
+        all_data_color_labels.append((labels[:lbl_count]).reshape(data_shape[:2]))
+        # Throw away labels added to all_data_color_labels
+        labels = labels[lbl_count:]
+    all_data_color_labels = np.array(all_data_color_labels)
 
-    # del data, data_color_labels, data_color_features
-    # x_all = x_all/255.0
-    # y_all = keras.utils.to_categorical(y_all, num_classes=num_classes)
+    # Assuming all data has same # of bands
+    bands = all_data[0].shape[2]
+    n_samples_each = 5000
+    n_samples = n_samples_each * all_data.shape[0]
+    height, width = 150, 150
+    x_all = np.zeros((n_samples, height, width, bands), dtype=np.float32)
+    y_all = np.zeros((n_samples, height, width), dtype=np.float32)
+
+    # Go through all data to extract 5000 samples each
+    print("Extracting training samples")
+    count = 0
+    for data in all_data:
+        for i in range(count*n_samples_each, (count+1)*n_samples_each):
+            x = np.random.randint(0, data.shape[1]-width)
+            y = np.random.randint(0, data.shape[0]-height)
+            
+            while np.any((data[y:y+height, x:x+width, :] == 0).sum(axis=2) == data_original_shape[2]):
+                x = np.random.randint(0, data.shape[1]-width)
+                y = np.random.randint(0, data.shape[0]-height)
+            
+            img = data[y:y+height, x:x+width, :].astype(np.float32)
+            target = all_data_color_labels[count][y:y+height, x:x+width].copy()
+            
+            x_all[i] = img
+            y_all[i] = target
+        count += 1
+
+    del all_data, all_data_color_features, all_data_color_labels
+    
+    x_all = x_all/255.0
+    y_all = keras.utils.to_categorical(y_all, num_classes=num_classes)
+
+    model = basic_model((height, width, bands), num_classes, lr=0.003)
+    model.summary()
+
+    print("Fitting model")
+
+    datagen = ImageDataGenerator(
+        rotation_range=0,
+        width_shift_range=0,
+        height_shift_range=0,
+        channel_shift_range=0.1,
+        fill_mode='constant', # can also be "nearest"
+        cval=0.0,
+        horizontal_flip=False,
+        vertical_flip=False,
+        preprocessing_function=image_cutout_augmentation,
+        dtype=np.float32
+    )
 
 
-    # model = basic_model((height, width, data_original_shape[2]), num_classes, lr=0.003)
-    # model.summary()
+    model_checkpoint = keras.callbacks.ModelCheckpoint(args.output_fn, monitor='train_loss', verbose=1, save_best_only=False, save_weights_only=False, mode='auto', period=1)
+    #model.fit(x_all, y_all, batch_size=32, epochs=30, verbose=1, callbacks=[model_checkpoint], validation_split=0.1)
 
-    # print("Fitting model")
-
-    # datagen = ImageDataGenerator(
-    #     rotation_range=0,
-    #     width_shift_range=0,
-    #     height_shift_range=0,
-    #     channel_shift_range=0.1,
-    #     fill_mode='constant', # can also be "nearest"
-    #     cval=0.0,
-    #     horizontal_flip=False,
-    #     vertical_flip=False,
-    #     preprocessing_function=image_cutout_augmentation,
-    #     dtype=np.float32
-    # )
-
-
-    # model_checkpoint = keras.callbacks.ModelCheckpoint(args.output_fn, monitor='train_loss', verbose=1, save_best_only=False, save_weights_only=False, mode='auto', period=1)
-    # #model.fit(x_all, y_all, batch_size=32, epochs=30, verbose=1, callbacks=[model_checkpoint], validation_split=0.1)
-
-    # model.fit_generator(
-    #     datagen.flow(x_all, y_all, batch_size=args.batch_size),
-    #     steps_per_epoch=x_all.shape[0] / args.batch_size,
-    #     epochs=args.num_epochs,
-    #     callbacks=[model_checkpoint],
-    #     validation_data=datagen.flow(x_all, y_all, batch_size=args.batch_size),
-    #     validation_steps=50
-    # )
+    model.fit_generator(
+        datagen.flow(x_all, y_all, batch_size=args.batch_size),
+        steps_per_epoch=x_all.shape[0] / args.batch_size,
+        epochs=args.num_epochs,
+        callbacks=[model_checkpoint],
+        validation_data=datagen.flow(x_all, y_all, batch_size=args.batch_size),
+        validation_steps=50
+    )
 
 
 
-    # print("Finished in %0.4f seconds" % (time.time() - start_time))
+    print("Finished in %0.4f seconds" % (time.time() - start_time))
 
 if __name__ == "__main__":
     main()
