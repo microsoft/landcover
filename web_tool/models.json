@@ -9,7 +9,13 @@
             "numParameters": 563498,
             "inputShape": [100,100,4], 
             "fn": "web_tool/data/sentinel_demo_model.h5"
-        }
+        },
+        "classes":[
+            {"label": "Water", "color": "#0000FF"},
+            {"label": "Tree Canopy", "color": "#008000"},
+            {"label": "Field", "color": "#80FF80"},
+            {"label": "Built", "color": "#806060"}
+        ]
     },
 
     "naip_demo": {
@@ -23,25 +29,6 @@
             "inputShape": [240,240,4],
             "fn": "web_tool/data/naip_demo_model.h5"
         },
-        "classes":[
-            {"label": "Water", "color": "#0000FF"},
-            {"label": "Tree Canopy", "color": "#008000"},
-            {"label": "Field", "color": "#80FF80"},
-            {"label": "Built", "color": "#806060"}
-        ]
-    },
-
-    "atimur": {
-        "metadata": {
-            "displayName": "Atimur Planet/Sentinel Unsupervised"
-        },
-        "model": {
-            "type": "keras_dense",
-            "fineTuneLayer": -2,
-            "numParameters": 4435264,
-            "inputShape": [150,150,14],
-            "fn": "web_tool/models/atumir_30.h5"
-        }
         "classes":[
             {"label": "Water", "color": "#0000FF"},
             {"label": "Tree Canopy", "color": "#008000"},

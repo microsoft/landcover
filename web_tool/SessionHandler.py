@@ -107,7 +107,8 @@ class SessionHandler():
             "--port", str(port)
         ]
         if gpu_id is not None:
-            command.append("--gpu %d" % (gpu_id))
+            command.append("--gpu")
+            command.append("%d" % (gpu_id))
         process = subprocess.Popen(command, shell=False)
         return process
 

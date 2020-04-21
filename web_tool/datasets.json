@@ -49,7 +49,7 @@
         },
         "dataLayer": {
             "type": "CUSTOM",
-            "path": "tiles/m_3807537_ne_18_1_20170611.mrf",
+            "path": "tiles/m_3807537_ne_18_1_20170611.tif",
             "padding": 20
         },
         "basemapLayer": {
