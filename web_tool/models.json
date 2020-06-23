@@ -9,7 +9,13 @@
             "numParameters": 563498,
             "inputShape": [100,100,4], 
             "fn": "web_tool/data/sentinel_demo_model.h5"
-        }
+        },
+        "classes":[
+            {"label": "Water", "color": "#0000FF"},
+            {"label": "Tree Canopy", "color": "#008000"},
+            {"label": "Field", "color": "#80FF80"},
+            {"label": "Built", "color": "#806060"}
+        ]
     },
 
     "naip_demo": {
@@ -41,12 +47,36 @@
             "numParameters": 4435264,
             "inputShape": [150,150,14],
             "fn": "web_tool/models/atumir_30.h5"
-        }
+        },
         "classes":[
             {"label": "Water", "color": "#0000FF"},
             {"label": "Tree Canopy", "color": "#008000"},
             {"label": "Field", "color": "#80FF80"},
             {"label": "Built", "color": "#806060"}
+        ]
+    },
+
+    "atimur_supervised": {
+        "metadata": {
+            "displayName": "Atimur Planet/Sentinel Supervised"
+        },
+        "model": {
+            "type": "keras_dense",
+            "fineTuneLayer": -2,
+            "numParameters": 4435264,
+            "inputShape": [150,150,14],
+            "fn": "web_tool/models/atimur_30_TUNED1.h5"
+        },
+        "classes":[
+            {"label": "Water", "color": "#0000FF"},
+            {"label": "Tree Canopy", "color": "#008000"},
+            {"label": "Field", "color": "#80FF80"},
+            {"label": "Built", "color": "#806060"},
+            {"label":"MDF","color":"#C3AA3E"},
+            {"label":"LDF","color":"#67C5C4"},
+            {"label":"YRF","color":"#D64DE1"},
+            {"label":"Open Land","color":"#247FC6"},
+            {"label":"Agriculture","color":"#2F5A2F"}
         ]
     }
 }
