@@ -10,18 +10,23 @@ import sys
 import os
 import time
 
+import fiona
+import shapely.geometry
+import rtree
+
+import pickle
 
 tic = float(time.time())
 print("Creating spatial index and pickling tile name dictionary")
 tile_index = rtree.index.Index("data/tile_index")
 tiles = {}
-f = fiona.open("data/best_tiles.shp", "r")
+f = fiona.open(sys.argv[1], "r")
 count = 0
 for feature in f:
     if count % 10000 == 0:
         print("Loaded %d shapes..." % (count))
 
-    fid = feature["properties"]["location"]
+    fid = feature["properties"]["fn"]
     geom = shapely.geometry.shape(feature["geometry"])
     tile_index.insert(count, geom.bounds)
     tiles[count] = (fid, geom)
