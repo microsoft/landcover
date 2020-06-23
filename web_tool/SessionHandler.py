@@ -55,7 +55,6 @@ class SessionHandler():
         self._WORKERS = [ # TODO: I hardcode that there are 4 GPUs available on the local machine
             {"type": "local", "gpu_id": None},
             {"type": "local", "gpu_id": None},
-            {"type": "local", "gpu_id": None},
             {"type": "local", "gpu_id": None}
         ]
 
@@ -107,7 +106,8 @@ class SessionHandler():
             "--port", str(port)
         ]
         if gpu_id is not None:
-            command.append("--gpu %d" % (gpu_id))
+            command.append("--gpu")
+            command.append("%d" % (gpu_id))
         process = subprocess.Popen(command, shell=False)
         return process
 

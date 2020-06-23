@@ -297,6 +297,11 @@ def pred_patch():
     output, output_bounds = warp_data_to_3857(output, naip_crs, naip_transform, naip_bounds)
     output = crop_data_by_extent(output, output_bounds, extent)
 
+    num_colors = len(color_list)
+    if output.shape[2] > num_colors:
+        print("Cropping output to %d channels" % (num_colors))
+        output = output[:,:,:num_colors]
+
     # ------------------------------------------------------
     # Step 5
     #   Convert images to base64 and return  

@@ -86,8 +86,10 @@ class KerasDenseFineTune(BackendModel):
         self.undo_stack = []
 
         ## Setting up "seed" data
-        self.use_seed_data = True
+        self.use_seed_data = False
 
+
+        '''
         # Find the weights of the last convolutional layer, assume this is 1x1 convs (or a dense layer) with bias
         for layer_idx in range(-1,-5,-1):
             weights = tmodel.layers[layer_idx].get_weights()
@@ -125,6 +127,7 @@ class KerasDenseFineTune(BackendModel):
             self.augment_x_train.append(row)
         for row in self.augment_base_y_train:
             self.augment_y_train.append(row)
+        '''
      
 
     def run(self, naip_data, extent, on_tile=False):
@@ -133,6 +136,8 @@ class KerasDenseFineTune(BackendModel):
         naip_data = naip_data / 255.0
         output, output_features = self.run_model_on_tile(naip_data)
         
+        print(output.shape)
+
         if self.augment_model_trained:
             original_shape = output.shape
             output = output_features.reshape(-1, output_features.shape[2])
@@ -276,7 +281,7 @@ class KerasDenseFineTune(BackendModel):
             counts[y:y+self.input_size, x:x+self.input_size] += kernel
 
         output = output / counts[..., np.newaxis]
-        output = output[:,:,1:5]
+        output = output[:,:,1:]
         output_features = output_features / counts[..., np.newaxis]
 
         return output, output_features
