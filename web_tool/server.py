@@ -297,9 +297,11 @@ def pred_patch():
     output, output_bounds = warp_data_to_3857(output, naip_crs, naip_transform, naip_bounds)
     output = crop_data_by_extent(output, output_bounds, extent)
 
-    if len(color_list) > output.shape[2]:
-        print("WARNING: Color list is smaller than the number of output channels, cropping output to number of colors (you probably don't want this to happen")
-        output = output[:,:,:len(color_list)]
+    output = output[:,:,:len(color_list)]
+
+    #if len(color_list) > output.shape[2]:
+    #    print("WARNING: Color list is smaller than the number of output channels, cropping output to number of colors (you probably don't want this to happen")
+    #    output = output[:,:,:len(color_list)]
 
     # ------------------------------------------------------
     # Step 5
