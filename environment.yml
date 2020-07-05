@@ -8,17 +8,16 @@ channels:
 dependencies:
   - python>=3.6
   - gdal>=2.0
-  - rasterio>=1.0
+  - rasterio
   - shapely
   - rtree
   - fiona
   - opencv
+  - proj4
   - numpy
-  - pandas
   - matplotlib
   - scikit-learn
   - scikit-image
-  - scipy
   - pytorch>=1.0
   - torchvision
   - utm
@@ -27,8 +26,8 @@ dependencies:
   - cheroot==8.3.0
   - joblib
   - mercantile
-  - Pillow
   - pytz
+  - ipykernel
   - pylint
   - pip
   - pip:

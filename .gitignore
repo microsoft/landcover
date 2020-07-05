@@ -7,7 +7,7 @@ __pycache__
 
 data/
 logs/
-temp/
+tmp/
 
 web_tool/endpoints.mine.js
 

@@ -290,11 +290,9 @@ def pred_patch():
     output, output_bounds = warp_data_to_3857(output, naip_crs, naip_transform, naip_bounds)
     output = crop_data_by_extent(output, output_bounds, extent)
 
-    output = output[:,:,:len(color_list)]
-
-    #if len(color_list) > output.shape[2]:
-    #    print("WARNING: Color list is smaller than the number of output channels, cropping output to number of colors (you probably don't want this to happen")
-    #    output = output[:,:,:len(color_list)]
+    if output.shape[2] > len(color_list):
+       print("WARNING: Color list is smaller than the number of output channels, cropping output to number of colors (you probably don't want this to happen")
+       output = output[:,:,:len(color_list)]
 
     # ------------------------------------------------------
     # Step 5
@@ -342,8 +340,16 @@ def pred_tile():
         return json.dumps({"error": "Cannot currently download imagery with 'Basemap' based datasets"})
 
     output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(naip_data, geom, True)
-    output_hard = output.argmax(axis=2)
     print("Finished, output dimensions:", output.shape)
+    
+    if output.shape[2] > len(color_list):
+       print("WARNING: Color list is smaller than the number of output channels, cropping output to number of colors (you probably don't want this to happen")
+       output = output[:,:,:len(color_list)]
+    
+    output_hard = output.argmax(axis=2)
+
+
+
 
     # apply nodata mask from naip_data
     nodata_mask = np.sum(naip_data == 0, axis=2) == naip_data.shape[2]
@@ -361,8 +367,8 @@ def pred_tile():
 
     img_hard, img_hard_bounds = warp_data_to_3857(img_hard, raster_crs, raster_transform, raster_bounds, resolution=10)
 
-    cv2.imwrite(os.path.join(ROOT_DIR, "temp/%s.png" % (tmp_id)), img_hard)
-    data["downloadPNG"] = "downloads/%s.png" % (tmp_id)
+    cv2.imwrite("tmp/downloads/%s.png" % (tmp_id), img_hard)
+    data["downloadPNG"] = "tmp/downloads/%s.png" % (tmp_id)
 
     new_profile = raster_profile.copy()
     new_profile['driver'] = 'GTiff'
@@ -373,12 +379,12 @@ def pred_tile():
     new_profile['height'] = naip_data.shape[0] 
     new_profile['width'] = naip_data.shape[1]
     new_profile['nodata'] = 255
-    f = rasterio.open(os.path.join(ROOT_DIR, "downloads/%s.tif" % (tmp_id)), 'w', **new_profile)
+    f = rasterio.open("tmp/downloads/%s.tif" % (tmp_id), 'w', **new_profile)
     f.write(output_hard.astype(np.uint8), 1)
     f.close()
-    data["downloadTIFF"] = "downloads/%s.tif" % (tmp_id)
+    data["downloadTIFF"] = "tmp/downloads/%s.tif" % (tmp_id)
 
-    f = open(os.path.join(ROOT_DIR, "downloads/%s.txt" % (tmp_id)), "w")
+    f = open("tmp/downloads/%s.txt" % (tmp_id), "w")
     f.write("Class id\tClass name\tPercent area\tArea (km^2)\n")
     for i in range(len(vals)):
         pct_area = (counts[i] / np.sum(counts))
@@ -388,7 +394,7 @@ def pred_tile():
             real_area = -1
         f.write("%d\t%s\t%0.4f%%\t%0.4f\n" % (vals[i], name_list[vals[i]], pct_area*100, real_area))
     f.close()
-    data["downloadStatistics"] = "downloads/%s.txt" % (tmp_id)
+    data["downloadStatistics"] = "tmp/downloads/%s.txt" % (tmp_id)
 
     bottle.response.status = 200
     return json.dumps(data)
@@ -443,6 +449,9 @@ def get_basemap_data(filepath):
 def get_zone_data(filepath):
     return bottle.static_file(filepath, root="./data/zones/")
 
+def get_downloads(filepath):
+    return bottle.static_file(filepath, root="./tmp/downloads/")
+
 def get_favicon():
     return
 
@@ -474,28 +483,10 @@ def main():
     parser.add_argument("--port", action="store", dest="port", type=int, help="Port to listen on", default=8080)
 
 
-    subparsers = parser.add_subparsers(dest="subcommand", help='Help for subcommands') # TODO: If we use Python3.7 we can use the required keyword here
-    parser_a = subparsers.add_parser('local', help='For running models on the local server')
-
-    parser_b = subparsers.add_parser('remote', help='For running models with RPC calls')
-    parser.add_argument("--remote_host", action="store", dest="remote_host", type=str, help="RabbitMQ host", default="0.0.0.0")
-    parser.add_argument("--remote_port", action="store", dest="remote_port", type=int, help="RabbitMQ port", default=8080)
-
     args = parser.parse_args(sys.argv[1:])
 
-
-    # create Session factory to use based on whether we are running locally or remotely
-    run_local = None
-    if args.subcommand == "local":
-        print("Sessions will be spawned on the local machine")
-        run_local = True
-    elif args.subcommand == "remote":
-        print("Sessions will be spawned remotely")
-        run_local = False
-    else:
-        print("Must specify 'local' or 'remote' on command line")
-        return
-    SESSION_HANDLER = SessionHandler(run_local, args)
+    # Create session factory to handle incoming requests
+    SESSION_HANDLER = SessionHandler(args)
     SESSION_HANDLER.start_monitor()
 
     # Setup logging
@@ -547,6 +538,7 @@ def main():
     app.route("/", method="GET", callback=get_landing_page)
     app.route("/data/basemaps/<filepath:re:.*>", method="GET", callback=get_basemap_data)
     app.route("/data/zones/<filepath:re:.*>", method="GET", callback=get_zone_data)
+    app.route("/tmp/downloads/<filepath:re:.*>", method="GET", callback=get_downloads)
     app.route("/favicon.ico", method="GET", callback=get_favicon)
     app.route("/<filepath:re:.*>", method="GET", callback=get_everything_else)
 
@@ -567,6 +559,7 @@ def main():
     server.max_request_header_size = 2**13
     server.max_request_body_size = 2**27
 
+    LOGGER.info("Server initialized")
     try:
         server.start()
     finally:
