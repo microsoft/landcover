@@ -18,7 +18,6 @@ class Heatmap():
 
     @staticmethod
     def increment(z,y,x):
-        #print("Incrementing", (x,y,z))
         while z > 1:
             key = (z,y,x)
             Heatmap.count_dict[key] += 1

@@ -26,7 +26,6 @@ dependencies:
   - cheroot==8.3.0
   - joblib
   - mercantile
-  - pytz
   - ipykernel
   - pylint
   - pip

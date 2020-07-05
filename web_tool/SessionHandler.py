@@ -4,12 +4,13 @@ import subprocess
 import socket
 from queue import Queue
 
+import logging
+LOGGER = logging.getLogger("server")
+
 from .Session import Session
 
 from .ServerModelsRPC import ModelRPC
 from .ServerModelsKerasDense import KerasDenseFineTune
-
-from .log import LOGGER
 
 from .Models import load_models
 MODELS = load_models()

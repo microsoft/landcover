@@ -11,12 +11,14 @@ import argparse
 
 import numpy as np
 
+import logging
+LOGGER = logging.getLogger("server")
+
 import rpyc
 from rpyc.utils.server import OneShotServer, ThreadedServer
 
 from web_tool.ServerModelsKerasDense import KerasDenseFineTune
-from web_tool.Utils import serialize, deserialize
-from web_tool.log import setup_logging, LOGGER
+from web_tool.Utils import setup_logging, serialize, deserialize
 
 
 class MyService(rpyc.Service):
@@ -68,7 +70,7 @@ def main():
     args = parser.parse_args(sys.argv[1:])
 
     # Setup logging
-    log_path = os.getcwd() + "/logs"
+    log_path = os.getcwd() + "tmp/logs"
     setup_logging(log_path, "worker")
 
 

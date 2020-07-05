@@ -8,6 +8,9 @@ from sklearn.ensemble import RandomForestClassifier
 import tensorflow as tf
 import tensorflow.keras as keras
 
+import logging
+LOGGER = logging.getLogger("server")
+
 from . import ROOT_DIR
 from .ServerModelsAbstract import BackendModel
 
@@ -136,8 +139,6 @@ class KerasDenseFineTune(BackendModel):
         naip_data = naip_data / 255.0
         output, output_features = self.run_model_on_tile(naip_data)
         
-        print(output.shape)
-
         if self.augment_model_trained:
             original_shape = output.shape
             output = output_features.reshape(-1, output_features.shape[2])
@@ -177,15 +178,12 @@ class KerasDenseFineTune(BackendModel):
     def retrain(self, **kwargs):
         x_train = np.concatenate(self.augment_x_train, axis=0)
         y_train = np.concatenate(self.augment_y_train, axis=0)
-
-        print(x_train.shape)
-        print(y_train.shape)
         
         vals, counts = np.unique(y_train, return_counts=True)
 
         if len(vals) >= 4:
             self.augment_model.fit(x_train, y_train)
-            print("fine-tuning accuracy: ",self.augment_model.score(x_train, y_train))
+            LOGGER.debug("Fine-tuning accuracy: %0.4f" % (self.augment_model.score(x_train, y_train)))
             self.augment_model_trained = True
             self.undo_stack.append("retrain")
 

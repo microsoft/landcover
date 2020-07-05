@@ -25,13 +25,15 @@ import rasterio.warp
 import pickle
 import joblib
 
+import logging
+LOGGER = logging.getLogger("server")
+
 from web_tool.DataLoader import warp_data_to_3857, crop_data_by_extent
 from web_tool.Datasets import load_datasets, get_area_from_geometry
 DATASETS = load_datasets()
 
-from web_tool.Utils import get_random_string, class_prediction_to_img, get_shape_layer_by_name, AtomicCounter
+from web_tool.Utils import setup_logging, get_random_string, class_prediction_to_img, get_shape_layer_by_name, AtomicCounter
 from web_tool import ROOT_DIR
-from web_tool.log import setup_logging, LOGGER
 from web_tool.Session import Session, manage_session_folders, SESSION_FOLDER
 from web_tool.SessionHandler import SessionHandler
 SESSION_HANDLER = None
@@ -291,7 +293,7 @@ def pred_patch():
     output = crop_data_by_extent(output, output_bounds, extent)
 
     if output.shape[2] > len(color_list):
-       print("WARNING: Color list is smaller than the number of output channels, cropping output to number of colors (you probably don't want this to happen")
+       LOGGER.warning("The number of output channels is larger than the given color list, cropping output to number of colors (you probably don't want this to happen")
        output = output[:,:,:len(color_list)]
 
     # ------------------------------------------------------
@@ -340,10 +342,9 @@ def pred_tile():
         return json.dumps({"error": "Cannot currently download imagery with 'Basemap' based datasets"})
 
     output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(naip_data, geom, True)
-    print("Finished, output dimensions:", output.shape)
     
     if output.shape[2] > len(color_list):
-       print("WARNING: Color list is smaller than the number of output channels, cropping output to number of colors (you probably don't want this to happen")
+       LOGGER.warning("The number of output channels is larger than the given color list, cropping output to number of colors (you probably don't want this to happen")
        output = output[:,:,:len(color_list)]
     
     output_hard = output.argmax(axis=2)
@@ -490,8 +491,8 @@ def main():
     SESSION_HANDLER.start_monitor()
 
     # Setup logging
-    log_path = os.getcwd() + "/logs"
-    setup_logging(log_path, "server") # TODO: don't delete logs
+    log_path = os.getcwd() + "tmp/logs"
+    setup_logging(log_path, "server")
 
 
     # Setup the bottle server 

@@ -7,6 +7,9 @@ import fiona.transform
 import shapely
 import shapely.geometry
 
+import logging
+LOGGER = logging.getLogger("server")
+
 from . import ROOT_DIR
 from .DataLoader import DataLoaderCustom, DataLoaderUSALayer, DataLoaderBasemap
 
@@ -93,7 +96,7 @@ def load_datasets():
         dataset_object = _load_dataset(dataset)
         
         if dataset_object is False:
-            print("WARNING: files are missing, we will not be able to server '%s' dataset" % (key)) 
+            LOGGER.warning("Files are missing, we will not be able to serve the following dataset: '%s'" % (key)) 
         else:
             datasets[key] = dataset_object
 

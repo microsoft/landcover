@@ -10,10 +10,3 @@ logs/
 tmp/
 
 web_tool/endpoints.mine.js
-
-setup/
-setup_new/
-setup_table_storage.sh
-web_tool_data_install.sh
-mount_remotes_deployment.sh
-mount_remotes_development.sh

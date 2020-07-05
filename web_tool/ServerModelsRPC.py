@@ -1,7 +1,9 @@
 import sys, os, time
 import rpyc
 
-from .log import LOGGER
+import logging
+LOGGER = logging.getLogger("server")
+
 from .ServerModelsAbstract import BackendModel
 from .Utils import serialize, deserialize
 
