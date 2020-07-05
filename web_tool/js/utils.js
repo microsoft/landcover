@@ -112,6 +112,14 @@ var getPolyAround = function(latlng, radius){
     var x = latlngProjected.x;
     var y = latlngProjected.y;
     
+    // TODO: Clip x and y to the resolution of the dataset (here I've assumed 10 meters (these coordinates are EPSG:3857))
+    console.debug(x, y);
+
+    x = Math.floor(x/10) * 10;
+    y = Math.floor(y/10) * 10;
+
+    console.debug(x, y);
+
     var top = y + radius/2;
     var bottom = y - radius/2;
     var left = x - radius/2;

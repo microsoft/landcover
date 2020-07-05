@@ -226,3 +226,11 @@ a.leaflet-control-slider-toggle {
     margin: 8px 0;
     box-sizing: border-box;
 }
+
+.leaflet-labels-pane .leaflet-image-layer{
+    image-rendering: -moz-crisp-edges;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: -o-crisp-edges;
+    image-rendering: pixelated;
+    -ms-interpolation-mode: nearest-neighbor;
+}

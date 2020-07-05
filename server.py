@@ -28,7 +28,7 @@ import joblib
 import logging
 LOGGER = logging.getLogger("server")
 
-from web_tool.DataLoader import warp_data_to_3857, crop_data_by_extent
+from web_tool.DataLoader import warp_data_to_3857, crop_data_by_extent, crop_data_by_geometry
 from web_tool.Datasets import load_datasets, get_area_from_geometry
 DATASETS = load_datasets()
 
@@ -271,9 +271,11 @@ def pred_patch():
     if dataset not in DATASETS:
         raise ValueError("Dataset doesn't seem to be valid, do the datasets in js/tile_layers.js correspond to those in TileLayers.py")
 
-    naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DATASETS[dataset]["data_loader"].get_data_from_extent(extent)
-    naip_data = np.rollaxis(naip_data, 0, 3) # we do this here instead of get_data_by_extent because not all GeoDataTypes will have a channel dimension
-    SESSION_HANDLER.get_session(bottle.request.session.id).current_transform = (naip_crs, naip_transform, naip_index)
+
+    patch, crs, transform, bounds = DATASETS[dataset]["data_loader"].get_data_from_extent(extent)
+    print("pred_patch, after get_data_from_extent:", patch.shape)
+
+    SESSION_HANDLER.get_session(bottle.request.session.id).current_transform = (crs, transform)
 
     # ------------------------------------------------------
     # Step 3
@@ -281,31 +283,35 @@ def pred_patch():
     #   Apply reweighting
     #   Fix padding
     # ------------------------------------------------------
-    output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(naip_data, extent, False)
+    output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(patch, extent, False)
     assert len(output.shape) == 3, "The model function should return an image shaped as (height, width, num_classes)"
     assert (output.shape[2] < output.shape[0] and output.shape[2] < output.shape[1]), "The model function should return an image shaped as (height, width, num_classes)" # assume that num channels is less than img dimensions
+    print("pred_patch, after model.run:", output.shape)
 
     # ------------------------------------------------------
     # Step 4
     #   Warp output to EPSG:3857 and crop off the padded area
     # ------------------------------------------------------
-    output, output_bounds = warp_data_to_3857(output, naip_crs, naip_transform, naip_bounds)
-    output = crop_data_by_extent(output, output_bounds, extent)
+    warped_output, warped_patch_crs, warped_patch_transform, warped_patch_bounds = warp_data_to_3857(output, crs, transform, bounds)
+    print("pred_patch, after warp_data_to_3857:", warped_output.shape)
 
-    if output.shape[2] > len(color_list):
+    cropped_warped_output, cropped_warped_patch_transform = crop_data_by_extent(warped_output, warped_patch_crs, warped_patch_transform, extent)
+    print("pred_patch, after crop_data_by_extent:", cropped_warped_output.shape)
+
+    if cropped_warped_output.shape[2] > len(color_list):
        LOGGER.warning("The number of output channels is larger than the given color list, cropping output to number of colors (you probably don't want this to happen")
-       output = output[:,:,:len(color_list)]
+       cropped_warped_output = cropped_warped_output[:,:,:len(color_list)]
 
     # ------------------------------------------------------
     # Step 5
     #   Convert images to base64 and return  
     # ------------------------------------------------------
-    img_soft = np.round(class_prediction_to_img(output, False, color_list)*255,0).astype(np.uint8)
+    img_soft = np.round(class_prediction_to_img(cropped_warped_output, False, color_list)*255,0).astype(np.uint8)
     img_soft = cv2.imencode(".png", cv2.cvtColor(img_soft, cv2.COLOR_RGB2BGR))[1].tostring()
     img_soft = base64.b64encode(img_soft).decode("utf-8")
     data["output_soft"] = img_soft
 
-    img_hard = np.round(class_prediction_to_img(output, True, color_list)*255,0).astype(np.uint8)
+    img_hard = np.round(class_prediction_to_img(cropped_warped_output, True, color_list)*255,0).astype(np.uint8)
     img_hard = cv2.imencode(".png", cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGR))[1].tostring()
     img_hard = base64.b64encode(img_hard).decode("utf-8")
     data["output_hard"] = img_hard
@@ -334,14 +340,16 @@ def pred_tile():
         raise ValueError("Dataset doesn't seem to be valid, do the datasets in js/tile_layers.js correspond to those in TileLayers.py")    
     
     try:
-        naip_data, raster_profile, raster_transform, raster_bounds, raster_crs = DATASETS[dataset]["data_loader"].get_data_from_shape(geom["geometry"])
-        naip_data = np.rollaxis(naip_data, 0, 3)
+        tile, raster_profile, raster_transform, raster_bounds, raster_crs = DATASETS[dataset]["data_loader"].get_data_from_shape(geom["geometry"])
+        print("pred_tile, get_data_from_shape:", tile.shape)
+
         shape_area = get_area_from_geometry(geom["geometry"])      
     except NotImplementedError as e:
         bottle.response.status = 400
         return json.dumps({"error": "Cannot currently download imagery with 'Basemap' based datasets"})
 
-    output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(naip_data, geom, True)
+    output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(tile, geom, True)
+    print("pred_tile, after model.run:", output.shape)
     
     if output.shape[2] > len(color_list):
        LOGGER.warning("The number of output channels is larger than the given color list, cropping output to number of colors (you probably don't want this to happen")
@@ -349,11 +357,8 @@ def pred_tile():
     
     output_hard = output.argmax(axis=2)
 
-
-
-
     # apply nodata mask from naip_data
-    nodata_mask = np.sum(naip_data == 0, axis=2) == naip_data.shape[2]
+    nodata_mask = np.sum(tile == 0, axis=2) == tile.shape[2]
     output_hard[nodata_mask] = 255
     vals, counts = np.unique(output_hard[~nodata_mask], return_counts=True)
 
@@ -366,7 +371,12 @@ def pred_tile():
     img_hard = cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGRA)
     img_hard[nodata_mask] = [0,0,0,0]
 
-    img_hard, img_hard_bounds = warp_data_to_3857(img_hard, raster_crs, raster_transform, raster_bounds, resolution=10)
+    img_hard, img_hard_crs, img_hard_transform, img_hard_bounds = warp_data_to_3857(img_hard, raster_crs, raster_transform, raster_bounds)
+    print("pred_tile, after warp_data_to_3857:", img_hard.shape)
+
+    img_hard, cropped_warped_patch_transform = crop_data_by_geometry(img_hard, img_hard_crs, img_hard_transform, geom["geometry"], "epsg:4326")
+    print("pred_tile, after crop_data_by_geometry:", img_hard.shape)
+
 
     cv2.imwrite("tmp/downloads/%s.png" % (tmp_id), img_hard)
     data["downloadPNG"] = "tmp/downloads/%s.png" % (tmp_id)
@@ -377,8 +387,8 @@ def pred_tile():
     new_profile['compress'] = "lzw"
     new_profile['count'] = 1
     new_profile['transform'] = raster_transform
-    new_profile['height'] = naip_data.shape[0] 
-    new_profile['width'] = naip_data.shape[1]
+    new_profile['height'] = tile.shape[0] 
+    new_profile['width'] = tile.shape[1]
     new_profile['nodata'] = 255
     f = rasterio.open("tmp/downloads/%s.tif" % (tmp_id), 'w', **new_profile)
     f.write(output_hard.astype(np.uint8), 1)
@@ -407,7 +417,7 @@ def get_input():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
     data["remote_address"] = bottle.request.client_ip
-
+    
     SESSION_HANDLER.get_session(bottle.request.session.id).add_entry(data) # record this interaction
 
     # Inputs
@@ -417,17 +427,20 @@ def get_input():
     if dataset not in DATASETS:
         raise ValueError("Dataset doesn't seem to be valid, please check Datasets.py")
 
-    naip_data, naip_crs, naip_transform, naip_bounds, naip_index = DATASETS[dataset]["data_loader"].get_data_from_extent(extent)
-    naip_data = np.rollaxis(naip_data, 0, 3)
+    patch, crs, transform, bounds = DATASETS[dataset]["data_loader"].get_data_from_extent(extent)
+    print("get_input, after get_data_from_extent:", patch.shape)
 
-    naip_data, new_bounds = warp_data_to_3857(naip_data, naip_crs, naip_transform, naip_bounds)
-    naip_data = crop_data_by_extent(naip_data, new_bounds, extent)
+    warped_patch, warped_patch_crs, warped_patch_transform, warped_patch_bounds = warp_data_to_3857(patch, crs, transform, bounds)
+    print("get_input, after warp_data_to_3857:", warped_patch.shape)
 
-    naip_img = naip_data[:,:,:3].copy().astype(np.uint8) # keep the RGB channels to save as a color image
+    cropped_warped_patch, cropped_warped_patch_transform = crop_data_by_extent(warped_patch, warped_patch_crs, warped_patch_transform, extent)
+    print("get_input, after crop_data_by_extent:", cropped_warped_patch.shape)
 
-    naip_img = cv2.imencode(".png", cv2.cvtColor(naip_img, cv2.COLOR_RGB2BGR))[1].tostring()
-    naip_img = base64.b64encode(naip_img).decode("utf-8")
-    data["input_naip"] = naip_img
+    img = cropped_warped_patch[:,:,:3].copy().astype(np.uint8) # keep the RGB channels to save as a color image
+
+    img = cv2.imencode(".png", cv2.cvtColor(img, cv2.COLOR_RGB2BGR))[1].tostring()
+    img = base64.b64encode(img).decode("utf-8")
+    data["input_naip"] = img
 
     bottle.response.status = 200
     return json.dumps(data)
