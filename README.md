@@ -111,6 +111,8 @@ rm landcover.zip
 # unzip the tileset that comes with the demo data 
 cd landcover/data/basemaps/
 unzip -q hcmc_sentinel_tiles.zip
+unzip -q m_3807537_ne_18_1_20170611_tiles.zip
+rm *.zip
 cd ../../../
 
 # Finally, setup and run the server using the demo model

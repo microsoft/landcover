@@ -56,6 +56,9 @@ def _load_dataset(dataset):
             fn = shape_layer["shapesFn"]
             if os.path.exists(fn):
                 shapes, areas, crs = _load_geojson_as_list(fn)
+
+                print("Loaded %d shapes" % (len(shapes)))
+
                 shape_layer["geoms"] = shapes
                 shape_layer["areas"] = areas
                 shape_layer["crs"] = crs["init"] # TODO: will this break with fiona version; I think `.crs` will turn into a PyProj object
