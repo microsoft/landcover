@@ -1,0 +1,35 @@
+name: landcover
+
+channels:
+  - conda-forge
+  - pytorch
+  - defaults
+
+dependencies:
+  - python>=3.6
+  - gdal>=2.0
+  - rasterio>=1.0
+  - shapely
+  - rtree
+  - fiona
+  - opencv
+  - numpy
+  - pandas
+  - matplotlib
+  - scikit-learn
+  - scikit-image
+  - scipy
+  - pytorch>=1.0
+  - torchvision
+  - utm
+  - bottle==0.12.18
+  - beaker==1.11.0
+  - cheroot==8.3.0
+  - joblib
+  - mercantile
+  - Pillow
+  - pytz
+  - pip
+  - pip:
+    - tensorflow
+    - rpyc  
