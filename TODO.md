@@ -1,0 +1,12 @@
+TODO microsoft/landcover repo
+- Try to reproduce the initial setup
+- Strip Lambda layers from pre-trained Keras models
+- Clean up unused code (e.g. ServerModels*) and unused branches
+- Create 2 example dataset / models
+  - Sentinel untrained model
+  - NAIP trained model
+- Create sensible logging capability
+- Debug the padding issue
+- Debug the saving/restoring models workflow
+- Figure out how the remote calls work when using other ServerModels besides the Keras one
+- Figure out how to exclude web_tool/tiles/
