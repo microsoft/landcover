@@ -27,8 +27,8 @@ import mercantile
 import cv2
 import pickle
 
-from web_tool import ROOT_DIR
-from DataLoaderAbstract import DataLoader
+from . import ROOT_DIR
+from .DataLoaderAbstract import DataLoader
 
 # ------------------------------------------------------
 # Miscellaneous methods
@@ -118,7 +118,7 @@ class DataLoaderCustom(DataLoader):
         self._padding = padding
 
     def get_data_from_extent(self, extent):
-        f = rasterio.open(os.path.join(ROOT_DIR, self.data_fn), "r")
+        f = rasterio.open(self.data_fn, "r")
         src_index = f.index
         src_crs = f.crs
         transformed_geom = extent_to_transformed_geom(extent, f.crs.to_dict())
@@ -146,7 +146,7 @@ class DataLoaderCustom(DataLoader):
         mask_geom = shapely.geometry.mapping(shape)
 
         # Second, crop out that area for running the entire model on
-        f = rasterio.open(os.path.join(ROOT_DIR, self.data_fn), "r")
+        f = rasterio.open(self.data_fn, "r")
         src_profile = f.profile
         src_crs = f.crs.to_string()
         src_bounds = f.bounds
@@ -176,7 +176,7 @@ class DataLoaderCustom(DataLoader):
         mask_geom = shape
 
         # Second, crop out that area for running the entire model on
-        f = rasterio.open(os.path.join(ROOT_DIR, self.data_fn), "r")
+        f = rasterio.open(self.data_fn, "r")
         src_profile = f.profile
         src_crs = f.crs.to_string()
         src_bounds = f.bounds

@@ -1,9 +1,9 @@
 import sys, os, time
 import rpyc
 
-from log import LOGGER
-from ServerModelsAbstract import BackendModel
-from Utils import serialize, deserialize
+from .log import LOGGER
+from .ServerModelsAbstract import BackendModel
+from .Utils import serialize, deserialize
 
 
 class ModelRPC(BackendModel):

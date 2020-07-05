@@ -4,14 +4,14 @@ import subprocess
 import socket
 from queue import Queue
 
-from Session import Session
+from .Session import Session
 
-from ServerModelsRPC import ModelRPC
-from ServerModelsKerasDense import KerasDenseFineTune
+from .ServerModelsRPC import ModelRPC
+from .ServerModelsKerasDense import KerasDenseFineTune
 
-from log import LOGGER
+from .log import LOGGER
 
-from Models import load_models
+from .Models import load_models
 MODELS = load_models()
 
 
@@ -99,7 +99,7 @@ class SessionHandler():
 
     def _spawn_local_worker(self, port, model_fn, gpu_id, fine_tune_layer):
         command = [
-            "/usr/bin/env", "python", "web_tool/worker.py",
+            "/usr/bin/env", "python", "worker.py",
             "--model", "keras_dense",
             "--model_fn", model_fn,
             "--fine_tune_layer", str(fine_tune_layer),

@@ -1,13 +1,14 @@
-.idea/
 .vscode/
+.idea/
 
-__pycache__/
 .ipynb_checkpoints/
+__pycache__
 *.pyc
 
+data/
 logs/
+temp/
 
-web_tool/generated/
 web_tool/endpoints.mine.js
 
 setup/

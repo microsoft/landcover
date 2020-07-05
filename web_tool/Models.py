@@ -1,7 +1,7 @@
 import os
 import json
 
-from web_tool import ROOT_DIR
+from . import ROOT_DIR
 
 _MODEL_FN = "models.json"
 

@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 
 import scipy.signal
 
-from ServerModelsAbstract import BackendModel
-from Utils import to_categorical
+from .ServerModelsAbstract import BackendModel
+from .Utils import to_categorical
 
 def softmax(x, theta = 1.0, axis = -1):
     x = (x*theta)

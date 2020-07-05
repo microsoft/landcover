@@ -9,9 +9,9 @@ import shapely.geometry
 import rasterio
 import rasterio.mask
 
-import DataLoader
+import .DataLoader
 
-from ServerModelsAbstract import BackendModel
+from .ServerModelsAbstract import BackendModel
 
 class CachedModel(BackendModel):
 

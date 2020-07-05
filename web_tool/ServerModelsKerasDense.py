@@ -8,8 +8,8 @@ from sklearn.ensemble import RandomForestClassifier
 import tensorflow as tf
 import tensorflow.keras as keras
 
-from ServerModelsAbstract import BackendModel
-from web_tool import ROOT_DIR
+from . import ROOT_DIR
+from .ServerModelsAbstract import BackendModel
 
 import scipy.optimize
 
@@ -59,7 +59,7 @@ class KerasDenseFineTune(BackendModel):
         
         self.model = keras.models.Model(inputs=tmodel.inputs, outputs=[tmodel.outputs[0], tmodel.layers[feature_layer_idx].output])
         self.model.compile("sgd","mse")
-        self.model._make_predict_function()	# have to initialize before threading
+        #self.model._make_predict_function()	# have to initialize before threading
 
         self.output_channels = self.model.output_shape[0][3]
         self.output_features = self.model.output_shape[1][3]

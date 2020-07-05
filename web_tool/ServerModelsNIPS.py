@@ -12,8 +12,8 @@ import keras.backend as K
 import keras.models
 import keras.optimizers
 
-from ServerModelsAbstract import BackendModel
-from web_tool import ROOT_DIR
+from . import ROOT_DIR
+from .ServerModelsAbstract import BackendModel
 
 AUGMENT_MODEL = MLPClassifier(
     hidden_layer_sizes=(),

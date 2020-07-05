@@ -14,10 +14,9 @@ import numpy as np
 import rpyc
 from rpyc.utils.server import OneShotServer, ThreadedServer
 
-from ServerModelsKerasDense import KerasDenseFineTune
-from Utils import serialize, deserialize
-
-from log import setup_logging, LOGGER
+from web_tool.ServerModelsKerasDense import KerasDenseFineTune
+from web_tool.Utils import serialize, deserialize
+from web_tool.log import setup_logging, LOGGER
 
 
 class MyService(rpyc.Service):

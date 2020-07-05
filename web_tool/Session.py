@@ -15,9 +15,9 @@ import numpy as np
 
 import joblib
 
-from Utils import get_random_string, AtomicCounter
+from .Utils import get_random_string, AtomicCounter
 
-from log import LOGGER
+from .log import LOGGER
 
 SESSION_BASE_PATH = './data/session'
 SESSION_FOLDER = SESSION_BASE_PATH + "/" + datetime.datetime.now().strftime('%Y-%m-%d')

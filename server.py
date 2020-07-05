@@ -25,28 +25,21 @@ import rasterio.warp
 import pickle
 import joblib
 
-from DataLoader import warp_data_to_3857, crop_data_by_extent
-from Heatmap import Heatmap
-
-from Datasets import load_datasets, get_area_from_geometry
+from web_tool.DataLoader import warp_data_to_3857, crop_data_by_extent
+from web_tool.Datasets import load_datasets, get_area_from_geometry
 DATASETS = load_datasets()
 
-from Utils import get_random_string, class_prediction_to_img, get_shape_layer_by_name, AtomicCounter
-
+from web_tool.Utils import get_random_string, class_prediction_to_img, get_shape_layer_by_name, AtomicCounter
 from web_tool import ROOT_DIR
+from web_tool.log import setup_logging, LOGGER
+from web_tool.Session import Session, manage_session_folders, SESSION_FOLDER
+from web_tool.SessionHandler import SessionHandler
+SESSION_HANDLER = None
 
 import bottle 
 bottle.TEMPLATE_PATH.insert(0, "./" + ROOT_DIR + "/views") # let bottle know where we are storing the template files
-
 import cheroot.wsgi
 import beaker.middleware
-
-from log import setup_logging, LOGGER
-
-from Session import Session, manage_session_folders, SESSION_FOLDER
-from SessionHandler import SessionHandler
-SESSION_HANDLER = None
-
 
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
@@ -368,7 +361,7 @@ def pred_tile():
 
     img_hard, img_hard_bounds = warp_data_to_3857(img_hard, raster_crs, raster_transform, raster_bounds, resolution=10)
 
-    cv2.imwrite(os.path.join(ROOT_DIR, "downloads/%s.png" % (tmp_id)), img_hard)
+    cv2.imwrite(os.path.join(ROOT_DIR, "temp/%s.png" % (tmp_id)), img_hard)
     data["downloadPNG"] = "downloads/%s.png" % (tmp_id)
 
     new_profile = raster_profile.copy()
@@ -444,11 +437,18 @@ def whoami():
 def get_landing_page():
     return bottle.static_file("landing_page.html", root="./" + ROOT_DIR + "/")
 
+def get_basemap_data(filepath):
+    return bottle.static_file(filepath, root="./data/basemaps/")
+
+def get_zone_data(filepath):
+    return bottle.static_file(filepath, root="./data/zones/")
+
 def get_favicon():
     return
 
 def get_everything_else(filepath):
     return bottle.static_file(filepath, root="./" + ROOT_DIR + "/")
+
 
 
 #---------------------------------------------------------------------------------------
@@ -545,6 +545,8 @@ def main():
 
     # Content paths
     app.route("/", method="GET", callback=get_landing_page)
+    app.route("/data/basemaps/<filepath:re:.*>", method="GET", callback=get_basemap_data)
+    app.route("/data/zones/<filepath:re:.*>", method="GET", callback=get_zone_data)
     app.route("/favicon.ico", method="GET", callback=get_favicon)
     app.route("/<filepath:re:.*>", method="GET", callback=get_everything_else)
 

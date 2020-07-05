@@ -7,12 +7,12 @@
         },
         "dataLayer": {
             "type": "CUSTOM",
-            "path": "tiles/hcmc_sentinel.tif",
+            "path": "data/imagery/hcmc_sentinel.tif",
             "padding": 1100
         },
         "basemapLayer": {
             "initialZoom": 11,
-            "url": "tiles/hcmc_sentinel_tiles/{z}/{x}/{y}.png",
+            "url": "data/basemaps/hcmc_sentinel_tiles/{z}/{x}/{y}.png",
             "initialLocation": [ 10.682, 106.752 ],
             "args": {
                 "attribution": "Georeferenced Image",
@@ -25,17 +25,17 @@
         },
         "shapeLayers": [
             {
-                "shapesFn": "shapes/hcmc_sentinel_admin_1_clipped.geojson",
+                "shapesFn": "data/zones/hcmc_sentinel_admin_1_clipped.geojson",
                 "zoneNameKey": "NAME_1",
                 "name": "Provinces"
             },
             {
-                "shapesFn": "shapes/hcmc_sentinel_admin_2_clipped.geojson",
+                "shapesFn": "data/zones/hcmc_sentinel_admin_2_clipped.geojson",
                 "zoneNameKey": "NAME_2",
                 "name": "Districts"
             },
             {
-                "shapesFn": "shapes/hcmc_sentinel_admin_3_clipped.geojson",
+                "shapesFn": "data/zones/hcmc_sentinel_admin_3_clipped.geojson",
                 "zoneNameKey": "NAME_3",
                 "name": "Wards"
             }
@@ -43,18 +43,18 @@
     },
     "naip_maryland": {
         "metadata": {
-            "displayName": "Maryland-2017",
+            "displayName": "Maryland 2017",
             "imageryName": "NAIP Imagery",
             "locationName": null
         },
         "dataLayer": {
             "type": "CUSTOM",
-            "path": "tiles/m_3807537_ne_18_1_20170611.tif",
+            "path": "data/imagery/m_3807537_ne_18_1_20170611.tif",
             "padding": 20
         },
         "basemapLayer": {
             "initialZoom": 11,
-            "url": "tiles/m_3807537_ne_18_1_20170611_tiles/{z}/{x}/{y}.png",
+            "url": "data/basemaps/m_3807537_ne_18_1_20170611_tiles/{z}/{x}/{y}.png",
             "initialLocation": [ 38.477018, -75.402312],
             "args": {
                 "attribution": "Georeferenced Image",

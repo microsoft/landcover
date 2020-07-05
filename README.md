@@ -109,24 +109,17 @@ unzip landcover.zip
 rm landcover.zip
 
 # unzip the tileset that comes with the demo data 
-cd landcover/web_tool/tiles/
+cd landcover/data/basemaps/
 unzip -q hcmc_sentinel_tiles.zip
-cd ~
-
-# install the project required files
-cd landcover/
-python -m pip install -r requirements.txt
-cd ~
+cd ../../../
 
 # Finally, setup and run the server using the demo model
-cd landcover
-cp web_tool/endpoints.js web_tool/endpoints.mine.js
+cp landcover/web_tool/endpoints.js landcover/web_tool/endpoints.mine.js
 ## Edit `web_tool/endpoints.mine.js` and replace "msrcalebubuntu.eastus.cloudapp.azure.com" with the address of your machine
-nano web_tool/endpoints.mine.js
+nano landcover/web_tool/endpoints.mine.js
 
 ## Edit `self._WORKERS` of the SessionHandler class in SessionHandler.py to include the GPU resources you want to use on your machine. By default this is set to use GPU IDs 0 through 4.
-nano web_tool/SessionHandler.py
-cd ~
+nano landcover/web_tool/SessionHandler.py
 ```
 
 # Running an instance of the tool
@@ -134,8 +127,7 @@ cd ~
 Whether you setup the server in an Azure VM or locally, the following steps should apply to start an instance of the server:
 - Open a terminal on the machine that you setup (e.g. SSH into the VM using a desktop SSH client)
 - `cd landcover`
-- `export PYTHONPATH=.`
-- `python web_tool/server.py --port 4444 --storage_type file --storage_path test.csv local`
+- `python server.py --port 4444 --storage_type file --storage_path test.csv local`
   - This will start an HTTP server on :4444 that both serves the "frontend" web application and responds to API calls from the "frontend", allowing the web-app to interface with our CNN models (i.e. the "backend").
   - The tool comes preloaded with a dataset (defined in `web_tool/datasets.json`) and two models (defined in `web_tool/models.json`).
 - You should now be able to visit `http://<your machine's address>:4444/` and see the "frontend" interface.

@@ -2,7 +2,7 @@ import sys, os, time
 
 import numpy as np
 
-from ServerModelsAbstract import BackendModel
+from .ServerModelsAbstract import BackendModel
 
 def softmax(output):
     output_max = np.max(output, axis=3, keepdims=True)

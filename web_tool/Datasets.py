@@ -7,9 +7,8 @@ import fiona.transform
 import shapely
 import shapely.geometry
 
-from web_tool import ROOT_DIR
-
-from DataLoader import DataLoaderCustom, DataLoaderUSALayer, DataLoaderBasemap
+from . import ROOT_DIR
+from .DataLoader import DataLoaderCustom, DataLoaderUSALayer, DataLoaderBasemap
 
 _DATASET_FN = "datasets.json"
 
@@ -54,7 +53,7 @@ def _load_dataset(dataset):
     shape_layers = {}
     if dataset["shapeLayers"] is not None:
         for shape_layer in dataset["shapeLayers"]:
-            fn = os.path.join(ROOT_DIR, shape_layer["shapesFn"])
+            fn = shape_layer["shapesFn"]
             if os.path.exists(fn):
                 shapes, areas, crs = _load_geojson_as_list(fn)
                 shape_layer["geoms"] = shapes
@@ -66,7 +65,7 @@ def _load_dataset(dataset):
 
     # Step 2: make sure the dataLayer exists
     if dataset["dataLayer"]["type"] == "CUSTOM":
-        fn = os.path.join(ROOT_DIR, dataset["dataLayer"]["path"])
+        fn = dataset["dataLayer"]["path"]
         if not os.path.exists(fn):
             return False # TODO: maybe we should make these errors more descriptive (explain why we can't load a dataset)
 
@@ -86,7 +85,7 @@ def _load_dataset(dataset):
     }
 
 def load_datasets():
-    dataset_json = json.load(open(os.path.join(ROOT_DIR,_DATASET_FN),"r"))
+    dataset_json = json.load(open(os.path.join(ROOT_DIR, _DATASET_FN),"r"))
     datasets = dict()
 
     for key, dataset in dataset_json.items():
