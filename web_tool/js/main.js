@@ -170,10 +170,10 @@ var doSendCorrection = function(polygon, idx){
         "dataset": gCurrentDataset,
         "experiment": EXP_NAME,
         "extent": {
-            "xmax": bottomrightProjected.x,
-            "xmin": topleftProjected.x,
-            "ymax": topleftProjected.y,
-            "ymin": bottomrightProjected.y,
+            "xmax": Math.round(bottomrightProjected.x),
+            "xmin": Math.round(topleftProjected.x),
+            "ymax": Math.round(topleftProjected.y),
+            "ymin": Math.round(bottomrightProjected.y),
             "spatialReference": {
                 "latestWkid": 3857
             }
