@@ -147,7 +147,7 @@ class DataLoaderCustom(DataLoader):
         transformed_geom = shapely.geometry.shape(transformed_geom)
         buffed_geom = transformed_geom.buffer(self.padding)
         geom = shapely.geometry.mapping(shapely.geometry.box(*buffed_geom.bounds))
-        src_image, src_transform = rasterio.mask.mask(f, [geom], crop=True, all_touched=True, pad=True)
+        src_image, src_transform = rasterio.mask.mask(f, [geom], crop=True, all_touched=True, pad=False)
         f.close()
 
         src_image = np.rollaxis(src_image, 0, 3)
@@ -173,7 +173,7 @@ class DataLoaderCustom(DataLoader):
         src_profile = f.profile
         src_crs = f.crs.to_string()
         transformed_mask_geom = fiona.transform.transform_geom("epsg:4326", src_crs, shape)
-        src_image, src_transform = rasterio.mask.mask(f, [transformed_mask_geom], crop=True, all_touched=True, pad=True)
+        src_image, src_transform = rasterio.mask.mask(f, [transformed_mask_geom], crop=True, all_touched=True, pad=False)
         f.close()
 
         src_image = np.rollaxis(src_image, 0, 3)
