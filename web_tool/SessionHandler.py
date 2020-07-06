@@ -10,7 +10,6 @@ LOGGER = logging.getLogger("server")
 from .Session import Session
 
 from .ServerModelsRPC import ModelRPC
-from .ServerModelsKerasDense import KerasDenseFineTune
 
 from .Models import load_models
 MODELS = load_models()

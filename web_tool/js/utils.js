@@ -106,29 +106,28 @@ var isPointInsidePolygon = function(latlng, poly) {
     return inside;
 };
 
-var getPolyAround = function(latlng, radius){
+var getPolyAround = function(latlng, radius, fromCenter){
     // We convert the input lat/lon into the EPSG3857 projection, define our square, then re-convert to lat/lon 
     var latlngProjected = L.CRS.EPSG3857.project(latlng);
+
     var x = latlngProjected.x;
     var y = latlngProjected.y;
     
-    // TODO: Clip x and y to the resolution of the dataset (here I've assumed 10 meters (these coordinates are EPSG:3857))
-    console.debug(x, y);
+    var resolution = DATASETS[gCurrentDataset]["dataLayer"]["resolution"];
+    x = Math.round(x/resolution) * resolution;
+    y = Math.round(y/resolution) * resolution;
 
-    x = Math.floor(x/10) * 10;
-    y = Math.floor(y/10) * 10;
-
-    console.debug(x, y);
-
-    var top = y + radius/2;
-    var bottom = y - radius/2;
-    var left = x - radius/2;
-    var right = x + radius/2;
-
-    top = Math.round(top);
-    bottom = Math.round(bottom);
-    left = Math.round(left);
-    right = Math.round(right);
+    if(fromCenter){
+        var top = y + radius/2;
+        var bottom = y - radius/2;
+        var left = x - radius/2;
+        var right = x + radius/2;
+    }else{
+        var top = y;
+        var bottom = y - radius;
+        var left = x;
+        var right = x + radius;
+    }
     
     // left/right are "x" points while top/bottom are the "y" points
     var topleft = L.CRS.EPSG3857.unproject(L.point(left, top));

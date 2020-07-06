@@ -8,7 +8,8 @@
         "dataLayer": {
             "type": "CUSTOM",
             "path": "data/imagery/hcmc_sentinel.tif",
-            "padding": 1100
+            "padding": 500,
+            "resolution": 10
         },
         "basemapLayer": {
             "initialZoom": 11,
@@ -50,7 +51,8 @@
         "dataLayer": {
             "type": "CUSTOM",
             "path": "data/imagery/m_3807537_ne_18_1_20170611.tif",
-            "padding": 20
+            "padding": 20,
+            "resolution": 1
         },
         "basemapLayer": {
             "initialZoom": 11,

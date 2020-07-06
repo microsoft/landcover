@@ -36,16 +36,18 @@ def nll(X, W, b, y):
 
 class KerasDenseFineTune(BackendModel):
 
-    AUGMENT_MODEL = MLPClassifier(
-        hidden_layer_sizes=(),
-        activation='relu',
-        alpha=0.0001,
-        solver='lbfgs',
-        tol=0.0001,
-        verbose=False,
-        validation_fraction=0.0,
-        n_iter_no_change=50
-    )
+    # AUGMENT_MODEL = MLPClassifier(
+    #     hidden_layer_sizes=(),
+    #     activation='relu',
+    #     alpha=0.0001,
+    #     solver='lbfgs',
+    #     tol=0.0001,
+    #     verbose=False,
+    #     validation_fraction=0.0,
+    #     n_iter_no_change=50
+    # )
+
+    AUGMENT_MODEL = RandomForestClassifier()
 
     def __init__(self, model_fn, gpuid, fine_tune_layer, verbose=False):
 

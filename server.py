@@ -189,28 +189,28 @@ def record_correction():
     class_idx = data["value"] # what we want to switch the class to
     origin_crs = "epsg:%d" % (data["extent"]["spatialReference"]["latestWkid"])
 
-    # record points in lat/lon
-    xs, ys = fiona.transform.transform(origin_crs, "epsg:4326", [tlon], [tlat])
+    # load the current predicted patches crs and transform
+    data_crs, data_transform = SESSION_HANDLER.get_session(bottle.request.session.id).current_transform
 
-    #
-    naip_crs, naip_transform, naip_index = SESSION_HANDLER.get_session(bottle.request.session.id).current_transform
-
-    xs, ys = fiona.transform.transform(origin_crs, naip_crs.to_dict(), [tlon,blon], [tlat,blat])
+    xs, ys = fiona.transform.transform(origin_crs, data_crs.to_dict(), [tlon,blon], [tlat,blat])
     
     tdst_x = xs[0]
     tdst_y = ys[0]
-    tdst_col, tdst_row = (~naip_transform) * (tdst_x, tdst_y)
+    tdst_col, tdst_row = (~data_transform) * (tdst_x, tdst_y)
     tdst_row = int(np.floor(tdst_row))
     tdst_col = int(np.floor(tdst_col))
 
     bdst_x = xs[1]
     bdst_y = ys[1]
-    bdst_col, bdst_row = (~naip_transform) * (bdst_x, bdst_y)
+    bdst_col, bdst_row = (~data_transform) * (bdst_x, bdst_y)
     bdst_row = int(np.floor(bdst_row))
     bdst_col = int(np.floor(bdst_col))
 
     tdst_row, bdst_row = min(tdst_row, bdst_row), max(tdst_row, bdst_row)
     tdst_col, bdst_col = min(tdst_col, bdst_col), max(tdst_col, bdst_col)
+
+    print(tdst_row, tdst_col)
+    #print(bdst_row, bdst_col)
 
     SESSION_HANDLER.get_session(bottle.request.session.id).model.add_sample(tdst_row, bdst_row, tdst_col, bdst_col, class_idx)
     num_corrected = (bdst_row-tdst_row) * (bdst_col-tdst_col)

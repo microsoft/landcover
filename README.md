@@ -26,7 +26,7 @@ exit
 # Get the project and demo project data
 git clone https://github.com/microsoft/landcover.git
 
-wget -O landcover.zip "https://www.dropbox.com/s/s0v4x00z9jki5t0/landcover.zip?dl=1"
+wget -O landcover.zip "https://mslandcoverstorageeast.blob.core.windows.net/web-tool-data/landcover.zip"
 unzip -q landcover.zip
 rm landcover.zip
 
@@ -38,6 +38,8 @@ rm *.zip
 cd ../../../
 
 # install the conda environment
+# Note: if using a DSVM on Azure, as of 7/6/2020 you need to first run `sudo chown -R $USER /anaconda/`
+
 cd landcover
 conda env create --file environment.yml
 cd ..

@@ -6,9 +6,9 @@ var addInferenceMouseHandlers = function(){
         // Choose style
         var curSelPoly = null;
         if(!gShiftKeyDown){
-            curSelPoly = getPolyAround(e.latlng, CORRECTION_WINDOW_SIZE);
+            curSelPoly = getPolyAround(e.latlng, CORRECTION_WINDOW_SIZE, false);
         }else{
-            curSelPoly = getPolyAround(e.latlng, INFERENCE_WINDOW_SIZE);
+            curSelPoly = getPolyAround(e.latlng, INFERENCE_WINDOW_SIZE, true);
         }
         
         if(gSelectionBox === null){
@@ -35,7 +35,7 @@ var addInferenceMouseHandlers = function(){
         var curSelPoly = null;
         if(gShiftKeyDown){
             // Run the inference path
-            curSelPoly = getPolyAround(e.latlng, INFERENCE_WINDOW_SIZE);
+            curSelPoly = getPolyAround(e.latlng, INFERENCE_WINDOW_SIZE, true);
             if(gCurrentSelection === null){ // This condition creates the red selection box on the first click
                 gCurrentSelection = L.polygon(curSelPoly, {
                     color: "#ff0000",
@@ -53,7 +53,7 @@ var addInferenceMouseHandlers = function(){
             if(gCurrentSelection !== null){
                 if(isPointInsidePolygon(e.latlng, gCurrentSelection)){
                     if(gCurrentBasemapLayerName == DATASETS[gCurrentDataset]["metadata"]["imageryName"]){
-                        curSelPoly = getPolyAround(e.latlng, CORRECTION_WINDOW_SIZE);
+                        curSelPoly = getPolyAround(e.latlng, CORRECTION_WINDOW_SIZE, false);
                         var idx = gCurrentPatches.length-1;
                         doSendCorrection(curSelPoly, idx);
                         
