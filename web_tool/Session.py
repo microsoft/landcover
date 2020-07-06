@@ -20,7 +20,7 @@ from .Utils import get_random_string, AtomicCounter
 import logging
 LOGGER = logging.getLogger("server")
 
-SESSION_BASE_PATH = './data/session'
+SESSION_BASE_PATH = './tmp/session'
 SESSION_FOLDER = SESSION_BASE_PATH + "/" + datetime.datetime.now().strftime('%Y-%m-%d')
 
 
@@ -38,7 +38,7 @@ class Session():
         LOGGER.info("Instantiating a new session object with id: %s" % (session_id))
 
         self.storage_type = "file" # this will be "table" or "file"
-        self.storage_path = "data/" # this will be a file path
+        self.storage_path = "tmp/output/" # this will be a file path
         self.table_service = None # this will be an instance of TableService
 
         self.model = model
