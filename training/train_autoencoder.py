@@ -131,7 +131,7 @@ def main():
 
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debugging", default=False)
     parser.add_argument("--input_fn", nargs="+", action="store", dest="input_fn", type=str, help="Path/paths to input GeoTIFF", required=True)
-    parser.add_argument("--output_fn", action="store", dest="output_fn", type=str, help="Output model fn format", required=True)
+    parser.add_argument("--output_fn", action="store", dest="output_fn", type=str, help="Output model fn format (use '{epoch:02d}' for checkpointing per epoch of traning)", required=True)
     parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", required=True)
 
     args = parser.parse_args(sys.argv[1:])
@@ -158,6 +158,8 @@ def main():
     all_data = np.array(all_data)
     all_data_shape = all_data.shape
 
+    all_data[np.isnan(all_data)] = 0
+
     # data = np.concatenate([
     #     data,
     #     data[:,:,0][:,:,np.newaxis]
@@ -174,8 +176,9 @@ def main():
     for data in all_data:
         data_original_shape = data.shape
         data_color_features = data.reshape(-1,data_original_shape[2])
-        mask = (data_color_features == 0).sum(axis=1) != data_original_shape[2]
-        all_data_color_features.append(data_color_features[mask])
+        #mask = (data_color_features == 0).sum(axis=1) != data_original_shape[2]
+        #all_data_color_features.append(data_color_features[mask])
+        all_data_color_features.append(data_color_features)
         data_shapes_index.append(data_original_shape)
         count += 1
 
@@ -201,7 +204,7 @@ def main():
 
     # Assuming all data has same # of bands
     bands = all_data[0].shape[2]
-    n_samples_each = 5000
+    n_samples_each = 20
     n_samples = n_samples_each * all_data.shape[0]
     height, width = 150, 150
     x_all = np.zeros((n_samples, height, width, bands), dtype=np.float32)

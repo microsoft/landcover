@@ -49,7 +49,7 @@ cd ..
 
 A few more steps are needed to configure the interactive *web-tool*.
 
-- Create and edit `web_tool/endpoints.mine.js`. Replace "localhost" with the address of your machine (or leave it alone it you are running locally), and choose the port you will use (defaults to 8080).
+- Create and edit `web_tool/endpoints.mine.js`. Replace "localhost" with the address of your machine (or leave it alone it you are running locally), and choose the port you will use (defaults to 8080). Note: make sure this port is open to your machine if you are using a remote sever (e.g. with a DSVM on Azure, use the Networking tab to open port 8080).
 
 ```bash
 cp landcover/web_tool/endpoints.js landcover/web_tool/endpoints.mine.js
