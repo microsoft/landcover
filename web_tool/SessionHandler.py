@@ -99,7 +99,7 @@ class SessionHandler():
     def _spawn_local_worker(self, port, model_fn, gpu_id, fine_tune_layer):
         command = [
             "/usr/bin/env", "python", "worker.py",
-            "--model", "keras_dense",
+            "--model", "torch",
             "--model_fn", model_fn,
             "--fine_tune_layer", str(fine_tune_layer),
             "--port", str(port)
