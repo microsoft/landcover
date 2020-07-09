@@ -1,76 +1,13 @@
-# Land Cover Mapping Tool
+# Land cover mapping project
 
 This repository holds both the "frontend" web-application and "backend" web API server that make up our "Land Cover Mapping" tool.
 An instance of this tool may be live [here](http://aka.ms/landcoverdemo).
 
+## Project setup instructions
 
-# Setup
+- Open a terminal on the machine
+- Install conda (note: if you are using a DSVM on Azure then you can skip this step as conda is preinstalled!)
 
-The following sections describe how to setup the dependencies (python packages and demo data) for the "web-tool/" component of this project. We develop / use this tool on Data Science Virtual Machines for Linux (through Azure) in conjunction with specific AI for Earth projects, so the first set of instructions - "Azure VM setup instructions" - are specific for recreating our internal development environment. The second set of instructions - "Local setup instructions" - should apply more broadly.
-
-## Azure VM setup instructions
-
-We develop / use the tool on Data Science Virtual Machines for Linux (Ubuntu) images on Azure (see the [Azure Portal](https://portal.azure.com/)), so these setup instructions are tailored for that environment, however there is no reason that this project cannot be run on any machine (see "Local setup instructions below").
-
-### Initial machine setup
-
-- Create a new VM with the Data Science Virtual Machine for Linux (Ubuntu) image via the [Azure Portal](https://ms.portal.azure.com/)
-- Open the incoming port 4444 to the VM through the Azure Portal
-- SSH into the VM using a desktop SSH client
-- Run the following commands to install the additional necessary Python packages:
-```bash
-sudo apt-get update
-sudo apt-get install blobfuse
-
-conda config --set channel_priority strict
-conda create -y -n ai4e python=3.6
-## make sure `which python` points to the python installation in our new environment
-conda deactivate
-conda activate ai4e
-conda install -y -c conda-forge gdal rasterio fiona shapely opencv rtree
-```
-- Log out and log back in
-- Visit the Microsoft AI for Earth [Azure storage account](https://portal.azure.com/#blade/Microsoft_Azure_Storage/FileShareMenuBlade/overview/storageAccountId/%2Fsubscriptions%2Fc9726640-cf74-4111-92f5-0d1c87564b93%2FresourceGroups%2FLandcover2%2Fproviders%2FMicrosoft.Storage%2FstorageAccounts%2Fmslandcoverstorageeast/path/vm-fileshare) (your account will need to be given access first)
-  - Download the `web-tool/mount_remotes_for_deployment.sh` and `web-tool/web_tool_data_install.sh` scripts to the home directory of the VM
-  - Run the `mount_remotes_for_deployment.sh` script to mount the necessary blob storage containers (note: you will need to run this script every time you restart the VM)
-
-### Repository setup instructions
-
-- SSH into the VM using a desktop SSH client
-```bash
-# Get this repository
-git clone git@github.com:microsoft/landcover.git
-
-mv web_tool_data_install.sh landcover/
-cd landcover
-# Edit `web_tool_data_install.sh` as appropriate. This script will copy the necessary data files from the `web-tool-data` blob container to the project directory,  however you probably don't need _all_ the data in `web-tool-data/web_tool/tiles/` as these files can be large and are project instance specific.
-bash web_tool_data_install.sh
-rm web_tool_data_install.sh
-cd ~
-
-# install the project required files
-cd landcover/
-python -m pip install -r requirements.txt
-cd ~
-
-# Finally, setup and run the server using the demo model
-cd landcover
-cp web_tool/endpoints.js web_tool/endpoints.mine.js
-## Edit `web_tool/endpoints.mine.js` and replace "msrcalebubuntu.eastus.cloudapp.azure.com" with the address of your machine (find/change your VM's host name or IP address in the Azure portal)
-nano web_tool/endpoints.mine.js
-
-## Edit `self._WORKERS` of the SessionHandler class in SessionHandler.py to include the GPU resources you want to use on your machine. By default this is set to use GPU IDs 0 through 4. Check `nvidia-smi` to see GPU information.
-nano web_tool/SessionHandler.py
-cd ~
-```
-
-## Local setup instructions
-
-### Initial machine setup
-
-- Make sure the incoming port 4444 is open
-- Open a terminal on the machine 
-- Run the following commands to install the additional necessary packages:
 ```bash
 # Install Anaconda
 cd ~
@@ -78,64 +15,59 @@ wget https://repo.anaconda.com/archive/Anaconda3-2019.07-Linux-x86_64.sh
 bash Anaconda3-2019.07-Linux-x86_64.sh # select "yes" for setting up conda init
 rm Anaconda3-2019.07-Linux-x86_64.sh
 
-## logout and log back in
+# logout and log back in
 exit
+```
 
-# Install CUDA if needed; note this may require a reboot
-## https://www.tensorflow.org/install/gpu#install_cuda_with_apt
-
-# Install unzip and a library that opencv will need
-sudo apt update
-sudo apt install -y unzip libgl1
-
-# Create a new conda environment for running the web tool
-## setting strict channel_priority seems to be a very important step - else all the gdal dependencies are very broken
-conda config --set channel_priority strict
-conda create -y -n ai4e python=3.6
-## make sure `which python` points to the python installation in our new environment
-conda deactivate
-conda activate ai4e
-conda install -y -c conda-forge gdal rasterio fiona shapely opencv rtree
-``` 
-
-### Repository setup instructions
+- Install NVIDIA drivers if you intend on using GPUs; note this might require a reboot (note: again, if you are using a DSVM on a Azure GPU VM then this is also handled)
+- Setup the repository and install the demo data
 
 ```bash
 # Get the project and demo project data
 git clone https://github.com/microsoft/landcover.git
 
-wget -O landcover.zip "https://www.dropbox.com/s/s0v4x00z9jki5t0/landcover.zip?dl=1"
-unzip landcover.zip
+wget -O landcover.zip "https://mslandcoverstorageeast.blob.core.windows.net/web-tool-data/landcover.zip"
+unzip -q landcover.zip
 rm landcover.zip
 
-# unzip the tileset that comes with the demo data 
-cd landcover/web_tool/tiles/
+# unzip the tileset that comes with the demo data
+cd landcover/data/basemaps/
 unzip -q hcmc_sentinel_tiles.zip
-cd ~
+unzip -q m_3807537_ne_18_1_20170611_tiles.zip
+rm *.zip
+cd ../../../
 
-# install the project required files
-cd landcover/
-python -m pip install -r requirements.txt
-cd ~
+# install the conda environment
+# Note: if using a DSVM on Azure, as of 7/6/2020 you need to first run `sudo chown -R $USER /anaconda/`
 
-# Finally, setup and run the server using the demo model
 cd landcover
-cp web_tool/endpoints.js web_tool/endpoints.mine.js
-## Edit `web_tool/endpoints.mine.js` and replace "msrcalebubuntu.eastus.cloudapp.azure.com" with the address of your machine
-nano web_tool/endpoints.mine.js
-
-## Edit `self._WORKERS` of the SessionHandler class in SessionHandler.py to include the GPU resources you want to use on your machine. By default this is set to use GPU IDs 0 through 4.
-nano web_tool/SessionHandler.py
-cd ~
+conda env create --file environment.yml
+cd ..
 ```
 
-# Running an instance of the tool
+### Configure the *web-tool*
+
+A few more steps are needed to configure the interactive *web-tool*.
+
+- Create and edit `web_tool/endpoints.mine.js`. Replace "localhost" with the address of your machine (or leave it alone it you are running locally), and choose the port you will use (defaults to 8080). Note: make sure this port is open to your machine if you are using a remote sever (e.g. with a DSVM on Azure, use the Networking tab to open port 8080).
+
+```bash
+cp landcover/web_tool/endpoints.js landcover/web_tool/endpoints.mine.js
+nano landcover/web_tool/endpoints.mine.js
+```
+
+- Edit `self._WORKERS` of the SessionHandler class in SessionHandler.py to include the GPU resources you want to use on your machine. By default this is set to use GPU IDs 0 through 4.
+
+``` bash
+nano landcover/web_tool/SessionHandler.py
+```
+
+## Running an instance of the *web-tool*
 
 Whether you setup the server in an Azure VM or locally, the following steps should apply to start an instance of the server:
-- Open a terminal on the machine that you setup (e.g. SSH into the VM using a desktop SSH client)
-- `cd landcover`
-- `export PYTHONPATH=.`
-- `python web_tool/server.py --port 4444 --storage_type file --storage_path test.csv local`
-  - This will start an HTTP server on :4444 that both serves the "frontend" web application and responds to API calls from the "frontend", allowing the web-app to interface with our CNN models (i.e. the "backend").
+
+- Open a terminal on the machine and `cd` to the root directory (`wherever/you/cloned/landcover/`)
+- `python server.py local`
+  - This will start an HTTP server on :8080 that both serves the "frontend" web application and responds to API calls from the "frontend", allowing the web-app to interface with our CNN models (i.e. the "backend").
   - The tool comes preloaded with a dataset (defined in `web_tool/datasets.json`) and two models (defined in `web_tool/models.json`).
-- You should now be able to visit `http://<your machine's address>:4444/` and see the "frontend" interface.
+- You should now be able to visit `http://<your machine's address>:8080/` and see the "frontend" interface.

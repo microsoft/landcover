@@ -25,9 +25,5 @@ class DataLoader(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_data_from_shape_by_extent(self, extent, shape_layer):
-        raise NotImplementedError()
-
-    @abstractmethod
     def get_data_from_shape(self, shape):
         raise NotImplementedError()

@@ -15,11 +15,12 @@ import numpy as np
 
 import joblib
 
-from Utils import get_random_string, AtomicCounter
+from .Utils import get_random_string, AtomicCounter
 
-from log import LOGGER
+import logging
+LOGGER = logging.getLogger("server")
 
-SESSION_BASE_PATH = './data/session'
+SESSION_BASE_PATH = './tmp/session'
 SESSION_FOLDER = SESSION_BASE_PATH + "/" + datetime.datetime.now().strftime('%Y-%m-%d')
 
 
@@ -37,7 +38,7 @@ class Session():
         LOGGER.info("Instantiating a new session object with id: %s" % (session_id))
 
         self.storage_type = "file" # this will be "table" or "file"
-        self.storage_path = "data/" # this will be a file path
+        self.storage_path = "tmp/output/" # this will be a file path
         self.table_service = None # this will be an instance of TableService
 
         self.model = model
@@ -74,8 +75,6 @@ class Session():
     def load(self, encoded_model_fn):
         model_fn = base64.b64decode(encoded_model_fn).decode('utf-8')
 
-        print(model_fn)
-
         del self.model
         self.model = joblib.load(model_fn)
 
@@ -86,7 +85,7 @@ class Session():
 
             snapshot_id = "%s_%d" % (model_name, self.current_snapshot_idx)
             
-            print("Saving state for %s" % (snapshot_id))
+            LOGGER.info("Saving state for %s" % (snapshot_id))
             base_dir = os.path.join(self.storage_path, self.current_snapshot_string)
             if not os.path.exists(base_dir):
                 os.makedirs(base_dir, exist_ok=False)
@@ -130,7 +129,7 @@ class Session():
             try:
                 self.table_service.insert_entity("webtoolinteractions", data)
             except Exception as e:
-                print(e)
+                LOGGER.error(e)
         else:
             # The storage_type / --storage_path command line args were not set
             pass

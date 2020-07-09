@@ -1,7 +1,34 @@
+import os
 import io
 import threading
 
 import numpy as np
+
+import logging
+from logging.handlers import TimedRotatingFileHandler
+
+def setup_logging(log_path, log_name, level=logging.DEBUG):
+
+    if not os.path.exists(log_path):
+        os.makedirs(log_path)
+
+    print_formatter = logging.Formatter('[%(asctime)s] - %(message)s')
+    file_formatter = logging.Formatter('%(asctime)s - %(name)-8s - %(levelname)-6s - %(message)s')
+
+    logger = logging.getLogger("server")
+    logger.setLevel(level)
+
+    file_handler = TimedRotatingFileHandler(log_path + "/%s.txt" % (log_name), when='midnight', interval=1)
+    file_handler.suffix = "%Y%m%d"
+    file_handler.setFormatter(file_formatter)
+    logger.addHandler(file_handler)
+
+    print_handler = logging.StreamHandler()
+    print_handler.setFormatter(print_formatter)
+    logger.addHandler(print_handler)
+
+    return logger
+
 
 def serialize(array):
     with io.BytesIO() as f:

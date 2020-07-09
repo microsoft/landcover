@@ -8,8 +8,11 @@ from sklearn.ensemble import RandomForestClassifier
 import tensorflow as tf
 import tensorflow.keras as keras
 
-from ServerModelsAbstract import BackendModel
-from web_tool import ROOT_DIR
+import logging
+LOGGER = logging.getLogger("server")
+
+from . import ROOT_DIR
+from .ServerModelsAbstract import BackendModel
 
 import scipy.optimize
 
@@ -33,16 +36,18 @@ def nll(X, W, b, y):
 
 class KerasDenseFineTune(BackendModel):
 
-    AUGMENT_MODEL = MLPClassifier(
-        hidden_layer_sizes=(),
-        activation='relu',
-        alpha=0.0001,
-        solver='lbfgs',
-        tol=0.0001,
-        verbose=False,
-        validation_fraction=0.0,
-        n_iter_no_change=50
-    )
+    # AUGMENT_MODEL = MLPClassifier(
+    #     hidden_layer_sizes=(),
+    #     activation='relu',
+    #     alpha=0.0001,
+    #     solver='lbfgs',
+    #     tol=0.0001,
+    #     verbose=False,
+    #     validation_fraction=0.0,
+    #     n_iter_no_change=50
+    # )
+
+    AUGMENT_MODEL = RandomForestClassifier()
 
     def __init__(self, model_fn, gpuid, fine_tune_layer, verbose=False):
 
@@ -59,7 +64,7 @@ class KerasDenseFineTune(BackendModel):
         
         self.model = keras.models.Model(inputs=tmodel.inputs, outputs=[tmodel.outputs[0], tmodel.layers[feature_layer_idx].output])
         self.model.compile("sgd","mse")
-        self.model._make_predict_function()	# have to initialize before threading
+        #self.model._make_predict_function()	# have to initialize before threading
 
         self.output_channels = self.model.output_shape[0][3]
         self.output_features = self.model.output_shape[1][3]
@@ -136,8 +141,6 @@ class KerasDenseFineTune(BackendModel):
         naip_data = naip_data / 255.0
         output, output_features = self.run_model_on_tile(naip_data)
         
-        print(output.shape)
-
         if self.augment_model_trained:
             original_shape = output.shape
             output = output_features.reshape(-1, output_features.shape[2])
@@ -177,15 +180,12 @@ class KerasDenseFineTune(BackendModel):
     def retrain(self, **kwargs):
         x_train = np.concatenate(self.augment_x_train, axis=0)
         y_train = np.concatenate(self.augment_y_train, axis=0)
-
-        print(x_train.shape)
-        print(y_train.shape)
         
         vals, counts = np.unique(y_train, return_counts=True)
 
         if len(vals) >= 4:
             self.augment_model.fit(x_train, y_train)
-            print("fine-tuning accuracy: ",self.augment_model.score(x_train, y_train))
+            LOGGER.debug("Fine-tuning accuracy: %0.4f" % (self.augment_model.score(x_train, y_train)))
             self.augment_model_trained = True
             self.undo_stack.append("retrain")
 

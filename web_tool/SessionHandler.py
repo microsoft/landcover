@@ -4,14 +4,14 @@ import subprocess
 import socket
 from queue import Queue
 
-from Session import Session
+import logging
+LOGGER = logging.getLogger("server")
 
-from ServerModelsRPC import ModelRPC
-from ServerModelsKerasDense import KerasDenseFineTune
+from .Session import Session
 
-from log import LOGGER
+from .ServerModelsRPC import ModelRPC
 
-from Models import load_models
+from .Models import load_models
 MODELS = load_models()
 
 
@@ -51,11 +51,11 @@ def get_free_tcp_port():
 
 class SessionHandler():
 
-    def __init__(self, local, args):
+    def __init__(self, args):
         self._WORKERS = [ # TODO: I hardcode that there are 4 GPUs available on the local machine
-            {"type": "local", "gpu_id": None},
-            {"type": "local", "gpu_id": None},
-            {"type": "local", "gpu_id": None}
+            {"type": "local", "gpu_id": 0},
+            {"type": "local", "gpu_id": 1},
+            {"type": "local", "gpu_id": 2}
         ]
 
         self._WORKER_POOL = Queue()
@@ -66,7 +66,6 @@ class SessionHandler():
         self._SESSION_MAP = dict()
         self._SESSION_INFO = dict()
         
-        self.local = local
         self.args = args
 
 
@@ -99,8 +98,8 @@ class SessionHandler():
 
     def _spawn_local_worker(self, port, model_fn, gpu_id, fine_tune_layer):
         command = [
-            "/usr/bin/env", "python", "web_tool/worker.py",
-            "--model", "keras_dense",
+            "/usr/bin/env", "python", "worker.py",
+            "--model", "torch",
             "--model_fn", model_fn,
             "--fine_tune_layer", str(fine_tune_layer),
             "--port", str(port)

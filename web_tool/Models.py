@@ -1,7 +1,10 @@
 import os
 import json
 
-from web_tool import ROOT_DIR
+import logging
+LOGGER = logging.getLogger("server")
+
+from . import ROOT_DIR
 
 _MODEL_FN = "models.json"
 
@@ -22,7 +25,7 @@ def load_models():
         model_object = _load_model(model)
         
         if model_object is False:
-            print("WARNING: files are missing, we will not be able to serve '%s' model" % (key)) 
+            LOGGER.warning("Files are missing, we will not be able to serve the following model: '%s'" % (key)) 
         else:
             models[key] = model_object
 

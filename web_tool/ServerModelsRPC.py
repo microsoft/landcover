@@ -1,9 +1,11 @@
 import sys, os, time
 import rpyc
 
-from log import LOGGER
-from ServerModelsAbstract import BackendModel
-from Utils import serialize, deserialize
+import logging
+LOGGER = logging.getLogger("server")
+
+from .ServerModelsAbstract import BackendModel
+from .Utils import serialize, deserialize
 
 
 class ModelRPC(BackendModel):
@@ -32,8 +34,8 @@ class ModelRPC(BackendModel):
         return deserialize(self.connection.root.exposed_run(serialize(naip_data), extent, on_tile))
     def retrain(self):
         return self.connection.root.exposed_retrain()
-    def add_sample(self, tdst_row, bdst_row, tdst_col, bdst_col, class_idx):
-        return self.connection.root.exposed_add_sample(tdst_row, bdst_row, tdst_col, bdst_col, class_idx)
+    def add_sample_point(self, row, col, class_idx):
+        return self.connection.root.exposed_add_sample(row, col, class_idx)
     def undo(self):
         return self.connection.root.exposed_undo()
     def reset(self):

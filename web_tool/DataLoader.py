@@ -27,14 +27,14 @@ import mercantile
 import cv2
 import pickle
 
-from web_tool import ROOT_DIR
-from DataLoaderAbstract import DataLoader
+from . import ROOT_DIR
+from .DataLoaderAbstract import DataLoader
 
 # ------------------------------------------------------
 # Miscellaneous methods
 # ------------------------------------------------------
 
-def extent_to_transformed_geom(extent, dest_crs="EPSG:4269"):
+def extent_to_transformed_geom(extent, dest_crs):
     left, right = extent["xmin"], extent["xmax"]
     top, bottom = extent["ymax"], extent["ymin"]
 
@@ -43,18 +43,20 @@ def extent_to_transformed_geom(extent, dest_crs="EPSG:4269"):
         "coordinates": [[(left, top), (right, top), (right, bottom), (left, bottom), (left, top)]]
     }
 
-    src_crs = "EPSG:" + str(extent["spatialReference"]["latestWkid"])
+    src_crs = extent["crs"]
     return fiona.transform.transform_geom(src_crs, dest_crs, geom)
 
 
-def warp_data_to_3857(src_img, src_crs, src_transform, src_bounds, resolution=1):
+def warp_data_to_3857(src_img, src_crs, src_transform, src_bounds):
     ''' Assume that src_img is (height, width, channels)
     '''
     assert len(src_img.shape) == 3
     src_height, src_width, num_channels = src_img.shape
 
     src_img_tmp = np.rollaxis(src_img.copy(), 2, 0)
-    
+
+    x_res, y_res = src_transform[0], -src_transform[4]
+
     dst_crs = rasterio.crs.CRS.from_epsg(3857)
     dst_bounds = rasterio.warp.transform_bounds(src_crs, dst_crs, *src_bounds)
     dst_transform, width, height = rasterio.warp.calculate_default_transform(
@@ -65,11 +67,11 @@ def warp_data_to_3857(src_img, src_crs, src_transform, src_bounds, resolution=1)
         bottom=src_bounds[1],
         right=src_bounds[2],
         top=src_bounds[3],
-        resolution=resolution
+        resolution=(x_res, y_res) # TODO: we use the resolution of the src_input, while this parameter needs the resolution of the destionation. This will break if src_crs units are degrees instead of meters
     )
 
     dst_image = np.zeros((num_channels, height, width), np.float32)
-    rasterio.warp.reproject(
+    dst_image, dst_transform = rasterio.warp.reproject(
         source=src_img_tmp,
         destination=dst_image,
         src_transform=src_transform,
@@ -80,17 +82,38 @@ def warp_data_to_3857(src_img, src_crs, src_transform, src_bounds, resolution=1)
     )
     dst_image = np.rollaxis(dst_image, 0, 3)
     
-    return dst_image, dst_bounds
+    return dst_image, dst_crs, dst_transform, dst_bounds
 
 
-def crop_data_by_extent(src_img, src_bounds, extent):
-    '''NOTE: src_bounds and extent _must_ be in the same coordinate system.'''
-    original_bounds = np.array((extent["xmin"], extent["ymin"], extent["xmax"], extent["ymax"]))
-    new_bounds = np.array(src_bounds)
+def crop_data_by_extent(src_img, src_crs, src_transform, extent):
+    geom = extent_to_transformed_geom(extent, "epsg:3857") # TODO: hardcoded epsg:3857 because that's the only CRS that the frontend uses
+    return crop_data_by_geometry(src_img, src_crs, src_transform, geom, "epsg:3857")
 
-    diff = np.round(original_bounds - new_bounds).astype(int)
-    return src_img[diff[1]:diff[3], diff[0]:diff[2], :]
 
+def crop_data_by_geometry(src_img, src_crs, src_transform, geometry, geometry_crs):
+    src_img_tmp = np.rollaxis(src_img.copy(), 2, 0)
+    
+    geometry = fiona.transform.transform_geom(geometry_crs, str(src_crs), geometry)
+
+    height, width, num_channels = src_img.shape
+    dummy_src_profile = {
+        'driver': 'GTiff', 'dtype': str(src_img.dtype),
+        'width': width, 'height': height, 'count': num_channels,
+        'crs': src_crs,
+        'transform': src_transform
+    }
+    
+    test_f = rasterio.io.MemoryFile()
+    with test_f.open(**dummy_src_profile) as test_d:
+        test_d.write(src_img_tmp)
+    test_f.seek(0)
+    with test_f.open() as test_d:
+        dst_img, dst_transform = rasterio.mask.mask(test_d, [geometry], crop=True, all_touched=True, pad=False)
+    test_f.close()
+    
+    dst_img = np.rollaxis(dst_img, 0, 3)
+    
+    return dst_img, dst_transform
 
 
 # ------------------------------------------------------
@@ -118,49 +141,21 @@ class DataLoaderCustom(DataLoader):
         self._padding = padding
 
     def get_data_from_extent(self, extent):
-        f = rasterio.open(os.path.join(ROOT_DIR, self.data_fn), "r")
-        src_index = f.index
+        f = rasterio.open(self.data_fn, "r")
         src_crs = f.crs
         transformed_geom = extent_to_transformed_geom(extent, f.crs.to_dict())
         transformed_geom = shapely.geometry.shape(transformed_geom)
         buffed_geom = transformed_geom.buffer(self.padding)
         geom = shapely.geometry.mapping(shapely.geometry.box(*buffed_geom.bounds))
-        src_image, src_transform = rasterio.mask.mask(f, [geom], crop=True)
+        src_image, src_transform = rasterio.mask.mask(f, [geom], crop=True, all_touched=True, pad=False)
         f.close()
 
-        # if src_image.shape[0] == 3:
-        #     src_image = np.concatenate([
-        #             src_image,
-        #             src_image[0][np.newaxis]
-        #         ], axis=0)
-
-        return src_image, src_crs, src_transform, buffed_geom.bounds, src_index
+        src_image = np.rollaxis(src_image, 0, 3)
+        return src_image, src_crs, src_transform, buffed_geom.bounds
 
     def get_area_from_shape_by_extent(self, extent, shape_layer):
         i, shape = self.get_shape_by_extent(extent, shape_layer)
         return self.shapes[shape_layer]["areas"][i]
-
-    def get_data_from_shape_by_extent(self, extent, shape_layer):
-        # First, figure out which shape the extent is in
-        _, shape = self.get_shape_by_extent(extent, shape_layer)
-        mask_geom = shapely.geometry.mapping(shape)
-
-        # Second, crop out that area for running the entire model on
-        f = rasterio.open(os.path.join(ROOT_DIR, self.data_fn), "r")
-        src_profile = f.profile
-        src_crs = f.crs.to_string()
-        src_bounds = f.bounds
-        transformed_mask_geom = fiona.transform.transform_geom(self.shapes[shape_layer]["crs"], src_crs, mask_geom)
-        src_image, src_transform = rasterio.mask.mask(f, [transformed_mask_geom], crop=True, all_touched=True, pad=False)
-        f.close()
-
-        # if src_image.shape[0] == 3:
-        #     src_image = np.concatenate([
-        #             src_image,
-        #             src_image[0][np.newaxis]
-        #         ], axis=0)
-
-        return src_image, src_profile, src_transform, shapely.geometry.shape(transformed_mask_geom).bounds, src_crs
 
     def get_shape_by_extent(self, extent, shape_layer):
         transformed_geom = extent_to_transformed_geom(extent, self.shapes[shape_layer]["crs"])
@@ -172,18 +167,16 @@ class DataLoaderCustom(DataLoader):
         raise ValueError("No shape contains the centroid")
 
     def get_data_from_shape(self, shape):
-        #mask_geom = shapely.geometry.mapping(shape)
-        mask_geom = shape
+        '''Note: We assume that the shape is a geojson geometry in EPSG:4326'''
 
-        # Second, crop out that area for running the entire model on
-        f = rasterio.open(os.path.join(ROOT_DIR, self.data_fn), "r")
+        f = rasterio.open(self.data_fn, "r")
         src_profile = f.profile
         src_crs = f.crs.to_string()
-        src_bounds = f.bounds
-        transformed_mask_geom = fiona.transform.transform_geom("epsg:4326", src_crs, mask_geom)
+        transformed_mask_geom = fiona.transform.transform_geom("epsg:4326", src_crs, shape)
         src_image, src_transform = rasterio.mask.mask(f, [transformed_mask_geom], crop=True, all_touched=True, pad=False)
         f.close()
 
+        src_image = np.rollaxis(src_image, 0, 3)
         return src_image, src_profile, src_transform, shapely.geometry.shape(transformed_mask_geom).bounds, src_crs
 
 
@@ -288,7 +281,6 @@ class DataLoaderUSALayer(DataLoader):
         fn = self.get_fn_by_geo_data_type(naip_fn, geo_data_type)
 
         f = rasterio.open(fn, "r")
-        src_index = f.index
         src_crs = f.crs
         transformed_geom = extent_to_transformed_geom(extent, f.crs.to_dict())
         transformed_geom = shapely.geometry.shape(transformed_geom)
@@ -297,24 +289,10 @@ class DataLoaderUSALayer(DataLoader):
         src_image, src_transform = rasterio.mask.mask(f, [geom], crop=True)
         f.close()
 
-        return src_image, src_crs, src_transform, buffed_geom.bounds, src_index
+        return src_image, src_crs, src_transform, buffed_geom.bounds
 
     def get_area_from_shape_by_extent(self, extent, shape_layer):
         raise NotImplementedError()
-
-    def get_data_from_shape_by_extent(self, extent, shape_layer, geo_data_type=USALayerGeoDataTypes.NAIP):
-        naip_fn = NAIPTileIndex.lookup(extent)
-        fn = self.get_fn_by_geo_data_type(naip_fn, geo_data_type)
-
-        f = rasterio.open(fn, "r")
-        src_profile = f.profile
-        src_transform = f.profile["transform"]
-        src_bounds = f.bounds
-        src_crs = f.crs
-        data = f.read()
-        f.close()
-
-        return data, src_profile, src_transform, src_bounds, src_crs
 
     def get_data_from_shape(self, shape):
         raise NotImplementedError()
@@ -416,19 +394,14 @@ class DataLoaderBasemap(DataLoader):
             test_d.write(out_image[:,:,1], 2)
             test_d.write(out_image[:,:,2], 3)
         test_f.seek(0)
-        with test_f.open() as test_d:
-            dst_index = test_d.index
         test_f.close()
 
         r,g,b = out_image
         out_image = np.stack([r,g,b,r])
         
-        return out_image, dst_crs, out_transform, (minx, miny, maxx, maxy), dst_index
+        return out_image, dst_crs, out_transform, (minx, miny, maxx, maxy)
 
     def get_area_from_shape_by_extent(self, extent, shape_layer):
-        raise NotImplementedError()
-
-    def get_data_from_shape_by_extent(self, extent, shape_layer):
         raise NotImplementedError()
 
     def get_data_from_shape(self, shape):
