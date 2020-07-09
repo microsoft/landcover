@@ -295,7 +295,7 @@ var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
             "xmin": topleftProjected.x,
             "ymax": topleftProjected.y,
             "ymin": bottomrightProjected.y,
-            "crs": "espg:3857"
+            "crs": "epsg:3857"
         },
         "classes": CLASSES,
         "SESSION": SESSION_ID

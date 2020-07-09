@@ -204,14 +204,38 @@
     }
 
     $(document).ready(function () {
-      var data1 = $.getJSON('datasets.json');
-      var data2 = $.getJSON('models.json');
+      var data = [
+        $.getJSON('datasets.json'),
+        $.getJSON('models.json'),
+        $.getJSON('datasets.mine.json'),
+        $.getJSON('models.mine.json')
+      ];
 
-      Promise.all([data1, data2]).then(function (results) {
-        datasets = results[0];
-        models = results[1];
+      Promise.allSettled(data).then(function (results) {        
+        datasets = results[0].value;
+        models = results[1].value
+
+        if(results[2].status == "fulfilled"){  
+          for(k in results[2].value){
+            if(!(k in datasets)){
+              datasets[k] = results[2].value[k];
+            }else{
+              console.debug("Skipping a duplicate key in datasets.mine.json");
+            }
+          }
+        }
+        if(results[3].status == "fulfilled"){
+          for(k in results[3].value){
+            if(!(k in models)){
+              models[k] = results[3].value[k];
+            }else{
+              console.debug("Skipping a duplicate key in models.mine.json");
+            }
+          }
+        }
         main();
       });
+
     });
   </script>
 

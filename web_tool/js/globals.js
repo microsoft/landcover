@@ -37,6 +37,27 @@ var DATASETS = (function () {
     return json;
 })();
 
+
+(function () {
+    var json = Object();
+    $.ajax({
+        'async': false,
+        'url': 'datasets.mine.json',
+        'dataType': "json",
+        'success': function(data){
+            json = data;
+        }
+    });
+
+    for(k in json){
+        if(!(k in DATASETS)){
+            DATASETS[k] = json[k];
+        }else{
+            console.debug("Skipping a duplicate key in datasets.mine.json");
+        }
+    }
+})();
+
 var MODELS = (function () {
     var json = null;
     $.ajax({
@@ -48,6 +69,26 @@ var MODELS = (function () {
         }
     });
     return json;
+})();
+
+(function () {
+    var json = Object();
+    $.ajax({
+        'async': false,
+        'url': 'models.mine.json',
+        'dataType': "json",
+        'success': function(data){
+            json = data;
+        }
+    });
+
+    for(k in json){
+        if(!(k in MODELS)){
+            MODELS[k] = json[k];
+        }else{
+            console.debug("Skipping a duplicate key in models.mine.json");
+        }
+    }
 })();
 
 var CLASSES = [];

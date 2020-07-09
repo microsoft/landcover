@@ -13,7 +13,6 @@ LOGGER = logging.getLogger("server")
 from . import ROOT_DIR
 from .DataLoader import DataLoaderCustom, DataLoaderUSALayer, DataLoaderBasemap
 
-_DATASET_FN = "datasets.json"
 
 def get_area_from_geometry(geom, src_crs="epsg:4326"):
     if geom["type"] == "Polygon":
@@ -89,9 +88,9 @@ def _load_dataset(dataset):
     }
 
 def load_datasets():
-    dataset_json = json.load(open(os.path.join(ROOT_DIR, _DATASET_FN),"r"))
     datasets = dict()
 
+    dataset_json = json.load(open(os.path.join(ROOT_DIR, "datasets.json"),"r"))
     for key, dataset in dataset_json.items():
         dataset_object = _load_dataset(dataset)
         
@@ -99,5 +98,19 @@ def load_datasets():
             LOGGER.warning("Files are missing, we will not be able to serve the following dataset: '%s'" % (key)) 
         else:
             datasets[key] = dataset_object
+
+    if os.path.exists(os.path.join(ROOT_DIR, "datasets.mine.json")):
+        dataset_json = json.load(open(os.path.join(ROOT_DIR, "datasets.mine.json"),"r"))
+        for key, dataset in dataset_json.items():
+
+            if key not in datasets:
+                dataset_object = _load_dataset(dataset)
+                
+                if dataset_object is False:
+                    LOGGER.warning("Files are missing, we will not be able to serve the following dataset: '%s'" % (key)) 
+                else:
+                    datasets[key] = dataset_object
+            else:
+                LOGGER.warning("There is a conflicting dataset key in datasets.mine.json, skipping.")
 
     return datasets

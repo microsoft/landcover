@@ -35,7 +35,7 @@ class ModelRPC(BackendModel):
     def retrain(self):
         return self.connection.root.exposed_retrain()
     def add_sample_point(self, row, col, class_idx):
-        return self.connection.root.exposed_add_sample(row, col, class_idx)
+        return self.connection.root.exposed_add_sample_point(row, col, class_idx)
     def undo(self):
         return self.connection.root.exposed_undo()
     def reset(self):

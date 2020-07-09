@@ -41,8 +41,8 @@ class MyService(rpyc.Service):
     def exposed_retrain(self):
         return self.model.retrain()
 
-    def exposed_add_sample(self, tdst_row, bdst_row, tdst_col, bdst_col, class_idx):
-        return self.model.add_sample(tdst_row, bdst_row, tdst_col, bdst_col, class_idx)
+    def exposed_add_sample_point(self, row, col, class_idx):
+        return self.model.add_sample_point(row, col, class_idx)
 
     def exposed_undo(self):
         return self.model.undo()

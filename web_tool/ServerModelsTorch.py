@@ -104,7 +104,7 @@ class TorchFineTuning(BackendModel):
         return output
 
     def retrain(self, **kwargs):
-        x_train = np.stack(self.corr_features)
+        x_train = np.array(self.corr_features)
         y_train = np.array(self.corr_labels)
         
         
