@@ -6,7 +6,7 @@ var addInferenceMouseHandlers = function(){
         // Choose style
         var curSelPoly = null;
         if(!gShiftKeyDown){
-            curSelPoly = getPolyAround(e.latlng, CORRECTION_WINDOW_SIZE, false);
+            curSelPoly = getPolyAround(e.latlng, 1, false);
         }else{
             curSelPoly = getPolyAround(e.latlng, INFERENCE_WINDOW_SIZE, true);
         }
@@ -53,20 +53,21 @@ var addInferenceMouseHandlers = function(){
             if(gCurrentSelection !== null){
                 if(isPointInsidePolygon(e.latlng, gCurrentSelection)){
                     if(gCurrentBasemapLayerName == DATASETS[gCurrentDataset]["metadata"]["imageryName"]){
-                        curSelPoly = getPolyAround(e.latlng, CORRECTION_WINDOW_SIZE, false);
+                        curSelPoly = getPolyAround(e.latlng, 1, false);
                         var idx = gCurrentPatches.length-1;
-                        doSendCorrection(curSelPoly, idx);
+                        doSendCorrection(e.latlng, idx);
                         
-                        var rect = L.rectangle(
-                            [curSelPoly[0], curSelPoly[2]],
+                        var circle = L.circle(
+                            [e.latlng.lat, e.latlng.lng],
                             {
+                                radius: 2,
                                 color: CLASSES[gSelectedClassIdx]["color"],
                                 weight: 1,
                                 opacity: 1
                                 //pane: "labels"
                             }
                         ).addTo(gMap);
-                        gUserPointList.push([rect, gSelectedClassIdx]);
+                        gUserPointList.push([circle, gSelectedClassIdx]);
     
                         gMap.dragging.disable();
                         gNumClicks += 1

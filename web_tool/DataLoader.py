@@ -43,7 +43,7 @@ def extent_to_transformed_geom(extent, dest_crs):
         "coordinates": [[(left, top), (right, top), (right, bottom), (left, bottom), (left, top)]]
     }
 
-    src_crs = "EPSG:" + str(extent["spatialReference"]["latestWkid"])
+    src_crs = extent["crs"]
     return fiona.transform.transform_geom(src_crs, dest_crs, geom)
 
 

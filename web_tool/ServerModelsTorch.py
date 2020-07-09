@@ -176,12 +176,9 @@ class TorchFineTuning(BackendModel):
             self.corr_features = self.corr_features[:-1]
             self.corr_labels = self.corr_labels[:-1]
 
-    def add_sample(self, tdst_row, bdst_row, tdst_col, bdst_col, class_idx):
-        print("adding sample: class %d (incremented to %d) at (%d, %d)" % (class_idx, class_idx+1 , tdst_row, tdst_col))
-        for i in range(tdst_row,bdst_row+1):
-            for j in range(tdst_col,bdst_col+1):
-                self.corr_labels.append(class_idx)
-                self.corr_features.append(self.current_features[i,j,:])
+    def add_sample_point(self, row, col, class_idx):
+        self.corr_labels.append(class_idx)
+        self.corr_features.append(self.current_features[row, col,:])
         
     def reset(self):
         self._init_model()

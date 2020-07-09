@@ -3,9 +3,9 @@ from abc import ABC, abstractmethod
 class BackendModel(ABC):
 
     @abstractmethod
-    def run(self, naip_data, extent, on_tile):
+    def run(self, imagery, extent, on_tile):
         '''Inputs:
-        `naip_data` is a (height, width, 4) unnormalized image (all pixels values are in [0,255])
+        `imagery` is a (height, width, channels) image that has been cropped from the data source currently in use on the front-end
         `extent` is the extent dictionary that is given by the front-end
         `on_tile` is a flag that specifies whether we are running the model in "download mode" and shouldn't be updating any internal states 
 
@@ -25,15 +25,13 @@ class BackendModel(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def add_sample(self, tdst_row, bdst_row, tdst_col, bdst_col, class_idx):
+    def add_sample_point(self, row, col, class_idx):
         '''Takes as input a bounding box and new class label. Should set the area in the previously predicted patch that is covered by the 
         given bounding box to the new class label. No outputs. 
         
         Inputs: 
-        `bdst_row` start row of the bounding box
-        `tdst_row` end row of the bounding box
-        `tdst_col` start column of the bounding box
-        `bdst_col` end column of the bounding box
+        `row` row index into the last `imagery` tensor passed to `run()` 
+        `col` column index into the last `imagery` tensor passed to `run()`
         `class_idx` new class label (0 indexed)
         '''
         raise NotImplementedError()

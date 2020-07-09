@@ -181,43 +181,29 @@ def record_correction():
     SESSION_HANDLER.get_session(bottle.request.session.id).add_entry(data) # record this interaction
 
     #
-    tlat, tlon = data["extent"]["ymax"], data["extent"]["xmin"]
-    blat, blon = data["extent"]["ymin"], data["extent"]["xmax"]
+    lat, lon = data["point"]["x"], data["point"]["y"]
     class_list = data["classes"]
     name_list = [item["name"] for item in class_list]
     color_list = [item["color"] for item in class_list]
     class_idx = data["value"] # what we want to switch the class to
-    origin_crs = "epsg:%d" % (data["extent"]["spatialReference"]["latestWkid"])
+    origin_crs = data["point"]["crs"]
 
     # load the current predicted patches crs and transform
     data_crs, data_transform = SESSION_HANDLER.get_session(bottle.request.session.id).current_transform
 
-    xs, ys = fiona.transform.transform(origin_crs, data_crs.to_dict(), [tlon,blon], [tlat,blat])
-    
-    tdst_x = xs[0]
-    tdst_y = ys[0]
-    tdst_col, tdst_row = (~data_transform) * (tdst_x, tdst_y)
-    tdst_row = int(np.floor(tdst_row))
-    tdst_col = int(np.floor(tdst_col))
+    x, y = fiona.transform.transform(origin_crs, data_crs.to_dict(), [lon], [lat])
+    x = x[0]
+    y = y[0]
 
-    bdst_x = xs[1]
-    bdst_y = ys[1]
-    bdst_col, bdst_row = (~data_transform) * (bdst_x, bdst_y)
-    bdst_row = int(np.floor(bdst_row))
-    bdst_col = int(np.floor(bdst_col))
+    dst_row, dst_col = (~data_transform) * (y, x)
+    dst_row = int(np.floor(dst_row))
+    dst_col = int(np.floor(dst_col))
 
-    tdst_row, bdst_row = min(tdst_row, bdst_row), max(tdst_row, bdst_row)
-    tdst_col, bdst_col = min(tdst_col, bdst_col), max(tdst_col, bdst_col)
-
-    print(tdst_row, tdst_col)
-    #print(bdst_row, bdst_col)
-
-    SESSION_HANDLER.get_session(bottle.request.session.id).model.add_sample(tdst_row, bdst_row, tdst_col, bdst_col, class_idx)
-    num_corrected = (bdst_row-tdst_row) * (bdst_col-tdst_col)
+    SESSION_HANDLER.get_session(bottle.request.session.id).model.add_sample_point(dst_row, dst_col, class_idx)
 
     data["message"] = "Successfully submitted correction"
     data["success"] = True
-    data["count"] = num_corrected
+    data["count"] = 1
 
     bottle.response.status = 200
     return json.dumps(data)

@@ -106,7 +106,7 @@ var isPointInsidePolygon = function(latlng, poly) {
     return inside;
 };
 
-var getPolyAround = function(latlng, radius, fromCenter){
+var getPolyAround = function(latlng, radius, fromCenter, round=false){
     // We convert the input lat/lon into the EPSG3857 projection, define our square, then re-convert to lat/lon 
     var latlngProjected = L.CRS.EPSG3857.project(latlng);
 
@@ -114,8 +114,10 @@ var getPolyAround = function(latlng, radius, fromCenter){
     var y = latlngProjected.y;
     
     var resolution = DATASETS[gCurrentDataset]["dataLayer"]["resolution"];
-    x = Math.round(x/resolution) * resolution;
-    y = Math.round(y/resolution) * resolution;
+    if(round){
+        x = Math.round(x/resolution) * resolution;
+        y = Math.round(y/resolution) * resolution;
+    }
 
     if(fromCenter){
         var top = y + radius/2;

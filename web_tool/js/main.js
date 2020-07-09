@@ -159,24 +159,17 @@ var doDownloadTile = function(){
 //-----------------------------------------------------------------
 // Submit new training example
 //-----------------------------------------------------------------
-var doSendCorrection = function(polygon, idx){
-    var topleft = L.latLng(polygon[0][0], polygon[0][1]);
-    var topleftProjected = L.CRS.EPSG3857.project(topleft);
-    var bottomright = L.latLng(polygon[2][0], polygon[2][1]);
-    var bottomrightProjected = L.CRS.EPSG3857.project(bottomright);
+var doSendCorrection = function(point, idx){
+    var pointProjected = L.CRS.EPSG3857.project(point);
     
     var request = {
         "type": "correction",
         "dataset": gCurrentDataset,
         "experiment": EXP_NAME,
-        "extent": {
-            "xmax": Math.round(bottomrightProjected.x),
-            "xmin": Math.round(topleftProjected.x),
-            "ymax": Math.round(topleftProjected.y),
-            "ymin": Math.round(bottomrightProjected.y),
-            "spatialReference": {
-                "latestWkid": 3857
-            }
+        "point": {
+            "x": Math.round(pointProjected.x),
+            "y": Math.round(pointProjected.y),
+            "crs": "epsg:3857"
         },
         "classes": CLASSES,
         "value" : gSelectedClassIdx,
@@ -302,9 +295,7 @@ var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
             "xmin": topleftProjected.x,
             "ymax": topleftProjected.y,
             "ymin": bottomrightProjected.y,
-            "spatialReference": {
-                "latestWkid": 3857
-            }
+            "crs": "espg:3857"
         },
         "classes": CLASSES,
         "SESSION": SESSION_ID
@@ -371,9 +362,7 @@ var requestInputPatch = function(idx, polygon, serviceURL){
             "xmin": topleftProjected.x,
             "ymax": topleftProjected.y,
             "ymin": bottomrightProjected.y,
-            "spatialReference": {
-                "latestWkid": 3857
-            }
+            "crs": "epsg:3857"
         },
         "SESSION": SESSION_ID
     };
