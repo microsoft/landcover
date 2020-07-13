@@ -180,6 +180,8 @@ def record_correction():
 
     SESSION_HANDLER.get_session(bottle.request.session.id).add_entry(data) # record this interaction
 
+    model_idx = data["model_idx"]
+
     #
     lon, lat = data["point"]["x"], data["point"]["y"]
     class_list = data["classes"]
