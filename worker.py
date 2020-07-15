@@ -60,7 +60,7 @@ def main():
     parser.add_argument("--model", action="store", dest="model",
         choices=[
             "keras_dense",
-            "torch"
+            "pytorch"
         ],
         help="Model to use", required=True
     )
@@ -77,13 +77,13 @@ def main():
 
 
     # Setup model
-    #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    #os.environ["CUDA_VISIBLE_DEVICES"] = "" if args.gpuid is None else str(args.gpuid)
-    #os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "" if args.gpuid is None else str(args.gpuid)
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
     if args.model == "keras_dense":
         model = KerasDenseFineTune(args.model_fn, args.gpuid, args.fine_tune_layer)
-    elif args.model == "torch":
+    elif args.model == "pytorch":
         model = TorchFineTuning(args.model_fn, args.gpuid, args.fine_tune_layer)
     else:
         raise NotImplementedError("The given model type is not implemented yet.")

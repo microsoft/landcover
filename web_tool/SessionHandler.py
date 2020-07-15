@@ -96,10 +96,10 @@ class SessionHandler():
         self._expired_sessions.remove(session_id)
 
 
-    def _spawn_local_worker(self, port, model_fn, gpu_id, fine_tune_layer):
+    def _spawn_local_worker(self, port, model_fn, gpu_id, fine_tune_layer, model_type):
         command = [
             "/usr/bin/env", "python", "worker.py",
-            "--model", "torch",
+            "--model", model_type,
             "--model_fn", model_fn,
             "--fine_tune_layer", str(fine_tune_layer),
             "--port", str(port)
@@ -119,6 +119,7 @@ class SessionHandler():
             raise ValueError("%s is not a valid model, check the keys in models.json" % (model_key))
         
         model_fn = MODELS[model_key]["fn"]
+        model_type = MODELS[model_key]["type"]
         fine_tune_layer = MODELS[model_key]["fine_tune_layer"]
 
         worker = self._WORKER_POOL.get() # this will block until we have a free one
@@ -126,7 +127,7 @@ class SessionHandler():
         if worker["type"] == "local":
             random_port = get_free_tcp_port()
             gpu_id = worker["gpu_id"]
-            process = self._spawn_local_worker(random_port, model_fn, gpu_id, fine_tune_layer)
+            process = self._spawn_local_worker(random_port, model_fn, gpu_id, fine_tune_layer, model_type)
             model = ModelRPC(session_id, random_port)
             session = Session(session_id, model)
             self._SESSION_MAP[session_id] = session
