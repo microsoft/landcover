@@ -67,7 +67,7 @@ def warp_data_to_3857(src_img, src_crs, src_transform, src_bounds):
         bottom=src_bounds[1],
         right=src_bounds[2],
         top=src_bounds[3],
-        resolution=(x_res, y_res) # TODO: we use the resolution of the src_input, while this parameter needs the resolution of the destionation. This will break if src_crs units are degrees instead of meters
+        resolution=(x_res, y_res) # TODO: we use the resolution of the src_input, while this parameter needs the resolution of the destination. This will break if src_crs units are degrees instead of meters
     )
 
     dst_image = np.zeros((num_channels, height, width), np.float32)

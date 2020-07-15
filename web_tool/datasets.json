@@ -7,7 +7,7 @@
         },
         "dataLayer": {
             "type": "CUSTOM",
-            "path": "data/imagery/hcmc_sentinel.tif",
+            "path": "data/imagery/hcmc_sentinel_epsg3857.tif",
             "padding": 500,
             "resolution": 10
         },
