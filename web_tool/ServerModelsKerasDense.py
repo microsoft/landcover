@@ -178,8 +178,11 @@ class KerasDenseFineTune(BackendModel):
         return output
 
     def retrain(self, **kwargs):
-        x_train = np.concatenate(self.augment_x_train, axis=0)
-        y_train = np.concatenate(self.augment_y_train, axis=0)
+        x_train = np.array(self.augment_x_train)
+        y_train = np.array(self.augment_y_train)
+
+        print(x_train.shape)
+        print(y_train.shape)
         
         vals, counts = np.unique(y_train, return_counts=True)
 
@@ -197,12 +200,9 @@ class KerasDenseFineTune(BackendModel):
         
         return success, message
         
-    def add_sample(self, tdst_row, bdst_row, tdst_col, bdst_col, class_idx):
-        x_features = self.current_features[tdst_row:bdst_row+1, tdst_col:bdst_col+1, :].copy().reshape(-1, self.current_features.shape[2])
-        y_samples = np.zeros((x_features.shape[0]), dtype=np.uint8)
-        y_samples[:] = class_idx
-        self.augment_x_train.append(x_features)
-        self.augment_y_train.append(y_samples)
+    def add_sample_point(self, row, col, class_idx):
+        self.augment_x_train.append(self.current_features[row, col, :].copy())
+        self.augment_y_train.append(class_idx)
         self.undo_stack.append("sample")
 
     def undo(self):

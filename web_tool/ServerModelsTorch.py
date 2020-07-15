@@ -39,9 +39,7 @@ class TorchFineTuning(BackendModel):
 
     def __init__(self, model_fn, gpuid, fine_tune_layer):
         self.model_fn = model_fn
-        self.device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
-
-        print("Using device", self.device)
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
         self.output_channels = 14
         self.output_features = 64

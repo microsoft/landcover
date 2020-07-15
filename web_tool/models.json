@@ -11,10 +11,10 @@
             "fn": "data/models/sentinel_demo_model.h5"
         },
         "classes":[
-            {"label": "Water", "color": "#0000FF"},
-            {"label": "Tree Canopy", "color": "#008000"},
-            {"label": "Field", "color": "#80FF80"},
-            {"label": "Built", "color": "#806060"}
+            {"name": "Water", "color": "#0000FF"},
+            {"name": "Tree Canopy", "color": "#008000"},
+            {"name": "Field", "color": "#80FF80"},
+            {"name": "Built", "color": "#806060"}
         ]
     },
 
@@ -30,10 +30,10 @@
             "fn": "data/models/naip_demo_model.h5"
         },
         "classes":[
-            {"label": "Water", "color": "#0000FF"},
-            {"label": "Tree Canopy", "color": "#008000"},
-            {"label": "Field", "color": "#80FF80"},
-            {"label": "Built", "color": "#806060"}
+            {"name": "Water", "color": "#0000FF"},
+            {"name": "Tree Canopy", "color": "#008000"},
+            {"name": "Field", "color": "#80FF80"},
+            {"name": "Built", "color": "#806060"}
         ]
     }
 }

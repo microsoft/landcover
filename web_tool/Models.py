@@ -12,6 +12,7 @@ def _load_model(model):
         return False
     return {
         "fn": model["model"]["fn"],
+        "type": model["model"]["type"],
         "fine_tune_layer": model["model"]["fineTuneLayer"]
     }
 

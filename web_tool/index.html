@@ -59,24 +59,7 @@
 
                     <h3 style="text-align: center; margin-top:20px;">Correction type:</h3>
                     <div style="padding-left:20px">
-                        <div id="classList">
-                            <!-- <div class="radio">
-                                <button class="circle jscolor" data-class-name="Water" data-jscolor="{valueElement:null,value:'0000FF',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
-                                <label class="selected"><input type="radio" name="radClasses" class="radNewClass" value="Water" checked><span class="className">Water</span> (<span class="classCounts">0</span> samples since last retrain)</label>
-                            </div>
-                            <div class="radio">
-                                <button class="circle jscolor" data-class-name="Tree Canopy" data-jscolor="{valueElement:null,value:'008000',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
-                                <label><input type="radio" name="radClasses" class="radNewClass" value="Tree Canopy"><span class="className">Tree Canopy</span> (<span class="classCounts">0</span> samples since last retrain)</label>
-                            </div>
-                            <div class="radio">
-                                <button class="circle jscolor" data-class-name="Field" data-jscolor="{valueElement:null,value:'80FF80',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
-                                <label><input type="radio" name="radClasses" class="radNewClass" value="Field"><span class="className">Field</span> (<span class="classCounts">0</span> samples since last retrain)</label>
-                            </div>
-                            <div class="radio">
-                                <button class="circle jscolor" data-class-name="Built" data-jscolor="{valueElement:null,value:'806060',position:'left',zIndex:2001,closable:true,closeText:'Close',onFineChange:'updateClassColor(this)'}"></button>
-                                <label><input type="radio" name="radClasses" class="radNewClass" value="Built"><span class="className">Built</span> (<span class="classCounts">0</span> samples since last retrain)</label>
-                            </div> -->
-                        </div>
+                        <div id="classList"></div>
                         <div style="text-align: center; margin-top:10px; margin-bottom:20px;">
                             <button id="btnNewClass" style="background-color: gray; border-color: white;"> Add new class</button>
                         </div>
@@ -220,18 +203,20 @@
             for(var i=0;i<MODELS[gCurrentModel]["classes"].length;i++){
                 var currentClass = MODELS[gCurrentModel]["classes"][i];
                 
-                console.debug(currentClass)
-
-                var newClassIdx = CLASSES.length + 1;
+                var newClassIdx = CLASSES.length;
+                var newClassName = currentClass["name"];
                 var newColor = currentClass["color"];
 
                 var newClassElement =  $("<div class='radio'>");
-                var newLabel = $("<label><input type='radio' name='radClasses' class='radNewClass' value='Class "+newClassIdx+"'><span class='className'>"+currentClass["label"]+"</span> (<span class='classCounts'>0</span> samples since last retrain)<i class='fa fa-edit ml-1 classNameEdit'></i></label>");
+                var newLabel = $(" \
+                    <label><input type='radio' name='radClasses' class='radClasses' value='"+newClassName+"'><span class='className'>"+newClassName+"</span> (<span class='classCounts'>0</span> samples since last retrain)<i class='fa fa-edit ml-1 classNameEdit'></i></label> \
+                ");
 
                 var newPicker = document.createElement('button');
                 newPicker.classList.add("circle");
                 newPicker.classList.add("jscolor");
-                newPicker.setAttribute("data-class-name", "Class "+newClassIdx);
+                newPicker.setAttribute("data-class-label", newClassName);
+                newPicker.setAttribute("data-class-idx", newClassIdx);
                 var output = new jscolor(newPicker, {
                     valueElement: null,
                     value: newColor.substr(1),
@@ -248,7 +233,7 @@
                 $("#classList").append(newClassElement);
 
                 CLASSES.push({
-                    "name": "Class " + newClassIdx,
+                    "name": newClassName,
                     "color": newColor,
                     "count": 0
                 });
@@ -306,7 +291,7 @@
             //----------------------------------------------------------------------
             addCustomLogoControl();
             addZoomControls();
-            addDrawControls();
+            //addDrawControls();
             var basemapPickerControl = addBasemapPickerControl(gBasemaps);
             var basemapPickerControlContainer = basemapPickerControl.getContainer();
             
@@ -381,15 +366,19 @@
             $("#btnNewClass").click(function(){
                 
                 var newClassIdx = CLASSES.length;
+                var newClassName = "Class " + (newClassIdx + 1);
                 var newColor = getRandomColor();
 
                 var newClassElement =  $("<div class='radio'>");
-                var newLabel = $("<label><input type='radio' name='radClasses' class='radNewClass' value='Class "+newClassIdx+"'><span class='className'>Class "+newClassIdx+"</span> (<span class='classCounts'>0</span> samples since last retrain)<i class='fa fa-edit ml-1 classNameEdit'></i></label>");
+                var newLabel = $(" \
+                    <label><input type='radio' name='radClasses' class='radClasses' value='"+newClassName+"'><span class='className'>"+newClassName+"</span> (<span class='classCounts'>0</span> samples since last retrain)<i class='fa fa-edit ml-1 classNameEdit'></i></label> \
+                ");
 
                 var newPicker = document.createElement('button');
                 newPicker.classList.add("circle");
                 newPicker.classList.add("jscolor");
-                newPicker.setAttribute("data-class-name", "Class "+newClassIdx);
+                newPicker.setAttribute("data-class-label", newClassName);
+                newPicker.setAttribute("data-class-idx", newClassIdx);
                 var output = new jscolor(newPicker, {
                     valueElement: null,
                     value: newColor.substr(1),
@@ -406,37 +395,34 @@
                 $("#classList").append(newClassElement);
 
                 CLASSES.push({
-                    "name": "Class " + newClassIdx,
+                    "name": newClassName,
                     "color": newColor,
                     "count": 0
                 });
-
             });
 
             //----------------------------------------------------------------------
             // Setup radio button change detection
             //----------------------------------------------------------------------
-            $(document).on('change', '.radNewClass', function(){
+            $(document).on('change', '.radClasses', function(){
 
                 $('.radio label').removeClass("selected");
                 $(this).parent().addClass("selected");
 
                 gSelectedClassIdx = findClassByName(this.value);
-                console.debug(this.value + " " + gSelectedClassIdx);
             });
 
             $(document).on('click', '.classNameEdit', function(){
                 var oldName = $(this).siblings(".className").html();
                 var newName = prompt("New label name for '"+oldName+"'");
                 $(this).siblings(".className").html(newName);
-                $(this).siblings(".radNewClass").val(newName);
+                $(this).siblings(".radClasses").val(newName);
                 
                 $(this).parent().siblings(".jscolor").attr("data-class-name", newName);
 
-                var classIdx = findClassByName(oldName)
+                var classIdx = findClassByName(oldName);
+                console.debug(classIdx);
                 CLASSES[classIdx]["name"] = newName;
-
-
             });
             
             //----------------------------------------------------------------------

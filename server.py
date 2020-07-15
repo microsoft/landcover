@@ -181,7 +181,7 @@ def record_correction():
     SESSION_HANDLER.get_session(bottle.request.session.id).add_entry(data) # record this interaction
 
     #
-    lat, lon = data["point"]["x"], data["point"]["y"]
+    lon, lat = data["point"]["x"], data["point"]["y"]
     class_list = data["classes"]
     name_list = [item["name"] for item in class_list]
     color_list = [item["color"] for item in class_list]
@@ -191,11 +191,11 @@ def record_correction():
     # load the current predicted patches crs and transform
     data_crs, data_transform = SESSION_HANDLER.get_session(bottle.request.session.id).current_transform
 
-    x, y = fiona.transform.transform(origin_crs, data_crs.to_dict(), [lon], [lat])
+    x, y = fiona.transform.transform(origin_crs, data_crs.to_string(), [lon], [lat])
     x = x[0]
     y = y[0]
 
-    dst_row, dst_col = (~data_transform) * (y, x)
+    dst_col, dst_row = (~data_transform) * (x,y)
     dst_row = int(np.floor(dst_row))
     dst_col = int(np.floor(dst_col))
 

@@ -12,12 +12,11 @@ var findClassByIdx = function(idx){
 }
 
 var renderClassCount = function(name, count){
-    $(".radNewClass[value='"+name+"']").siblings(".classCounts").html(count);
+    $(".radClasses[value='"+name+"']").siblings(".classCounts").html(count);
 }
 
 var updateClassColor = function(obj){
-    var className = $(obj.targetElement).attr("data-class-name");
-    var classIdx = findClassByName(className);
+    var classIdx = $(obj.targetElement).attr("data-class-idx");
     CLASSES[classIdx]["color"] = '#' + obj;
 };
 

@@ -8,7 +8,7 @@ var addInferenceMouseHandlers = function(){
         if(!gShiftKeyDown){
             curSelPoly = getPolyAround(e.latlng, 1, false);
         }else{
-            curSelPoly = getPolyAround(e.latlng, INFERENCE_WINDOW_SIZE, true);
+            curSelPoly = getPolyAround(e.latlng, INFERENCE_WINDOW_SIZE, true, true);
         }
         
         if(gSelectionBox === null){
@@ -35,7 +35,7 @@ var addInferenceMouseHandlers = function(){
         var curSelPoly = null;
         if(gShiftKeyDown){
             // Run the inference path
-            curSelPoly = getPolyAround(e.latlng, INFERENCE_WINDOW_SIZE, true);
+            curSelPoly = getPolyAround(e.latlng, INFERENCE_WINDOW_SIZE, true, true);
             if(gCurrentSelection === null){ // This condition creates the red selection box on the first click
                 gCurrentSelection = L.polygon(curSelPoly, {
                     color: "#ff0000",
