@@ -47,9 +47,11 @@ class TorchSmoothingCycleFineTune(BackendModel):
         self.models = [ Model() for _ in range(num_models) ]
         
         self.init_model()
-        for param in self.model.last.parameters():
-            param.requires_grad = True
-        print(sum(x.numel() for x in self.model.parameters()))
+
+        for model in self.models:
+            for param in model.parameters():
+                param.requires_grad = True
+            print(sum(x.numel() for x in model.parameters()))
 
         # ------------------------------------------------------
         # Step 2
@@ -75,8 +77,6 @@ class TorchSmoothingCycleFineTune(BackendModel):
         self.cols = 892
 
     def run(self, naip_data, naip_fn, extent):
-       
-
         print(naip_data.shape)
       
         x = naip_data
@@ -90,7 +90,7 @@ class TorchSmoothingCycleFineTune(BackendModel):
 
         self.naip_data = naip_data  # keep non-trimmed size, i.e. with padding
 
-        for i in range(num_models):
+        for i in range(self.num_models):
             output,features = self.run_model_on_tile(naip_data,i,True)
         
             self.features.append(features[0].cpu().numpy())
@@ -109,34 +109,37 @@ class TorchSmoothingCycleFineTune(BackendModel):
         for model, corr_features, corr_labels in zip(self.models, self.corr_features, self.corr_labels):
             batch_x = T.from_numpy(np.array(corr_features)).float().to(self.device)
             batch_y = T.from_numpy(np.array(corr_labels)).to(self.device)
+
+
+            if batch_x.shape[0] > 0:
             
-            optimizer = T.optim.Adam(model.last.parameters(), lr=learning_rate, eps=1e-5)
-            
-            criterion = T.nn.CrossEntropyLoss().to(self.device)
-
-            for i in range(train_steps):
-                #print('step %d' % i)
-                acc = 0
+                optimizer = T.optim.Adam(model.last.parameters(), lr=learning_rate, eps=1e-5)
                 
-                with T.enable_grad():
+                criterion = T.nn.CrossEntropyLoss().to(self.device)
 
-                    optimizer.zero_grad()
+                for i in range(train_steps):
+                    #print('step %d' % i)
+                    acc = 0
                     
-                    pred = model.last.forward(batch_x.unsqueeze(2).unsqueeze(3)).squeeze(3).squeeze(2)
-                    
-                    loss = criterion(pred,batch_y)
-                    
-                    print(loss.mean().item())
-                    
-                    acc = (pred.argmax(1)==batch_y).float().mean().item()
+                    with T.enable_grad():
 
-                    loss.backward()
-                    optimizer.step()
-                
-                if i % print_every_k_steps == 0:
-                    print("Step pixel acc: ", acc)
+                        optimizer.zero_grad()
+                        
+                        pred = model.last.forward(batch_x.unsqueeze(2).unsqueeze(3)).squeeze(3).squeeze(2)
+                        
+                        loss = criterion(pred,batch_y)
+                        
+                        print(loss.mean().item())
+                        
+                        acc = (pred.argmax(1)==batch_y).float().mean().item()
 
-                message = "Fine-tuned model with %d samples." % lencorr_features)
+                        loss.backward()
+                        optimizer.step()
+                    
+                    if i % print_every_k_steps == 0:
+                        print("Step pixel acc: ", acc)
+
+                    message = "Fine-tuned model with %d samples." % (len(corr_features))
 
         success = True
         message = "Fine-tuned models with {} samples.".format(','.join(str(len(x) for x in corr_features)))

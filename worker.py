@@ -19,6 +19,7 @@ from rpyc.utils.server import OneShotServer, ThreadedServer
 
 from ServerModelsKerasDense import KerasDenseFineTune
 from ServerModelsTorchSmoothing import TorchSmoothingFineTune
+from ServerModelsTorchSmoothingCycle import TorchSmoothingCycleFineTune
 from Utils import serialize, deserialize
 
 from log import setup_logging, LOGGER
