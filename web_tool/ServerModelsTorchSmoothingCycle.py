@@ -142,7 +142,7 @@ class TorchSmoothingCycleFineTune(BackendModel):
                     message = "Fine-tuned model with %d samples." % (len(corr_features))
 
         success = True
-        message = "Fine-tuned models with {} samples.".format(','.join(str(len(x) for x in corr_features)))
+        message = "Fine-tuned models with {} samples.".format((','.join(str(len(x)) for x in self.corr_features)))
         print(message)
         return success, message
     
