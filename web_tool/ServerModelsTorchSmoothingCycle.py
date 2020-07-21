@@ -10,25 +10,30 @@ from torch.autograd import Variable
 import time
 from scipy.special import softmax
 
-class Model(nn.Module):
+class CoreModel(nn.Module):
     def __init__(self):
-        super(Model,self).__init__()
+        super(CoreModel,self).__init__()
         self.conv1 = T.nn.Conv2d(4,64,3,1,1)
         self.conv2 = T.nn.Conv2d(64,64,3,1,1)
         self.conv3 = T.nn.Conv2d(64,64,3,1,1)
         self.conv4 = T.nn.Conv2d(64,64,3,1,1)
         self.conv5 = T.nn.Conv2d(64,64,3,1,1)
-        self.last = T.nn.Conv2d(64,22,1,1,0)
        
-    def forward(self,inputs,prev_layer=False):
+    def forward(self,inputs):
         x = T.relu(self.conv1(inputs))
         x = T.relu(self.conv2(x))
         x = T.relu(self.conv3(x))
         x = T.relu(self.conv4(x))
         x = T.relu(self.conv5(x))
-        y = self.last(x)
-        if prev_layer: return y,x
-        else: return y
+        return x
+
+class AugmentModel(nn.Module):
+    def __init__(self):
+        super(AugmentModel,self).__init__()
+        self.last = T.nn.Conv2d(64,22,1,1,0)
+        
+    def forward(self,inputs):
+        return self.last(inputs)
     
 class TorchSmoothingCycleFineTune(BackendModel):
 
@@ -44,11 +49,12 @@ class TorchSmoothingCycleFineTune(BackendModel):
 
         self.num_models = num_models
         
-        self.models = [ Model() for _ in range(num_models) ]
+        self.core_model = CoreModel()
+        self.augment_models = [ AugmentModel() for _ in range(num_models) ]
         
         self.init_model()
 
-        for model in self.models:
+        for model in self.augment_models:
             for param in model.parameters():
                 param.requires_grad = True
             print(sum(x.numel() for x in model.parameters()))
@@ -85,17 +91,23 @@ class TorchSmoothingCycleFineTune(BackendModel):
         x = x[:4, :, :]
         naip_data = x / 255.0
 
-        self.features = []
         self.last_outputs = []
 
         self.naip_data = naip_data  # keep non-trimmed size, i.e. with padding
 
-        for i in range(self.num_models):
-            output,features = self.run_model_on_tile(naip_data,i,True)
-        
-            self.features.append(features[0].cpu().numpy())
-        
-            self.last_outputs.append(output)
+        with T.no_grad():
+
+            features = self.run_core_model_on_tile(naip_data)
+            self.features = features.cpu().numpy()
+
+            for i in range(self.num_models):
+
+                out = self.augment_models[i](features).cpu().numpy()[0,1:]
+                out = np.rollaxis(out, 0, 3)
+                out = softmax(out, 2)
+            
+                self.last_outputs.append(out)
+
         return self.last_outputs
 
     def retrain(self, train_steps=100, learning_rate=1e-3):
@@ -106,14 +118,14 @@ class TorchSmoothingCycleFineTune(BackendModel):
         
         self.init_model()
         
-        for model, corr_features, corr_labels in zip(self.models, self.corr_features, self.corr_labels):
+        for model, corr_features, corr_labels in zip(self.augment_models, self.corr_features, self.corr_labels):
             batch_x = T.from_numpy(np.array(corr_features)).float().to(self.device)
             batch_y = T.from_numpy(np.array(corr_labels)).to(self.device)
 
 
             if batch_x.shape[0] > 0:
             
-                optimizer = T.optim.Adam(model.last.parameters(), lr=learning_rate, eps=1e-5)
+                optimizer = T.optim.Adam(model.parameters(), lr=learning_rate, eps=1e-5)
                 
                 criterion = T.nn.CrossEntropyLoss().to(self.device)
 
@@ -125,7 +137,7 @@ class TorchSmoothingCycleFineTune(BackendModel):
 
                         optimizer.zero_grad()
                         
-                        pred = model.last.forward(batch_x.unsqueeze(2).unsqueeze(3)).squeeze(3).squeeze(2)
+                        pred = model(batch_x.unsqueeze(2).unsqueeze(3)).squeeze(3).squeeze(2)
                         
                         loss = criterion(pred,batch_y)
                         
@@ -159,12 +171,15 @@ class TorchSmoothingCycleFineTune(BackendModel):
         for i in range(tdst_row,bdst_row+1):
             for j in range(tdst_col,bdst_col+1):
                 self.corr_labels[model_idx].append(class_idx+1)
-                self.corr_features[model_idx].append(self.features[model_idx][:,i,j])
+                self.corr_features[model_idx].append(self.features[0,:,i,j])
 
     def init_model(self):
         checkpoint = T.load(self.model_fn, map_location=self.device)
-        for model in self.models:
-            model.load_state_dict(checkpoint)
+        self.core_model.load_state_dict(checkpoint, strict=False)
+        self.core_model.eval()
+        self.core_model.to(self.device)
+        for model in self.augment_models:
+            model.load_state_dict(checkpoint, strict=False)
             model.eval()
             model.to(self.device)
         
@@ -174,7 +189,19 @@ class TorchSmoothingCycleFineTune(BackendModel):
         self.run_done = False
         self.num_corrected_pixels = 0
 
-    def run_model_on_tile(self, naip_tile,model_idx, last_features=False, batch_size=32):
+    def run_core_model_on_tile(self, naip_tile):
+          
+        _, w, h = naip_tile.shape
+        
+        out = np.zeros((21, w, h))
+
+        x_c_tensor1 = T.from_numpy(naip_tile).float().to(self.device)
+        features = self.core_model(x_c_tensor1.unsqueeze(0))
+           
+        return features
+        
+
+    def run_model_on_tile(self, naip_tile, model_idx, last_features=False, batch_size=32):
         
         with T.no_grad():
             if last_features:
@@ -188,7 +215,7 @@ class TorchSmoothingCycleFineTune(BackendModel):
 
     def predict_entire_image(self, x, model_idx, last_features=False):
        
-        model = self.models[model_idx]
+        model = T.nn.Sequential(self.core_model, self.augment_models[model_idx])
 
         norm_image = x
         _, w, h = norm_image.shape
