@@ -245,6 +245,8 @@ def pred_patch():
     name_list = [item["name"] for item in class_list]
     color_list = [item["color"] for item in class_list]
 
+    tic = float(time.time())
+
     # ------------------------------------------------------
     # Step 1
     #   Transform the input extent into a shapely geometry
@@ -271,10 +273,11 @@ def pred_patch():
     #   Apply reweighting
     #   Fix padding
     # ------------------------------------------------------
+    tic_model_run = float(time.time())
     output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(patch, False)
     assert len(output.shape) == 3, "The model function should return an image shaped as (height, width, num_classes)"
     assert (output.shape[2] < output.shape[0] and output.shape[2] < output.shape[1]), "The model function should return an image shaped as (height, width, num_classes)" # assume that num channels is less than img dimensions
-    print("pred_patch, after model.run:", output.shape)
+    toc_model_run = time.time() - tic_model_run
 
     # ------------------------------------------------------
     # Step 4
@@ -304,6 +307,11 @@ def pred_patch():
     img_hard = base64.b64encode(img_hard).decode("utf-8")
     data["output_hard"] = img_hard
 
+    print("pred_patch took %0.2f seconds, of which:" % (time.time()-tic))
+    print("-- loading data: %0.2f seconds" % (toc_data_load))
+    print("-- running model: %0.2f seconds" % (toc_model_run))
+    print("-- warping/cropping: %0.2f seconds" % (time_for_crops_and_warps))
+    print("-- coloring: %0.2f seconds" % (time_for_coloring))
     bottle.response.status = 200
     return json.dumps(data)
 
