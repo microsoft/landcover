@@ -41,9 +41,7 @@ class TorchSmoothingCycleFineTune(BackendModel):
 
         os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
         os.environ["CUDA_VISIBLE_DEVICES"] = str(gpuid)
-        self.output_channels = 22
-        self.input_size = 240
-        self.did_correction = False
+        
         self.model_fn = model_fn
         self.device = T.device("cuda:0" if T.cuda.is_available() else "cpu")
 
@@ -54,33 +52,19 @@ class TorchSmoothingCycleFineTune(BackendModel):
         
         self.init_model()
 
+        print(sum(x.numel() for x in self.core_model.parameters()))
+
         for model in self.augment_models:
             for param in model.parameters():
                 param.requires_grad = True
             print(sum(x.numel() for x in model.parameters()))
 
-        # ------------------------------------------------------
-        # Step 2
-        #   Pre-load augment model seed data
-        # ------------------------------------------------------
-        self.current_features = None
+        self.features = None
 
-        self.augment_base_x_train = []
-        self.augment_base_y_train = []
-
-        self.augment_x_train = []
-        self.augment_y_train = []
-        self.model_trained = False
         self.naip_data = None
         
         self.corr_features = [[] for _ in range(num_models) ]
         self.corr_labels = [[] for _ in range(num_models) ]
-        
-        self.num_corrected_pixels = 0
-        self.batch_count = 0
-        self.run_done = False
-        self.rows = 892
-        self.cols = 892
 
     def run(self, naip_data, naip_fn, extent):
         print(naip_data.shape)
@@ -95,26 +79,78 @@ class TorchSmoothingCycleFineTune(BackendModel):
 
         self.naip_data = naip_data  # keep non-trimmed size, i.e. with padding
 
+        
+
         with T.no_grad():
 
-            features = self.run_core_model_on_tile(naip_data)
-            self.features = features.cpu().numpy()
+            if naip_data.shape[1] < 300:
 
-            for i in range(self.num_models):
+                features = self.run_core_model_on_tile(naip_data)
+                self.features = features.cpu().numpy()
 
-                out = self.augment_models[i](features).cpu().numpy()[0,1:]
-                out = np.rollaxis(out, 0, 3)
-                out = softmax(out, 2)
-            
-                self.last_outputs.append(out)
+                for i in range(self.num_models):
 
+                    out = self.augment_models[i](features).cpu().numpy()[0,1:]
+                    out = np.rollaxis(out, 0, 3)
+                    out = softmax(out, 2)
+                
+                    self.last_outputs.append(out)
+
+            else:
+
+                self.features, self.last_outputs = self.run_large(naip_data)
+
+        print(self.last_outputs[0].shape)
         return self.last_outputs
+
+    def run_large(self,naip_data):
+        eval_size = 200
+        batch_size = 32
+        _,w,h = naip_data.shape
+
+        features_out = np.zeros((1,64, w, h))
+        preds_out = [ np.zeros((w,h,21)) for _ in range(self.num_models) ]
+
+        x_coords, y_coords = [],[]
+        x, y = 0, 0
+        while x+eval_size<w:
+            x_coords.append(x)
+            x += eval_size-10
+        x_coords.append(w-eval_size)
+        while y+eval_size<w:
+            y_coords.append(y)
+            y += eval_size-10
+        y_coords.append(h-eval_size)
+
+        def evaluate():
+            inputs = T.from_numpy(batch[:len(batch_coords)]).float().to(self.device)
+            features = self.core_model(inputs)
+            preds = [ model(features) for model in self.augment_models ]
+            for j,c in enumerate(batch_coords):
+                xj,yj = c
+                features_out[0,:,xj+5:xj+eval_size-5,yj+5:yj+eval_size-5] = features[j,:,5:-5,5:-5].cpu().numpy()
+                for m in range(self.num_models):
+                    preds_out[m][xj+5:xj+eval_size-5,yj+5:yj+eval_size-5,:] = softmax(np.rollaxis(preds[m][j,1:,5:-5,5:-5].cpu().numpy(), 0, 3), 2)
+
+        batch = np.zeros((batch_size,4,eval_size,eval_size))
+        i = 0
+        batch_coords = []
+        for x in x_coords:
+            for y in y_coords:
+                batch_coords.append((x,y))
+                batch[i] = naip_data[:,x:x+eval_size,y:y+eval_size]
+                i += 1
+                if i == batch_size:
+                    evaluate()
+                    i = 0
+                    batch_coords = []
+        if i>0: evaluate()
+
+        return features_out, preds_out
 
     def retrain(self, train_steps=100, learning_rate=1e-3):
       
-        print_every_k_steps = 33
-
-        print("Fine tuning with %d new labels." % self.num_corrected_pixels)
+        print_every_k_steps = 99
         
         self.init_model()
         
@@ -126,7 +162,6 @@ class TorchSmoothingCycleFineTune(BackendModel):
             if batch_x.shape[0] > 0:
             
                 optimizer = T.optim.Adam(model.parameters(), lr=learning_rate, eps=1e-5)
-                
                 criterion = T.nn.CrossEntropyLoss().to(self.device)
 
                 for i in range(train_steps):
@@ -138,17 +173,14 @@ class TorchSmoothingCycleFineTune(BackendModel):
                         optimizer.zero_grad()
                         
                         pred = model(batch_x.unsqueeze(2).unsqueeze(3)).squeeze(3).squeeze(2)
-                        
                         loss = criterion(pred,batch_y)
-                        
-                        print(loss.mean().item())
-                        
-                        acc = (pred.argmax(1)==batch_y).float().mean().item()
+
 
                         loss.backward()
                         optimizer.step()
                     
                     if i % print_every_k_steps == 0:
+                        acc = (pred.argmax(1)==batch_y).float().mean().item()
                         print("Step pixel acc: ", acc)
 
                     message = "Fine-tuned model with %d samples." % (len(corr_features))
@@ -185,58 +217,16 @@ class TorchSmoothingCycleFineTune(BackendModel):
         
     def reset(self):
         self.init_model()
-        self.model_trained = False
-        self.run_done = False
-        self.num_corrected_pixels = 0
 
     def run_core_model_on_tile(self, naip_tile):
           
         _, w, h = naip_tile.shape
-        
-        out = np.zeros((21, w, h))
 
         x_c_tensor1 = T.from_numpy(naip_tile).float().to(self.device)
         features = self.core_model(x_c_tensor1.unsqueeze(0))
            
         return features
-        
 
-    def run_model_on_tile(self, naip_tile, model_idx, last_features=False, batch_size=32):
-        
-        with T.no_grad():
-            if last_features:
-                y_hat,features = self.predict_entire_image(naip_tile,model_idx,last_features)
-                output = y_hat[:, :, :]
-                return softmax(output,2),features
-            else:
-                y_hat = self.predict_entire_image(naip_tile,model_idx,last_features)
-                output = y_hat[:, :, :]
-                return softmax(output,2)
-
-    def predict_entire_image(self, x, model_idx, last_features=False):
-       
-        model = T.nn.Sequential(self.core_model, self.augment_models[model_idx])
-
-        norm_image = x
-        _, w, h = norm_image.shape
-        
-        out = np.zeros((21, w, h))
-
-        norm_image1 = norm_image
-        x_c_tensor1 = T.from_numpy(norm_image1).float().to(self.device)
-        if last_features:
-            y_pred1, features = model(x_c_tensor1.unsqueeze(0),last_features)
-        else:
-            y_pred1 = model(x_c_tensor1.unsqueeze(0))
-        y_hat1 = y_pred1.cpu().numpy()
-        
-        out[:] = y_hat1[0,1:]
-          
-        pred = np.rollaxis(out, 0, 3)
-        
-        print(pred.shape)
-        if last_features: return pred,features
-        else: return pred
 
 
 
