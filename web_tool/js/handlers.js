@@ -126,7 +126,6 @@ var addRetrainKeyHandler = function(){
 
 var addOpacityKeyHandlers = function(opacitySlider){
     $(document).keydown(function(e) {
-        console.debug(e.which);
         if(document.activeElement == document.body){ // only register if we are in document.body so that we don't fire events when typing in text boxes
             if(e.which == 97 || e.which == 65) { // "a" - set invisible
                 gVisible = false;
