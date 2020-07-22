@@ -117,7 +117,7 @@ class TorchSmoothingCycleFineTune(BackendModel):
             x_coords.append(x)
             x += eval_size-10
         x_coords.append(w-eval_size)
-        while y+eval_size<w:
+        while y+eval_size<h:
             y_coords.append(y)
             y += eval_size-10
         y_coords.append(h-eval_size)
