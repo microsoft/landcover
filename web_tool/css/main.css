@@ -47,6 +47,7 @@ body {
     width: 125px;
     height: 125px;
     margin: 10px;
+    border: 2px solid transparent;
 }
 
 .exampleImage.active{
