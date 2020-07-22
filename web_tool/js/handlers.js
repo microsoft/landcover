@@ -126,6 +126,7 @@ var addRetrainKeyHandler = function(){
 
 var addOpacityKeyHandlers = function(opacitySlider){
     $(document).keydown(function(e) {
+        console.debug(e.which);
         if(document.activeElement == document.body){ // only register if we are in document.body so that we don't fire events when typing in text boxes
             if(e.which == 97 || e.which == 65) { // "a" - set invisible
                 gVisible = false;
@@ -149,6 +150,8 @@ var addOpacityKeyHandlers = function(opacitySlider){
                 gMap.getPane('labels').style.opacity = 1.0;
                 opacitySlider.slider.value = 100
                 opacitySlider._updateValue();
+            } else if(e.which == 67) { // "c" - cycle chosen model
+                $(".exampleImage")[(gActiveImgIdx+1) % 3].click();
             }
         }
     });
