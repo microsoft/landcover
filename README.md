@@ -71,3 +71,5 @@ Whether you setup the server in an Azure VM or locally, the following steps shou
   - This will start an HTTP server on :8080 that both serves the "frontend" web application and responds to API calls from the "frontend", allowing the web-app to interface with our CNN models (i.e. the "backend").
   - The tool comes preloaded with a dataset (defined in `web_tool/datasets.json`) and two models (defined in `web_tool/models.json`).
 - You should now be able to visit `http://<your machine's address>:8080/` and see the "frontend" interface.
+
+### Directions for using the "frontend" interface
