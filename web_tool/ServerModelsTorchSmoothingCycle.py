@@ -104,7 +104,7 @@ class TorchSmoothingCycleFineTune(BackendModel):
         return self.last_outputs
 
     def run_large(self,naip_data):
-        eval_size = 200
+        eval_size = 256
         batch_size = 32
         _,w,h = naip_data.shape
 

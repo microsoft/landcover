@@ -66,7 +66,7 @@ var addInferenceWindowSizeSlider = function(){
             collapsed: true,
             syncSlider: true,
             min: 10,
-            max: 700,
+            max: 2000,
             value: INFERENCE_WINDOW_SIZE,
             logo: "Inference Window Size",
             size: "171px"
