@@ -130,7 +130,7 @@ class TorchSmoothingCycleFineTune(BackendModel):
                 xj,yj = c
                 features_out[0,:,xj+5:xj+eval_size-5,yj+5:yj+eval_size-5] = features[j,:,5:-5,5:-5].cpu().numpy()
                 for m in range(self.num_models):
-                    preds_out[m][xj+5:xj+eval_size-5,yj+5:yj+eval_size-5,:] = softmax(np.rollaxis(preds[m][j,1:,5:-5,5:-5].cpu().numpy(), 0, 3), 2)
+                    preds_out[m][xj+5:xj+eval_size-5,yj+5:yj+eval_size-5,:] = np.rollaxis(preds[m][j,1:,5:-5,5:-5].softmax(0).cpu().numpy(), 0, 3)
 
         batch = np.zeros((batch_size,4,eval_size,eval_size))
         i = 0
