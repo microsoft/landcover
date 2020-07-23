@@ -53,6 +53,10 @@
         overflow-y:scroll;
         -webkit-overflow-scrolling: touch;
     }
+
+    .lcm-heading:hover{
+      cursor: pointer;
+    }
   </style>
 
 </head>
@@ -65,16 +69,17 @@
 
   <div class="container">
 
-
-    <div class="row mt-4">
+    <!--
+      Dataset row
+    -->
+    <div class="row mt-4" id="dataset-row-container">
       <div class="col-md-10 mb-4 mt-4">
-        <h4 class="lcm-heading" data-toggle="collapse" data-target="#dataset-row">[-] Select Dataset</h4>
+        <h4 class="lcm-heading" id="dataset-header"><i class="fa fa-minus" aria-hidden="true"></i> Select Dataset</h4>
       
         <div class="row collapse show" id="dataset-row">
           <div class="col-5">
             <!-- List group -->
             <div class="list-group" id="dataset-tab-list" role="tablist">
-              <!--Populated on load-->
             </div>
           </div>
           <!-- Tab panes -->
@@ -86,15 +91,18 @@
       </div>
     </div>
 
-    <div class="row mt-4">
+
+    <!--
+      Model row
+    -->
+    <div class="row mt-4" id="model-row-container" style="display:none;">
       <div class="col-md-10 mb-4 mt-4">
-        <h4 class="lcm-heading" data-toggle="collapse" data-target="#model-row">[-] Select Model</h4>
+        <h4 class="lcm-heading" id="model-header"><i class="fa fa-minus" aria-hidden="true"></i> Select Model</h4>
       
         <div class="row collapse show" id="model-row">
           <div class="col-5">
             <!-- List group -->
             <div class="list-group" id="model-tab-list" role="tablist">
-              <!--Populated on load-->
             </div>
           </div>
           <!-- Tab panes -->
@@ -106,7 +114,35 @@
       </div>
     </div>
 
-    
+
+    <!--
+      Checkpoint row
+    -->
+    <div class="row mt-4" id="checkpoint-row-container" style="display:none;">
+      <div class="col-md-10 mb-4 mt-4">
+        <h4 class="lcm-heading" id="checkpoint-header"><i class="fa fa-minus" aria-hidden="true"></i> Select Checkpoint</h4>
+      
+        <div class="row collapse show" id="checkpoint-row">
+          <div class="col-5">
+            <!-- List group -->
+            <div class="list-group" id="checkpoint-tab-list" role="tablist">
+              <a class="list-group-item list-group-item-action" data-toggle="list" data-name="new_checkpoint" href="#checkpoint-new" role="tab">New Checkpoint</a>
+            </div>
+          </div>
+          <!-- Tab panes -->
+          <div class="col-7">
+            <div class="tab-content" id="checkpoint-panel-list">
+              <div class="tab-pane" id="checkpoint-new" role="tabpanel">
+                <div class="tab-pane-content">
+                  Creates a new session with no prior history.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="row">
       <div class="offset-md-3 col-md-4 mb-4 mt-4">
         <button type="button" class="btn btn-success" id="button-start">Start Server</button>
@@ -123,6 +159,7 @@
 
     var selectedDataset = null;
     var selectedModel = null;
+    var selectedCheckpoint = null;
 
     var datasets = null;
     var models = null;
@@ -163,23 +200,54 @@
         $("#model-panel-list").append(panel);
       }
 
+      //-----------------------
+      // On section header clicks
+      //-----------------------
+      $('#dataset-header').click(function(e){
+        $('#dataset-row').collapse('toggle'); // TODO: This call returns before the CSS animation is finished, and ignores all subsequent calls while animating. This means that if the user clicks twice very fast the icon will be toggled twice, however the row will only change collapsed state once - creating a mismatch. Fix this.
+        $(this).find(".fa").toggleClass("fa-minus fa-plus");
+      });
+      $('#model-header').click(function(e){
+        $('#model-row').collapse('toggle'); // // TODO: This call returns before the CSS animation is finished, and ignores all subsequent calls while animating. This means that if the user clicks twice very fast the icon will be toggled twice, however the row will only change collapsed state once - creating a mismatch. Fix this.
+        $(this).find(".fa").toggleClass("fa-minus fa-plus");
+      });
+      $('#checkpoint-header').click(function(e){
+        $('#checkpoint-row').collapse('toggle'); // // TODO: This call returns before the CSS animation is finished, and ignores all subsequent calls while animating. This means that if the user clicks twice very fast the icon will be toggled twice, however the row will only change collapsed state once - creating a mismatch. Fix this.
+        $(this).find(".fa").toggleClass("fa-minus fa-plus");
+      });
 
 
+      //-----------------------
       // On dataset tab change
+      //-----------------------
       $('#dataset-tab-list a[data-toggle="list"]').on('shown.bs.tab', function (e) {
         console.debug("Selected dataset: " + $(e.target).data("name"));
         selectedDataset = $(e.target).data("name");
+
+        $("#model-row-container").show(500);
       })
 
+      //-----------------------
       // On model tab change
+      //-----------------------
       $('#model-tab-list a[data-toggle="list"]').on('shown.bs.tab', function (e) {
         console.debug("Selected model: " + $(e.target).data("name"));
         selectedModel = $(e.target).data("name");
+
+        $("#checkpoint-row-container").show(500);
+      })
+
+      //-----------------------
+      // On checkpoint tab change
+      //-----------------------
+      $('#checkpoint-tab-list a[data-toggle="list"]').on('shown.bs.tab', function (e) {
+        console.debug("Selected checkpoint: " + $(e.target).data("name"));
+        selectedCheckpoint = $(e.target).data("name");
       })
 
 
       $("#button-start").click(function () {
-        if (selectedDataset !== null && selectedModel !== null) {
+        if (selectedDataset !== null && selectedModel !== null && selectedCheckpoint !== null) {
 
           var request = {
             "dataset": selectedDataset,
@@ -191,7 +259,7 @@
             url: window.location.origin + "/createSession",
             data: JSON.stringify(request),
             success: function(data, textStatus, jqXHR){
-              window.location.href = `/index.html?dataset=${selectedDataset}&model=${selectedModel}`;
+              window.location.href = `/index.html?dataset=${selectedDataset}&model=${selectedModel}&checkpoint=${selectedCheckpoint}`;
             },
             error: function(jqXHR, textStatus){
               new Noty({
