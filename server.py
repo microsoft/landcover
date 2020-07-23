@@ -490,7 +490,7 @@ def main():
     SESSION_HANDLER.start_monitor()
 
     # Setup logging
-    log_path = os.getcwd() + "tmp/logs"
+    log_path = os.path.join(os.getcwd(), "tmp/logs/")
     setup_logging(log_path, "server")
 
 

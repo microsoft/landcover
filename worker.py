@@ -72,7 +72,7 @@ def main():
     args = parser.parse_args(sys.argv[1:])
 
     # Setup logging
-    log_path = os.getcwd() + "tmp/logs"
+    log_path = os.path.join(os.getcwd(), "tmp/logs/")
     setup_logging(log_path, "worker")
 
 
