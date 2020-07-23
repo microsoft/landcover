@@ -14,7 +14,7 @@ import sklearn.base
 from sklearn.linear_model import SGDClassifier
 from sklearn.preprocessing import LabelBinarizer
 
-from .ServerModelsAbstract import BackendModel
+from .ModelSessionAbstract import ModelSession
 from training.models.unet import Unet
 
 import torch
@@ -26,7 +26,7 @@ def softmax(output):
     exp_sums = np.sum(exps, axis=2, keepdims=True)
     return exps/exp_sums    
     
-class TorchFineTuning(BackendModel):
+class TorchFineTuning(ModelSession):
 
     AUGMENT_MODEL = SGDClassifier(
         loss="log",

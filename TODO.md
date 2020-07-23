@@ -12,11 +12,11 @@
 - [ ] Make the Noty notifactions have a theme that matches the rest of the app
 - [ ] Dummy password authentication.
   - [ ] The landing page should have a hardcoded password prompt that you must pass in order to use the page. Passing this prompt should set a 1-day cookie that bypasses it. 
-- [ ] Total rework of model saving and loading. (everywhere)
+- [ ] Total rework of model saving and loading.
   - [ ] Currently the tool generates a custom link that a model can be restored at however this is brittle and unintuitive to users.
-  - [ ] Rename ServerModelsAbstract to ModelSessionAbstract throughout.
-    - [ ] Clean up (remove NAIP references) and re-document the interface
-    - [ ] Add `save_state_to()` and `load_state_from()` methods to the interface. Now, "ServerModels" will be responsible for serializing their state to a directory.
+  - [x] Rename ServerModelsAbstract to ModelSessionAbstract throughout.
+    - [x] Clean up (remove NAIP references) and re-document the interface
+    - [x] Add `save_state_to()` and `load_state_from()` methods to the interface. Now, "ServerModels" will be responsible for serializing their state to a directory.
   - [ ] Add a checkpoint model button to the front-end.
     - [ ] This should prompt for a checkpoint name.
     - [ ] This should save the model to disk.

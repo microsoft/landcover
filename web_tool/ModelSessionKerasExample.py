@@ -12,7 +12,7 @@ import logging
 LOGGER = logging.getLogger("server")
 
 from . import ROOT_DIR
-from .ServerModelsAbstract import BackendModel
+from .ModelSessionAbstract import ModelSession
 
 import scipy.optimize
 
@@ -34,7 +34,7 @@ def nll(X, W, b, y):
     return np.sum(loss)
 
 
-class KerasDenseFineTune(BackendModel):
+class KerasDenseFineTune(ModelSession):
 
     # AUGMENT_MODEL = MLPClassifier(
     #     hidden_layer_sizes=(),

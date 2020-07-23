@@ -17,8 +17,8 @@ LOGGER = logging.getLogger("server")
 import rpyc
 from rpyc.utils.server import OneShotServer, ThreadedServer
 
-from web_tool.ServerModelsKerasDense import KerasDenseFineTune
-from web_tool.ServerModelsTorch import TorchFineTuning
+from web_tool.ModelSessionKerasExample import KerasDenseFineTune
+from web_tool.ModelSessionPyTorchExample import TorchFineTuning
 from web_tool.Utils import setup_logging, serialize, deserialize
 
 

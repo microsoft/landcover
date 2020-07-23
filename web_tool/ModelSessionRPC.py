@@ -30,7 +30,7 @@ class ModelSessionRPC(ModelSession):
                 time.sleep(self.rety_timeout)
                 LOGGER.warning("Haven't connected, attempt %d" % (i))
         
-    def run(self, naip_data, extent, on_tile=False):
+    def run(self, naip_data, ):
         return deserialize(self.connection.root.exposed_run(serialize(naip_data), extent, on_tile))
     def retrain(self):
         return self.connection.root.exposed_retrain()

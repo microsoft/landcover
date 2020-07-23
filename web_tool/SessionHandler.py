@@ -9,7 +9,7 @@ LOGGER = logging.getLogger("server")
 
 from .Session import Session
 
-from .ServerModelsRPC import ModelRPC
+from .ModelSessionRPC import ModelRPC
 
 from .Models import load_models
 MODELS = load_models()
