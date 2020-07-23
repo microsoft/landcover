@@ -41,7 +41,7 @@
                 "name": "Wards"
             }
         ],
-        "valid_models": ["sentinel_demo"]
+        "validModels": ["sentinel_demo"]
     },
     "naip_maryland": {
         "metadata": {
@@ -80,6 +80,6 @@
                 "name": "Grid"
             }
         ],
-        "valid_models": ["naip_demo"]
+        "validModels": ["naip_demo"]
     }
 }

@@ -432,6 +432,15 @@ def get_input():
     return json.dumps(data)
 
 
+def list_checkpoints():
+    return """[
+        {"dataset": "hcmc_sentinel", "model": "sentinel_demo", "name": "Checkpoint test 1", "directory": "data/checkpoints/checkpoint_test_1/"},
+        {"dataset": "hcmc_sentinel", "model": "sentinel_demo", "name": "Checkpoint test 2", "directory": "data/checkpoints/checkpoint_test_2/"},
+        {"dataset": "hcmc_sentinel", "model": "sentinel_demo", "name": "Checkpoint test 3", "directory": "data/checkpoints/checkpoint_test_3/"},
+        {"dataset": "naip_maryland", "model": "naip_demo", "name": "Checkpoint test 4", "directory": "data/checkpoints/checkpoint_test_4/"},
+        {"dataset": "naip_maryland", "model": "naip_demo", "name": "Checkpoint test 5", "directory": "data/checkpoints/checkpoint_test_5/"}
+    ]"""
+
 def whoami():
     return str(bottle.request.session) + " " + str(bottle.request.session.id)
 
@@ -531,6 +540,8 @@ def main():
 
     app.route("/killSession", method="OPTIONS", callback=do_options)
     app.route("/killSession", method="POST", callback=kill_session)
+
+    app.route("/listCheckpoints", method="GET", callback=list_checkpoints)
 
     app.route("/whoami", method="GET", callback=whoami)
 
