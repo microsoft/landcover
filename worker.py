@@ -17,12 +17,11 @@ LOGGER = logging.getLogger("server")
 import rpyc
 from rpyc.utils.server import OneShotServer, ThreadedServer
 
-from ServerModelsKerasDense import KerasDenseFineTune
-from ServerModelsTorchSmoothing import TorchSmoothingFineTune
-from ServerModelsTorchSmoothingCycle import TorchSmoothingCycleFineTune
-from Utils import serialize, deserialize
 
-from log import setup_logging, LOGGER
+from web_tool.ModelSessionKerasExample import KerasDenseFineTune
+from web_tool.ModelSessionPyTorchExample import TorchFineTuning
+from web_tool.ModelSessionPyTorchCycle import TorchSmoothingCycleFineTune
+from web_tool.Utils import setup_logging, serialize, deserialize
 
 
 class MyService(rpyc.Service):
@@ -71,7 +70,8 @@ def main():
     parser.add_argument("--port", action="store", type=int, help="Port we are listenning on", default=0)
     parser.add_argument("--model", action="store", dest="model",
         choices=[
-            "pytorch_smoothing",
+            "keras_example",
+            "pytorch_example",
             "pytorch_smoothing_multiple"
         ],
         help="Model to use", required=True
@@ -95,8 +95,11 @@ def main():
     os.environ["CUDA_VISIBLE_DEVICES"] = "" if args.gpuid is None else str(args.gpuid)
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
-    if args.model == "pytorch_smoothing":
-        model = TorchSmoothingFineTune(args.model_fn, args.gpuid, args.fine_tune_layer)
+
+    if args.model == "keras_example":
+        model = KerasDenseFineTune(args.model_fn, args.gpuid, args.fine_tune_layer)
+    elif args.model == "pytorch_example":
+        model = TorchFineTuning(args.model_fn, args.gpuid, args.fine_tune_layer)
     elif args.model == "pytorch_smoothing_multiple":
         model = TorchSmoothingCycleFineTune(args.model_fn, args.gpuid, args.fine_tune_layer, args.num_models)
     else:

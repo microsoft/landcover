@@ -20,10 +20,10 @@
 
     "naip_demo": {
         "metadata": {
-            "displayName": "Selfsim smoothing"
+            "displayName": "NAIP Supervised"
         },
         "model": {
-            "type": "TorchSmoothing",
+            "type": "keras_dense",
             "fineTuneLayer": -4,
             "numParameters": 7790949,
             "inputShape": [240,240,4],
