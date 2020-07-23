@@ -9,7 +9,7 @@ LOGGER = logging.getLogger("server")
 
 from .Session import Session
 
-from .ModelSessionRPC import ModelRPC
+from .ModelSessionRPC import ModelSessionRPC
 
 from .Models import load_models
 MODELS = load_models()
@@ -128,7 +128,7 @@ class SessionHandler():
             random_port = get_free_tcp_port()
             gpu_id = worker["gpu_id"]
             process = self._spawn_local_worker(random_port, model_fn, gpu_id, fine_tune_layer, model_type)
-            model = ModelRPC(session_id, random_port)
+            model = ModelSessionRPC(session_id, random_port)
             session = Session(session_id, model)
             self._SESSION_MAP[session_id] = session
             self._SESSION_INFO[session_id] = {

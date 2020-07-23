@@ -1,6 +1,6 @@
 import abc
 
-class ModelSession(object, metaclass=abc.ABC):
+class ModelSession(abc.ABC):
 
     @property
     @abc.abstractmethod

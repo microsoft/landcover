@@ -33,9 +33,12 @@ class MyService(rpyc.Service):
     def on_disconnect(self, conn):
         pass
 
-    def exposed_run(self, naip_data, extent, on_tile=False):
-        naip_data = deserialize(naip_data) # need to serialize/deserialize numpy arrays
-        output = self.model.run(naip_data, extent, on_tile)
+    def exposed_last_tile(self):
+        return serialize(self.model.last_tile)
+
+    def exposed_run(self, tile, inference_mode=False):
+        tile = deserialize(tile) # need to serialize/deserialize numpy arrays
+        output = self.model.run(tile, inference_mode)
         return serialize(output) # need to serialize/deserialize numpy arrays
 
     def exposed_retrain(self):
@@ -49,6 +52,12 @@ class MyService(rpyc.Service):
 
     def exposed_reset(self):
         return self.model.reset()
+
+    def exposed_save_state_to(self, directory):
+        return self.model.save_state_to(directory)
+
+    def exposed_load_state_from(self, directory):
+        return self.model.load_state_from(directory)
 
 def main():
     global MODEL

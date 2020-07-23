@@ -269,7 +269,7 @@ def pred_patch():
     #   Apply reweighting
     #   Fix padding
     # ------------------------------------------------------
-    output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(patch, extent, False)
+    output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(patch, False)
     assert len(output.shape) == 3, "The model function should return an image shaped as (height, width, num_classes)"
     assert (output.shape[2] < output.shape[0] and output.shape[2] < output.shape[1]), "The model function should return an image shaped as (height, width, num_classes)" # assume that num channels is less than img dimensions
     print("pred_patch, after model.run:", output.shape)
@@ -334,7 +334,7 @@ def pred_tile():
         bottle.response.status = 400
         return json.dumps({"error": "Cannot currently download imagery with 'Basemap' based datasets"})
 
-    output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(tile, geom, True)
+    output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(tile, True)
     print("pred_tile, after model.run:", output.shape)
     
     if output.shape[2] > len(color_list):
