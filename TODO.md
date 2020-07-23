@@ -48,7 +48,7 @@
 - [x] Document the ModelSessionAbstract interface
 - [ ] Document the process by which users can train / add an unsupervised model using the `training/train_autoencoder.py` script.
 
-## Larger projects that span multiple pieces of the code base
+## Larger projects that span multiple pieces of the codebase
 - [ ] Total rework of model saving and loading. Currently the tool generates a custom link that a model can be restored at however this is brittle and unintuitive to users.
   - [x] Rename ServerModelsAbstract to ModelSessionAbstract throughout.
     - [x] Clean up (remove NAIP references) and re-document the interface
