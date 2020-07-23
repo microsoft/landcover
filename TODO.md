@@ -12,8 +12,7 @@
 - [ ] Make the Noty notifactions have a theme that matches the rest of the app
 - [ ] Dummy password authentication.
   - [ ] The landing page should have a hardcoded password prompt that you must pass in order to use the page. Passing this prompt should set a 1-day cookie that bypasses it. 
-- [ ] Total rework of model saving and loading.
-  - [ ] Currently the tool generates a custom link that a model can be restored at however this is brittle and unintuitive to users.
+- [ ] Total rework of model saving and loading. Currently the tool generates a custom link that a model can be restored at however this is brittle and unintuitive to users.
   - [x] Rename ServerModelsAbstract to ModelSessionAbstract throughout.
     - [x] Clean up (remove NAIP references) and re-document the interface
     - [x] Add `save_state_to()` and `load_state_from()` methods to the interface. Now, "ServerModels" will be responsible for serializing their state to a directory.
@@ -53,7 +52,8 @@
   - [ ] Convert to PyTorch.
   - [ ] After fitting the initial KMeans model do not generate a giant in-memory dataset. Instead, sample on-the-fly during a training loop
 - [ ] Come up with an actual name for the project
-
+- [ ] Create a script to automatically calculate the bounds for each dataset so that we can include those in the entries in `datasets.json`.
+  - Without the bounds of a tileLayer, leaflet will try to grab imagery for the entire viewport (and will get many 404 errors in return). This is annoying. 
 
 ## Documentation
 
@@ -61,4 +61,5 @@
 - [ ] Document the existing API exposed by `server.py`, create `API.md`
 - [ ] Create simple instructions for how to use the tool to include in `README.md`
 - [ ] Document the DataLoaderAbstract interface
+- [x] Document the ModelSessionAbstract interface
 - [ ] Document the process by which users can train / add an unsupervised model using the `training/train_autoencoder.py` script.
