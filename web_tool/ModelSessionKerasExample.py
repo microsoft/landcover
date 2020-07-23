@@ -12,7 +12,7 @@ import logging
 LOGGER = logging.getLogger("server")
 
 from . import ROOT_DIR
-from .ServerModelsAbstract import BackendModel
+from .ModelSessionAbstract import ModelSession
 
 import scipy.optimize
 
@@ -34,7 +34,7 @@ def nll(X, W, b, y):
     return np.sum(loss)
 
 
-class KerasDenseFineTune(BackendModel):
+class KerasDenseFineTune(ModelSession):
 
     # AUGMENT_MODEL = MLPClassifier(
     #     hidden_layer_sizes=(),
@@ -134,12 +134,15 @@ class KerasDenseFineTune(BackendModel):
             self.augment_y_train.append(row)
         '''
      
+    @property
+    def last_tile(self):
+        return 0
 
-    def run(self, naip_data, extent, on_tile=False):
-        ''' Expects naip_data to have shape (height, width, channels) and have values in the [0, 255] range.
+    def run(self, tile, inference_mode=False):
+        ''' Expects tile to have shape (height, width, channels) and have values in the [0, 255] range.
         '''
-        naip_data = naip_data / 255.0
-        output, output_features = self.run_model_on_tile(naip_data)
+        tile = tile / 255.0
+        output, output_features = self.run_model_on_tile(tile)
         
         if self.augment_model_trained:
             original_shape = output.shape
@@ -147,7 +150,7 @@ class KerasDenseFineTune(BackendModel):
             output = self.augment_model.predict_proba(output)
             output = output.reshape(original_shape[0], original_shape[1],  -1)
 
-        if not on_tile:
+        if not inference_mode:
             self.current_features = output_features
 
         return output
@@ -285,3 +288,10 @@ class KerasDenseFineTune(BackendModel):
         output_features = output_features / counts[..., np.newaxis]
 
         return output, output_features
+
+
+    def save_state_to(self, directory):
+        pass
+
+    def load_state_from(self, directory):
+        pass

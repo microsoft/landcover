@@ -7,7 +7,7 @@
         },
         "dataLayer": {
             "type": "CUSTOM",
-            "path": "data/imagery/hcmc_sentinel_epsg3857.tif",
+            "path": "data/imagery/hcmc_sentinel.tif",
             "padding": 500,
             "resolution": 10
         },
@@ -40,7 +40,8 @@
                 "zoneNameKey": "NAME_3",
                 "name": "Wards"
             }
-        ]
+        ],
+        "validModels": ["sentinel_demo"]
     },
     "naip_maryland": {
         "metadata": {
@@ -67,6 +68,18 @@
             },
             "bounds": null
         },
-        "shapeLayers": null
+        "shapeLayers": [
+            {
+                "shapesFn": "data/zones/m_3807537_ne_18_1_20170611_boundary.geojson",
+                "zoneNameKey": "id",
+                "name": "Boundary"
+            },
+            {
+                "shapesFn": "data/zones/m_3807537_ne_18_1_20170611_fishnet.geojson",
+                "zoneNameKey": "id",
+                "name": "Grid"
+            }
+        ],
+        "validModels": ["naip_demo"]
     }
 }

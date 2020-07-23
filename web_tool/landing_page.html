@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha256-YLGeXaapI0/5IgZopewRJcFXomhRMlYYjugPLSyNjTY=" crossorigin="anonymous" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/all.min.css" integrity="sha256-+N4/V/SbAFiW1MPBCXnfnP9QSN3+Keu+NlB+0ev/YKQ=" crossorigin="anonymous" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Montserrat" />
+  <link rel="stylesheet" href="css/noty.css" />
 
   <link rel="stylesheet" href="css/login.css" />
   <link rel="stylesheet" href="css/main.css" />
@@ -47,10 +48,24 @@
     }
 
     .list-group{
-        max-height: 300px;
+        max-height: 500px;
         margin-bottom: 10px;
-        overflow-y:scroll;
+        overflow-y: scroll;
         -webkit-overflow-scrolling: touch;
+    }
+
+    .list-group-item:first-child {
+        border-top-left-radius: 0.25rem;
+        border-top-right-radius: 0rem;
+    }
+
+    .list-group-item:last-child {
+        border-bottom-left-radius: 0.25rem;
+        border-bottom-right-radius: 0rem;
+    }
+
+    .lcm-heading:hover{
+      cursor: pointer;
     }
   </style>
 
@@ -64,16 +79,17 @@
 
   <div class="container">
 
-
-    <div class="row mt-4">
+    <!--
+      Dataset row
+    -->
+    <div class="row mt-4" id="dataset-row-container">
       <div class="col-md-10 mb-4 mt-4">
-        <h4 class="lcm-heading" data-toggle="collapse" data-target="#dataset-row">Select Dataset</h4>
+        <h4 class="lcm-heading" id="dataset-header"><i class="fa fa-minus" aria-hidden="true"></i> Select Dataset</h4>
       
         <div class="row collapse show" id="dataset-row">
           <div class="col-5">
             <!-- List group -->
             <div class="list-group" id="dataset-tab-list" role="tablist">
-              <!--Populated on load-->
             </div>
           </div>
           <!-- Tab panes -->
@@ -85,15 +101,18 @@
       </div>
     </div>
 
-    <div class="row mt-4">
+
+    <!--
+      Model row
+    -->
+    <div class="row mt-4" id="model-row-container" style="display:none;">
       <div class="col-md-10 mb-4 mt-4">
-        <h4 class="lcm-heading" data-toggle="collapse" data-target="#model-row">Select Model</h4>
+        <h4 class="lcm-heading" id="model-header"><i class="fa fa-minus" aria-hidden="true"></i> Select Model</h4>
       
         <div class="row collapse show" id="model-row">
           <div class="col-5">
             <!-- List group -->
             <div class="list-group" id="model-tab-list" role="tablist">
-              <!--Populated on load-->
             </div>
           </div>
           <!-- Tab panes -->
@@ -105,7 +124,29 @@
       </div>
     </div>
 
-    
+
+    <!--
+      Checkpoint row
+    -->
+    <div class="row mt-4" id="checkpoint-row-container" style="display:none;">
+      <div class="col-md-10 mb-4 mt-4">
+        <h4 class="lcm-heading" id="checkpoint-header"><i class="fa fa-minus" aria-hidden="true"></i> Select Checkpoint</h4>
+      
+        <div class="row collapse show" id="checkpoint-row">
+          <div class="col-5">
+            <!-- List group -->
+            <div class="list-group" id="checkpoint-tab-list" role="tablist">
+            </div>
+          </div>
+          <!-- Tab panes -->
+          <div class="col-7">
+            <div class="tab-content" id="checkpoint-panel-list">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="row">
       <div class="offset-md-3 col-md-4 mb-4 mt-4">
         <button type="button" class="btn btn-success" id="button-start">Start Server</button>
@@ -115,19 +156,110 @@
   </div>
 
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+  <script src="js/jquery-3.3.1.min.js"></script>
+  <script src="js/noty.js" type="text/javascript"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.4.1/js/bootstrap.bundle.min.js" integrity="sha256-OUFW7hFO0/r5aEGTQOz9F/aXQOt+TwqI1Z4fbVvww04=" crossorigin="anonymous"></script>
   <script type="text/javascript">
 
     var selectedDataset = null;
     var selectedModel = null;
+    var selectedCheckpoint = null;
 
     var datasets = null;
     var models = null;
+    var checkpoints = null;
+    var displayTree = Object();
+
+    // Keep track of the HTML objects to create the model and checkpoint lists on the fly
+    var modelTabs = Object();
+    var checkpointTabs = [];
+    var modelPanels = Object();
+    var checkpointPanels = [];
+
+
+    var newCheckpointTab = `<a class="list-group-item list-group-item-action" data-toggle="list" data-name="new" href="#checkpoint-new" role="tab">New Checkpoint</a>`;
+    var newCheckpointPanel = `
+    <div class="tab-pane" id="checkpoint-new" role="tabpanel">
+      <div class="tab-pane-content">
+        Creates a new session with no prior history.
+      </div>
+    </div>`
+
+
+    var printSelectedItems = function () {
+      console.debug("Selected dataset: " + selectedDataset);
+      console.debug("Selected model: " + selectedModel);
+      console.debug("Selected checkpoint: " + selectedCheckpoint);
+    };
+
+    var resetCheckpointHandlers = function () {
+
+      //-----------------------
+      // On checkpoint tab change
+      //-----------------------
+      $('#checkpoint-tab-list a[data-toggle="list"]').on('shown.bs.tab', function (e) {
+        selectedCheckpoint = $(e.target).data("name");
+        printSelectedItems();
+      })
+    };
+
+    var resetModelHandlers = function () {
+
+      //-----------------------
+      // On model tab change
+      //-----------------------
+      $('#model-tab-list a[data-toggle="list"]').on('shown.bs.tab', function (e) {
+        selectedModel = $(e.target).data("name");
+
+        $("#checkpoint-tab-list").html("");
+        $("#checkpoint-panel-list").html("");
+
+        $("#checkpoint-tab-list").append(newCheckpointTab);
+        $("#checkpoint-panel-list").append(newCheckpointPanel);
+        for (var i in displayTree[selectedDataset][selectedModel]){
+          var checkpointIdx = displayTree[selectedDataset][selectedModel][i];
+          $("#checkpoint-tab-list").append(checkpointTabs[checkpointIdx]);
+          $("#checkpoint-panel-list").append(checkpointPanels[checkpointIdx]);
+        }
+        $("#checkpoint-row-container").find(".active").removeClass("active");
+        selectedCheckpoint = null;
+
+        resetCheckpointHandlers();
+
+        $("#checkpoint-row-container").show(500);
+        printSelectedItems();
+      })
+    };
 
     var main = function () {
-      // Populate the datasets
-      for (dsName in datasets) {
+
+      //-----------------------
+      // Calculate the display tree
+      //-----------------------
+      for (var dsName in datasets) {
+        var dataset = datasets[dsName];
+        var validModels = dataset["validModels"];
+
+        displayTree[dsName] = Object();
+        for (var modelName in models){
+          if (validModels.indexOf(modelName) > -1){
+            displayTree[dsName][modelName] = [];
+
+            for (var checkpointIdx=0;checkpointIdx<checkpoints.length;checkpointIdx++){
+              var checkpoint = checkpoints[checkpointIdx];
+              if(checkpoint["dataset"] == dsName && checkpoint["model"] == modelName){
+                displayTree[dsName][modelName].push(checkpointIdx);
+              }
+            }
+          }
+        }
+      }
+
+
+      //-----------------------
+      // Populate the dataset elements
+      //-----------------------
+      for (var dsName in datasets) {
         var dataset = datasets[dsName];
         var tab = `<a class="list-group-item list-group-item-action" data-toggle="list" data-name="${dsName}" href="#dataset-${dsName}"  role="tab">${dataset["metadata"]["displayName"]} - ${dataset["metadata"]["imageryName"]}</a>`;
         var panel = `
@@ -144,7 +276,10 @@
         $("#dataset-panel-list").append(panel);
       }
 
-      for (modelName in models) {
+      //-----------------------
+      // Populate the model elements
+      //-----------------------
+      for (var modelName in models) {
         var model = models[modelName];
         var tab = `<a class="list-group-item list-group-item-action" data-toggle="list" data-name="${modelName}" href="#model-${modelName}"  role="tab">${model["metadata"]["displayName"]}</a>`;
         var panel = `
@@ -157,27 +292,80 @@
             </div>
         `;
 
-        $("#model-tab-list").append(tab);
-        $("#model-panel-list").append(panel);
+        modelTabs[modelName] = $(tab);
+        modelPanels[modelName] = $(panel);
+      }
+
+      //-----------------------
+      // Populate the checkpoint elements
+      //-----------------------
+      for (var checkpointIdx=0;checkpointIdx<checkpoints.length;checkpointIdx++){
+
+        var checkpoint = checkpoints[checkpointIdx];
+        var checkpointName = checkpoint["name"];
+        var directory = checkpoint["directory"];
+
+        var tab = `<a class="list-group-item list-group-item-action" data-toggle="list" data-name="${checkpointIdx}" href="#checkpoint-${checkpointIdx}"  role="tab">${checkpointName}</a>`;
+        var panel = `
+            <div class="tab-pane" id="checkpoint-${checkpointIdx}" role="tabpanel">
+              <div class="tab-pane-content">
+                <span class="tab-title">Checkpoint name: </span><span class="tab-text">${checkpointName}</span><br>
+                <span class="tab-title">Location: </span><span class="tab-text">${directory}</span>
+              </div>
+            </div>
+        `;
+
+        checkpointTabs.push($(tab));
+        checkpointPanels.push($(panel));
       }
 
 
+      //-----------------------
+      // On section header clicks
+      //-----------------------
+      $('#dataset-header').click(function(e){
+        $('#dataset-row').collapse('toggle'); // TODO: This call returns before the CSS animation is finished, and ignores all subsequent calls while animating. This means that if the user clicks twice very fast the icon will be toggled twice, however the row will only change collapsed state once - creating a mismatch. Fix this.
+        $(this).find(".fa").toggleClass("fa-minus fa-plus");
+      });
+      $('#model-header').click(function(e){
+        $('#model-row').collapse('toggle'); // // TODO: This call returns before the CSS animation is finished, and ignores all subsequent calls while animating. This means that if the user clicks twice very fast the icon will be toggled twice, however the row will only change collapsed state once - creating a mismatch. Fix this.
+        $(this).find(".fa").toggleClass("fa-minus fa-plus");
+      });
+      $('#checkpoint-header').click(function(e){
+        $('#checkpoint-row').collapse('toggle'); // // TODO: This call returns before the CSS animation is finished, and ignores all subsequent calls while animating. This means that if the user clicks twice very fast the icon will be toggled twice, however the row will only change collapsed state once - creating a mismatch. Fix this.
+        $(this).find(".fa").toggleClass("fa-minus fa-plus");
+      });
 
+
+      //-----------------------
       // On dataset tab change
+      //-----------------------
       $('#dataset-tab-list a[data-toggle="list"]').on('shown.bs.tab', function (e) {
-        console.debug("Selected dataset: " + $(e.target).data("name"));
         selectedDataset = $(e.target).data("name");
-      })
 
-      // On model tab change
-      $('#model-tab-list a[data-toggle="list"]').on('shown.bs.tab', function (e) {
-        console.debug("Selected model: " + $(e.target).data("name"));
-        selectedModel = $(e.target).data("name");
-      })
+        $("#model-tab-list").html("");
+        $("#model-panel-list").html("");
+        $("#checkpoint-tab-list").html("");
+        $("#checkpoint-panel-list").html("");
+        for (var modelName in displayTree[selectedDataset]){
+          $("#model-tab-list").append(modelTabs[modelName]);
+          $("#model-panel-list").append(modelPanels[modelName]);
+        }
+        $("#model-row-container").find(".active").removeClass("active");
+        $("#checkpoint-row-container").find(".active").removeClass("active");
+        selectedModel = null;
+        selectedCheckpoint = null;
+
+        resetModelHandlers();
+        resetCheckpointHandlers();
+
+        $("#model-row-container").show(500);
+        printSelectedItems();
+      });
 
 
       $("#button-start").click(function () {
-        if (selectedDataset !== null && selectedModel !== null) {
+        if (selectedDataset !== null && selectedModel !== null && selectedCheckpoint !== null) {
 
           var request = {
             "dataset": selectedDataset,
@@ -189,31 +377,45 @@
             url: window.location.origin + "/createSession",
             data: JSON.stringify(request),
             success: function(data, textStatus, jqXHR){
-              window.location.href = `/index.html?dataset=${selectedDataset}&model=${selectedModel}`;
+              window.location.href = `/index.html?dataset=${selectedDataset}&model=${selectedModel}&checkpoint=${selectedCheckpoint}`;
             },
             error: function(jqXHR, textStatus){
-              // TODO: Notify fail
+              new Noty({
+                    type: "error",
+                    text: "Error starting session: " + textStatus,
+                    layout: 'topRight',
+                    timeout: 5000,
+                    theme: 'metroui'
+              }).show();
             },
             dataType: "json",
             contentType: "application/json"
           });
         }else{
-          // TODO: Notify fail
+          new Noty({
+                type: "info",
+                text: "You must select both a dataset and model",
+                layout: 'topRight',
+                timeout: 5000,
+                theme: 'metroui'
+          }).show();
         }
       })
-    }
+    };
 
     $(document).ready(function () {
       var data = [
         $.getJSON('datasets.json'),
         $.getJSON('models.json'),
         $.getJSON('datasets.mine.json'),
-        $.getJSON('models.mine.json')
+        $.getJSON('models.mine.json'),
+        $.getJSON('/listCheckpoints'),
       ];
 
       Promise.allSettled(data).then(function (results) {        
         datasets = results[0].value;
-        models = results[1].value
+        models = results[1].value;
+        checkpoints = results[4].value;
 
         if(results[2].status == "fulfilled"){  
           for(k in results[2].value){

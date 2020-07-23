@@ -269,7 +269,7 @@ def pred_patch():
     #   Apply reweighting
     #   Fix padding
     # ------------------------------------------------------
-    output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(patch, extent, False)
+    output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(patch, False)
     assert len(output.shape) == 3, "The model function should return an image shaped as (height, width, num_classes)"
     assert (output.shape[2] < output.shape[0] and output.shape[2] < output.shape[1]), "The model function should return an image shaped as (height, width, num_classes)" # assume that num channels is less than img dimensions
     print("pred_patch, after model.run:", output.shape)
@@ -334,7 +334,7 @@ def pred_tile():
         bottle.response.status = 400
         return json.dumps({"error": "Cannot currently download imagery with 'Basemap' based datasets"})
 
-    output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(tile, geom, True)
+    output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(tile, True)
     print("pred_tile, after model.run:", output.shape)
     
     if output.shape[2] > len(color_list):
@@ -432,6 +432,15 @@ def get_input():
     return json.dumps(data)
 
 
+def list_checkpoints():
+    return """[
+        {"dataset": "hcmc_sentinel", "model": "sentinel_demo", "name": "Checkpoint test 1", "directory": "data/checkpoints/checkpoint_test_1/"},
+        {"dataset": "hcmc_sentinel", "model": "sentinel_demo", "name": "Checkpoint test 2", "directory": "data/checkpoints/checkpoint_test_2/"},
+        {"dataset": "hcmc_sentinel", "model": "sentinel_demo", "name": "Checkpoint test 3", "directory": "data/checkpoints/checkpoint_test_3/"},
+        {"dataset": "naip_maryland", "model": "naip_demo", "name": "Checkpoint test 4", "directory": "data/checkpoints/checkpoint_test_4/"},
+        {"dataset": "naip_maryland", "model": "naip_demo", "name": "Checkpoint test 5", "directory": "data/checkpoints/checkpoint_test_5/"}
+    ]"""
+
 def whoami():
     return str(bottle.request.session) + " " + str(bottle.request.session.id)
 
@@ -490,7 +499,7 @@ def main():
     SESSION_HANDLER.start_monitor()
 
     # Setup logging
-    log_path = os.getcwd() + "tmp/logs"
+    log_path = os.path.join(os.getcwd(), "tmp/logs/")
     setup_logging(log_path, "server")
 
 
@@ -531,6 +540,8 @@ def main():
 
     app.route("/killSession", method="OPTIONS", callback=do_options)
     app.route("/killSession", method="POST", callback=kill_session)
+
+    app.route("/listCheckpoints", method="GET", callback=list_checkpoints)
 
     app.route("/whoami", method="GET", callback=whoami)
 
