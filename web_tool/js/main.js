@@ -113,6 +113,7 @@ var doDownloadTile = function(){
         "polygon": polygon.toGeoJSON(),
         "classes": CLASSES,
         "zoneLayerName": null,
+        "model_idx": parseInt(gActiveImgIdx),
         "SESSION": SESSION_ID
     };
 

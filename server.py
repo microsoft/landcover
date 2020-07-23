@@ -331,7 +331,8 @@ def pred_tile():
     color_list = [item["color"] for item in class_list]
     dataset = data["dataset"]
     zone_layer_name = data["zoneLayerName"]
-   
+    model_idx = data["model_idx"]
+
     if dataset not in DATASETS:
         raise ValueError("Dataset doesn't seem to be valid, do the datasets in js/tile_layers.js correspond to those in TileLayers.py")    
     
@@ -363,7 +364,8 @@ def pred_tile():
     #   Convert images to base64 and return  
     # ------------------------------------------------------
     tmp_id = get_random_string(8)
-    img_hard = np.round(class_prediction_to_img(output, True, color_list)*255,0).astype(np.uint8)
+    #img_hard = np.round(class_prediction_to_img(output, True, color_list)*255,0).astype(np.uint8)
+    img_hard = class_prediction_to_img(output, True, color_list)
     img_hard = cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGRA)
     img_hard[nodata_mask] = [0,0,0,0]
 
