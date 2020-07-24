@@ -11,6 +11,16 @@ class ModelSession(abc.ABC):
         '''
         pass
 
+    @abstractmethod
+    def __init__(self, gpuid, **kwargs):
+        '''Responsible for initializaing the model and other necessary components from the pararmeters in the models.json file.
+
+        Args:
+            gpuid: An int specifying which GPU to bind to, or None, to specify CPU.
+            **kwargs: Key, value pairs created from the contents of this implementation's "model" key in models.json. (the model filename should be passed this way)
+        '''
+        raise NotImplementedError()
+
     @abc.abstractmethod
     def run(self, tile, inference_mode=False):
         '''Responsible for running the model on arbitrarily sized inputs.
@@ -43,6 +53,9 @@ class ModelSession(abc.ABC):
             row: The row index into the last `tile` tensor that was passed to `run()`. This tensor should be stored in `self.last_tile`. 
             col: The column index into the last `tile` tensor that was passed to `run()`. This tensor should be stored in `self.last_tile`.
             class_idx: The new class label (0 indexed) that is associated with the given `row` and `column` of `self.last_tile`.
+
+        Returns:
+            Dictionary in the format `{"message": str, "success": bool}` describing the results of the trying to add a training sample. The "message" will be displayed as HTML on the front-end, and styled according to "success".
         '''
         raise NotImplementedError()
 
@@ -50,12 +63,18 @@ class ModelSession(abc.ABC):
     def reset(self):
         '''Responsible for resetting the state of the internal model back to the intial configuration that it was read "from disk".
         Note: This is not necessarily the original state of the model. If the class was serialized from disk it should be reset to that state.
+
+        Returns:
+            Dictionary in the format `{"message": str, "success": bool}` describing the results of the reset operation. The "message" will be displayed as HTML on the front-end, and styled according to "success".
         '''
         raise NotImplementedError()
 
     @abc.abstractmethod
     def undo(self):
         '''Responsible for removing the previously added fine-tuning sample (from `add_sample_point()`) or rolling back a model training step - up to the implementation.
+
+        Returns:
+            Dictionary in the format `{"message": str, "success": bool}` describing the results of the undo operation. The "message" will be displayed as HTML on the front-end, and styled according to "success".
         '''
         raise NotImplementedError()
 
@@ -64,7 +83,7 @@ class ModelSession(abc.ABC):
         '''Resonsible for serializing the _current_ state of the class to a directory with the purpose of re-hydrating later. 
         
         Args:
-            directory: The directory to serialize to. This is garunteed to exist and to be empty.
+            directory: The directory to serialize to. This is garunteed to exist and only contain two files: "request_replay.p" and "samples.geojson".
         '''
         raise NotImplementedError()
 
