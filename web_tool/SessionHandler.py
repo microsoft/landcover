@@ -113,7 +113,7 @@ class SessionHandler():
 
     def create_session(self, session_id, model_key):
         if session_id in self._SESSION_MAP:
-            raise ValueError("session_id %d has already been created" % (session_id))
+            raise ValueError("session_id %s has already been created" % (session_id))
 
         if model_key not in MODELS:
             raise ValueError("%s is not a valid model, check the keys in models.json" % (model_key))
@@ -127,13 +127,18 @@ class SessionHandler():
         if worker["type"] == "local":
             random_port = get_free_tcp_port()
             gpu_id = worker["gpu_id"]
+            
             process = self._spawn_local_worker(random_port, model_fn, gpu_id, fine_tune_layer, model_type)
             model = ModelSessionRPC(session_id, random_port)
+            
+            #process = self._spawn_local_worker(random_port, model_fn, gpu_id, fine_tune_layer)
+            #model = TorchSmoothingCycleFineTune(model_fn, gpu_id, -2, 3)
+            
             session = Session(session_id, model)
             self._SESSION_MAP[session_id] = session
             self._SESSION_INFO[session_id] = {
                 "worker": worker,
-                "process": process
+                "process": None
             }
             LOGGER.info("Created a local worker for (%s) on GPU %s" % (session_id, str(gpu_id)))
 
@@ -150,7 +155,10 @@ class SessionHandler():
         '''
         if self.is_active(session_id):
             # kill the remote process
-            self._SESSION_INFO[session_id]["process"].kill()
+            try:
+                self._SESSION_INFO[session_id]["process"].kill()
+            except:
+                LOGGER.info("Worker process didn't need to be killed, ignoring...")
             # add the worker back into the worker pool
             self._WORKER_POOL.put(self._SESSION_INFO[session_id]["worker"])
             del self._SESSION_INFO[session_id]

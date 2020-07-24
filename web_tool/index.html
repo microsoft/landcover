@@ -41,23 +41,24 @@
             <!-- Start of "home" tab -->
             <div class="sidebar-pane" id="home">
                 <div style="text-align: center; margin-bottom:10px;" id="inputImages">
-                    <h3 id="lblModelInput">Model Input</h3>
+<!--                    <h3 id="lblModelInput">Model Input</h3>  -->
                     <img id="inputImage">
+                    <div style="display:inline-block" id="exampleImages"><div style="display:inline-block" id="exampleImageList"></div></div>
                 </div>
-
+<!--
                 <div style="text-align: center; margin-bottom:10px; width:100%;" id="exampleImages">
                     <h3>Land Cover Predictions</h3>
                     <div id="exampleImageList">
                     </div>
                 </div>
-
-                <div style="text-align: left; margin-bottom:10px; width:100%; padding-left:30px;">
+-->
+                <div style="display:none;text-align: left; margin-bottom:10px; width:100%; padding-left:30px;">
                     <span>Name of zone: <span id="lblZoneName">none selected</span></span>
                 </div>
 
                 <div style="margin-bottom:10px;">
 
-                    <h3 style="text-align: center; margin-top:20px;">Correction type:</h3>
+                    <h3 style="display:none;text-align: center; margin-top:20px;">Correction type:</h3>
                     <div style="padding-left:20px">
                         <div id="classList"></div>
                         <div style="text-align: center; margin-top:10px; margin-bottom:20px;">
@@ -291,7 +292,7 @@
             //----------------------------------------------------------------------
             addCustomLogoControl();
             addZoomControls();
-            //addDrawControls();
+            addDrawControls();
             var basemapPickerControl = addBasemapPickerControl(gBasemaps);
             var basemapPickerControlContainer = basemapPickerControl.getContainer();
             
@@ -299,7 +300,7 @@
             var zonePickerControlContainer = zonePickerControl.getContainer();
             
             var opacitySlider = addOpacitySlider();
-            // addInferenceWindowSizeSlider();
+            addInferenceWindowSizeSlider();
             // addCorrectionWindowSizeSlider();
             // addSharpnessToggleSlider();
 

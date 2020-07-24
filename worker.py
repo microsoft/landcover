@@ -17,8 +17,10 @@ LOGGER = logging.getLogger("server")
 import rpyc
 from rpyc.utils.server import OneShotServer, ThreadedServer
 
+
 from web_tool.ModelSessionKerasExample import KerasDenseFineTune
 from web_tool.ModelSessionPyTorchExample import TorchFineTuning
+from web_tool.ModelSessionPyTorchCycle import TorchSmoothingCycleFineTune
 from web_tool.Utils import setup_logging, serialize, deserialize
 
 
@@ -68,13 +70,16 @@ def main():
     parser.add_argument("--port", action="store", type=int, help="Port we are listenning on", default=0)
     parser.add_argument("--model", action="store", dest="model",
         choices=[
-            "keras_dense",
-            "pytorch"
+            "keras_example",
+            "pytorch_example",
+            "pytorch_smoothing_multiple"
         ],
         help="Model to use", required=True
     )
     parser.add_argument("--model_fn", action="store", dest="model_fn", type=str, help="Model fn to use", default=None)
     parser.add_argument("--fine_tune_layer", action="store", dest="fine_tune_layer", type=int, help="Layer of model to fine tune", default=-2)
+
+    parser.add_argument("--num_models", action="store", dest="num_models", type=int, help="Number of models", default=3)
     
     parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", required=False)
 
@@ -90,10 +95,13 @@ def main():
     os.environ["CUDA_VISIBLE_DEVICES"] = "" if args.gpuid is None else str(args.gpuid)
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
-    if args.model == "keras_dense":
+
+    if args.model == "keras_example":
         model = KerasDenseFineTune(args.model_fn, args.gpuid, args.fine_tune_layer)
-    elif args.model == "pytorch":
+    elif args.model == "pytorch_example":
         model = TorchFineTuning(args.model_fn, args.gpuid, args.fine_tune_layer)
+    elif args.model == "pytorch_smoothing_multiple":
+        model = TorchSmoothingCycleFineTune(args.model_fn, args.gpuid, args.fine_tune_layer, args.num_models)
     else:
         raise NotImplementedError("The given model type is not implemented yet.")
 

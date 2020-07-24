@@ -113,6 +113,7 @@ var doDownloadTile = function(){
         "polygon": polygon.toGeoJSON(),
         "classes": CLASSES,
         "zoneLayerName": null,
+        "modelIdx": parseInt(gActiveImgIdx),
         "SESSION": SESSION_ID
     };
 
@@ -173,6 +174,7 @@ var doSendCorrection = function(point, idx){
         },
         "classes": CLASSES,
         "value" : gSelectedClassIdx,
+        "modelIdx": parseInt(gActiveImgIdx),
         "SESSION": SESSION_ID
     };
 
@@ -268,6 +270,12 @@ var requestPatches = function(polygon){
     gCurrentPatches[idx]["patches"].push({
         "srcs": null
     });
+    gCurrentPatches[idx]["patches"].push({
+        "srcs": null
+    });
+    gCurrentPatches[idx]["patches"].push({
+        "srcs": null
+    });
     requestPatch(idx, polygon, 0, gBackendURL);
 
     // The following code is for connecting to multiple backends at once
@@ -310,28 +318,40 @@ var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
         success: function(data, textStatus, jqXHR){
             var resp = data;
 
-            var srcs = {
-                "soft": "data:image/png;base64," + resp.output_soft,
-                "hard": "data:image/png;base64," + resp.output_hard,
-            };
+            var srcs = [
+                {
+                    "soft": "data:image/png;base64," + resp.output_soft,
+                    "hard": "data:image/png;base64," + resp.output_hard,
+                },
+                {
+                    "soft": "data:image/png;base64," + resp.output_soft,
+                    "hard": "data:image/png;base64," + resp.output_hard,
+                },
+                {
+                    "soft": "data:image/png;base64," + resp.output_soft,
+                    "hard": "data:image/png;base64," + resp.output_hard,
+                }
+            ];
             
-            // Display the result on the map if we are the currently selected model
-            let tSelection = gDisplayHard ? "hard" : "soft";
-            if(currentImgIdx == gCurrentPatches[idx]["activeImgIdx"]){
-                gCurrentPatches[idx]["imageLayer"].setUrl(srcs[tSelection]);
-            }
-
-            // Save the resulting data in all cases
-            gCurrentPatches[idx]["patches"][currentImgIdx]["srcs"] = srcs;
-
-            // Update the right panel if we are the current "last item", we need to check for this because the order we send out requests to the API isn't necessarily the order they will come back
-            if(idx == gCurrentPatches.length-1){
-                var img = $("#exampleImage_"+currentImgIdx);
-                img.attr("src", srcs[tSelection]);
-                img.attr("data-name", resp.model_name);                    
-                
-                if(currentImgIdx == gCurrentPatches[idx]["activeImgIdx"]){
-                    img.addClass("active");
+            for(var i=0; i<3; i++){
+                // Display the result on the map if we are the currently selected model
+                let tSelection = gDisplayHard ? "hard" : "soft";
+                if(i == gCurrentPatches[idx]["activeImgIdx"]){
+                    gCurrentPatches[idx]["imageLayer"].setUrl(srcs[i][tSelection]);
+                }
+    
+                // Save the resulting data in all cases
+                gCurrentPatches[idx]["patches"][i]["srcs"] = srcs[i];
+    
+                // Update the right panel if we are the current "last item", we need to check for this because the order we send out requests to the API isn't necessarily the order they will come back
+                if(idx == gCurrentPatches.length-1){
+                    var img = $("#exampleImage_"+i);
+                    img.attr("src", srcs[i][tSelection]);
+                    img.attr("data-name", resp.model_name);                    
+                    
+                    if(i == gCurrentPatches[idx]["activeImgIdx"]){
+                        img.addClass("active");
+                    }
                 }
             }
 

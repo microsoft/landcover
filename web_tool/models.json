@@ -4,7 +4,7 @@
             "displayName": "HCMC Sentinel 2019 Unsupervised"
         },
         "model": {
-            "type": "keras_dense",
+            "type": "keras_example",
             "fineTuneLayer": -2,
             "numParameters": 563498,
             "inputShape": [100,100,4], 
@@ -23,7 +23,7 @@
             "displayName": "NAIP Supervised"
         },
         "model": {
-            "type": "keras_dense",
+            "type": "keras_example",
             "fineTuneLayer": -4,
             "numParameters": 7790949,
             "inputShape": [240,240,4],

@@ -47,6 +47,7 @@ body {
     width: 125px;
     height: 125px;
     margin: 10px;
+    border: 2px solid transparent;
 }
 
 .exampleImage.active{
@@ -105,8 +106,9 @@ a.leaflet-control-slider-toggle {
     Styling for the "new class" selection
 */
 .radio{
-    padding:10px;
+    padding:3px;
     width:350px;
+    font-size:0.8em;
 }
 
 .radio input{
@@ -114,7 +116,7 @@ a.leaflet-control-slider-toggle {
 }
 
 .radio label{
-    padding: 6px;
+    padding-left: 6px;
 }
 
 .radio .selected{
@@ -127,7 +129,7 @@ a.leaflet-control-slider-toggle {
     display:inline-block;
     width:18px;
     height:18px;
-    border-radius: 10px;
+    border-radius: 0px;
     border-color: transparent;
 }
 
@@ -166,10 +168,10 @@ a.leaflet-control-slider-toggle {
 }
 
 .label-text{
-    font-size: 1em;
+    font-size: 0.8em;
     letter-spacing: .1rem;
     font-weight: 400;
-    line-height: 1.5;
+    line-height: 1;
     color: black;
     padding: 2px;
     padding-left: 1rem;

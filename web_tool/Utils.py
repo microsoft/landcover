@@ -154,18 +154,18 @@ def class_prediction_to_img(y_pred, hard=True, color_list=None):
             new_color_list.append(color)
         colour_map = np.array(new_color_list)
 
-    img = np.zeros((height, width, 3), dtype=np.float32)
-
-    y_pred_temp = y_pred.copy()
     if hard:
+        img = np.zeros((height, width, 3), dtype=np.uint8)
         y_pred_temp = y_pred.argmax(axis=2)
         for c in range(num_classes):
+            mask = (y_pred_temp==c)
             for ch in range(3):
-                img[:,:, ch] += (y_pred_temp == c) * colour_map[c, ch]
+                img[:,:, ch][mask] = int(255*colour_map[c, ch])
     else:
+        img = np.zeros((height, width, 3), dtype=np.float32)
         for c in range(num_classes):
             for ch in range(3):
-                img[:, :, ch] += y_pred_temp[:, :, c] * colour_map[c, ch]
+                img[:, :, ch] += y_pred[:, :, c] * colour_map[c, ch]
     return img
     
 def nlcd_to_img(img):
