@@ -8,7 +8,7 @@
 - [ ] Create actual `unittest` test cases for most server functionality
   - [ ] Use the existing master branch to get expected responses from various functions
   - [ ] Convert the existing cases to use `unittest`
-- [ ] Rebase/merge the feature/cycle branch
+- [x] Rebase/merge the feature/cycle branch
 - [ ] Create a script to automatically calculate the bounds for each dataset so that we can include those in the entries in `datasets.json`.
   - Without the bounds of a tileLayer, leaflet will try to grab imagery for the entire viewport (and will get many 404 errors in return). This is annoying. 
 
