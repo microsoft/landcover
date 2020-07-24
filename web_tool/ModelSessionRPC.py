@@ -10,7 +10,11 @@ from .Utils import serialize, deserialize
 
 class ModelSessionRPC(ModelSession):
 
-    def __init__(self, session_id, port):
+    def __init__(self, gpu_id, **kwargs):
+
+        session_id = kwargs["session_id"]
+        port = kwargs["port"]
+
         self.session_id = session_id
 
         self.max_retries = 30

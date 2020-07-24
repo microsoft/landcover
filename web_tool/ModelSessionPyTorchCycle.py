@@ -35,10 +35,10 @@ class AugmentModel(nn.Module):
     
 class TorchSmoothingCycleFineTune(ModelSession):
 
-    def __init__(self, model_fn, gpuid, fine_tune_layer, num_models):
+    def __init__(self, model_fn, gpu_id, fine_tune_layer, num_models):
 
         os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-        os.environ["CUDA_VISIBLE_DEVICES"] = str(gpuid)
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
         
         self.model_fn = model_fn
         self.device = T.device("cuda:0" if T.cuda.is_available() else "cpu")

@@ -37,7 +37,7 @@ class TorchFineTuning(ModelSession):
         warm_start=True
     )
 
-    def __init__(self, model_fn, gpuid, fine_tune_layer):
+    def __init__(self, model_fn, gpu_id, fine_tune_layer):
         self.model_fn = model_fn
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 

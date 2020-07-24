@@ -64,7 +64,7 @@ def manage_sessions():
         bottle.request.session.delete() # TODO: I'm not sure how the actual session is deleted on the client side
         LOGGER.info("Cleaning up an out of date session")
     elif not SESSION_HANDLER.is_active(bottle.request.session.id):
-        LOGGER.warning("We are getting a request that doesn't have an active session")
+        LOGGER.debug("We are getting a request that doesn't have an active session")
     else:
         SESSION_HANDLER.touch_session(bottle.request.session.id) # let the SESSION_HANDLER know that this session has activity
 
@@ -108,10 +108,13 @@ def kill_session():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
 
-    SESSION_HANDLER.kill_session(bottle.request.session.id)
-    SESSION_HANDLER.cleanup_expired_session(bottle.request.session.id)
-    bottle.request.session.delete()
+    try:
+        SESSION_HANDLER.kill_session(bottle.request.session.id)
+        SESSION_HANDLER.cleanup_expired_session(bottle.request.session.id)
+    except ValueError as e:
+        LOGGER.info(e)
 
+    bottle.request.session.delete()
     bottle.response.status = 200
     return json.dumps(data)
 

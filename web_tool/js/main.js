@@ -445,7 +445,7 @@ var doLoad = function(cachedModel){
 
 
 //-----------------------------------------------------------------
-// Load a saved model state from the backend
+// Kill the current session on the backend and return to the landing page
 //-----------------------------------------------------------------
 var doKillSession = function () {
     $.ajax({
@@ -453,7 +453,8 @@ var doKillSession = function () {
         url: window.location.origin + "/killSession",
         data: JSON.stringify({}),
         success: function (data, textStatus, jqXHR) {
-            window.location.href = "/";
+            // TODO: Not sure if this is necessary. When we call `session.delete()` on the Beaker session on the server it will send an "expiration on the cookie requesting the browser to clear it" back to the browser. Will this be processed immediately, i.e. before we get here in the execution flow, or do we need to do this wait?
+            setTimeout(function(){window.location.href = "/"}, 1000); // Wait a bit so that the session cookie can be deleted
         },
         error: function (jqXHR, textStatus) {
             // TODO: Notify fail

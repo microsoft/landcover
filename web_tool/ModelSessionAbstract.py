@@ -11,12 +11,12 @@ class ModelSession(abc.ABC):
         '''
         pass
 
-    @abstractmethod
-    def __init__(self, gpuid, **kwargs):
+    @abc.abstractmethod
+    def __init__(self, gpu_id, **kwargs):
         '''Responsible for initializaing the model and other necessary components from the pararmeters in the models.json file.
 
         Args:
-            gpuid: An int specifying which GPU to bind to, or None, to specify CPU.
+            gpu_id: An int specifying which GPU to bind to, or None, to specify CPU.
             **kwargs: Key, value pairs created from the contents of this implementation's "model" key in models.json. (the model filename should be passed this way)
         '''
         raise NotImplementedError()

@@ -32,7 +32,7 @@ class KerasDenseFineTune(ModelSession):
 
     AUGMENT_MODEL = RandomForestClassifier()
 
-    def __init__(self, gpuid, **kwargs):
+    def __init__(self, gpu_id, **kwargs):
 
         self.model_fn = kwargs["fn"]
         tmodel = keras.models.load_model(self.model_fn, compile=False, custom_objects={
