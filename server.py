@@ -201,7 +201,7 @@ def record_correction():
     dst_row = int(np.floor(dst_row))
     dst_col = int(np.floor(dst_col))
 
-    SESSION_HANDLER.get_session(bottle.request.session.id).model.add_sample_point(dst_row, dst_col, class_idx)
+    SESSION_HANDLER.get_session(bottle.request.session.id).model.add_sample_point(dst_row, dst_col, class_idx, model_idx)
 
     data["message"] = "Successfully submitted correction"
     data["success"] = True
@@ -273,37 +273,35 @@ def pred_patch():
     #   Apply reweighting
     #   Fix padding
     # ------------------------------------------------------
-    output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(patch, False)
-    assert len(output.shape) == 3, "The model function should return an image shaped as (height, width, num_classes)"
-    assert (output.shape[2] < output.shape[0] and output.shape[2] < output.shape[1]), "The model function should return an image shaped as (height, width, num_classes)" # assume that num channels is less than img dimensions
+    outputs = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(patch, False)
+    #assert len(output.shape) == 3, "The model function should return an image shaped as (height, width, num_classes)"
+    #assert (output.shape[2] < output.shape[0] and output.shape[2] < output.shape[1]), "The model function should return an image shaped as (height, width, num_classes)" # assume that num channels is less than img dimensions
 
     # ------------------------------------------------------
     # Step 4
     #   Warp output to EPSG:3857 and crop off the padded area
     # ------------------------------------------------------
-    warped_output, warped_patch_crs, warped_patch_transform, warped_patch_bounds = warp_data_to_3857(output, crs, transform, bounds)
-    print("pred_patch, after warp_data_to_3857:", warped_output.shape)
+    outputs_soft = []
+    outputs_hard = []
+    for output in outputs:
 
-    cropped_warped_output, cropped_warped_patch_transform = crop_data_by_extent(warped_output, warped_patch_crs, warped_patch_transform, extent)
-    print("pred_patch, after crop_data_by_extent:", cropped_warped_output.shape)
+        if output.shape[2] > len(color_list):
+            LOGGER.warning("The number of output channels is larger than the given color list, cropping output to number of colors (you probably don't want this to happen")
+            output = output[:,:,:len(color_list)]
 
-    if cropped_warped_output.shape[2] > len(color_list):
-       LOGGER.warning("The number of output channels is larger than the given color list, cropping output to number of colors (you probably don't want this to happen")
-       cropped_warped_output = cropped_warped_output[:,:,:len(color_list)]
+        output = class_prediction_to_img(output, True, color_list)
 
-    # ------------------------------------------------------
-    # Step 5
-    #   Convert images to base64 and return  
-    # ------------------------------------------------------
-    img_soft = class_prediction_to_img(cropped_warped_output, False, color_list)
-    img_soft = cv2.imencode(".png", cv2.cvtColor(img_soft, cv2.COLOR_RGB2BGR))[1].tostring()
-    img_soft = base64.b64encode(img_soft).decode("utf-8")
-    data["output_soft"] = img_soft
+        
+        output, warped_patch_crs, warped_patch_transform, warped_patch_bounds = warp_data_to_3857(output, crs, transform, bounds)
+        output, cropped_warped_patch_transform = crop_data_by_extent(output, warped_patch_crs, warped_patch_transform, extent)
 
-    img_hard = class_prediction_to_img(cropped_warped_output, True, color_list)
-    img_hard = cv2.imencode(".png", cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGR))[1].tostring()
-    img_hard = base64.b64encode(img_hard).decode("utf-8")
-    data["output_hard"] = img_hard
+        img_hard = cv2.imencode(".png", cv2.cvtColor(output, cv2.COLOR_RGB2BGR))[1].tostring()
+        img_hard = base64.b64encode(img_hard).decode("utf-8")
+
+        outputs_hard.append(img_hard)
+
+    data["output_soft"] = outputs_soft
+    data["output_hard"] = outputs_hard
 
     print("pred_patch took %0.2f seconds, of which:" % (time.time()-tic))
     # print("-- loading data: %0.2f seconds" % (toc_data_load))
@@ -344,6 +342,7 @@ def pred_tile():
         return json.dumps({"error": "Cannot currently download imagery with 'Basemap' based datasets"})
 
     output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(tile, True)
+    output = output[model_idx]
     print("pred_tile, after model.run:", output.shape)
     
     if output.shape[2] > len(color_list):

@@ -320,16 +320,16 @@ var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
 
             var srcs = [
                 {
-                    "soft": "data:image/png;base64," + resp.output_soft,
-                    "hard": "data:image/png;base64," + resp.output_hard,
+                    "soft": "data:image/png;base64," + resp.output_soft[0],
+                    "hard": "data:image/png;base64," + resp.output_hard[0],
                 },
                 {
-                    "soft": "data:image/png;base64," + resp.output_soft,
-                    "hard": "data:image/png;base64," + resp.output_hard,
+                    "soft": "data:image/png;base64," + resp.output_soft[1],
+                    "hard": "data:image/png;base64," + resp.output_hard[1],
                 },
                 {
-                    "soft": "data:image/png;base64," + resp.output_soft,
-                    "hard": "data:image/png;base64," + resp.output_hard,
+                    "soft": "data:image/png;base64," + resp.output_soft[2],
+                    "hard": "data:image/png;base64," + resp.output_hard[2],
                 }
             ];
             

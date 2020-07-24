@@ -36,7 +36,7 @@ class ModelSession(abc.ABC):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def add_sample_point(self, row, col, class_idx):
+    def add_sample_point(self, row, col, class_idx, model_idx):
         '''Responsible for recording fine-tuning samples internally so that they can be used in the next call to `retrain()`. Called once for every fine-tuning sample submitted in the front-end interface.
         
         Args: 

@@ -207,15 +207,12 @@ class TorchSmoothingCycleFineTune(ModelSession):
             self.num_corrections_since_retrain = [ [ 0 for _ in range(self.num_models)] ]
         return True, message, num_undone
 
-    def add_sample(self, tdst_row, bdst_row, tdst_col, bdst_col, class_idx):
-        model_idx=0
+    def add_sample_point(self, row, col, class_idx, model_idx):
         print("adding sample: class %d (incremented to %d) at (%d, %d), model %d" % (class_idx, class_idx+1 , tdst_row, tdst_col, model_idx))
 
-        for i in range(tdst_row,bdst_row+1):
-            for j in range(tdst_col,bdst_col+1):
-                self.corr_labels[model_idx].append(class_idx+1)
-                self.corr_features[model_idx].append(self.features[0,:,i,j])
-                self.num_corrections_since_retrain[-1][model_idx] += 1
+        self.corr_labels[model_idx].append(class_idx+1)
+        self.corr_features[model_idx].append(self.features[0,:,row,col])
+        self.num_corrections_since_retrain[-1][model_idx] += 1
 
     def init_model(self):
         checkpoint = T.load(self.model_fn, map_location=self.device)

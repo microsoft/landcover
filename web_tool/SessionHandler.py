@@ -10,6 +10,7 @@ LOGGER = logging.getLogger("server")
 from .Session import Session
 
 from .ModelSessionRPC import ModelSessionRPC
+from .ModelSessionPyTorchCycle import TorchSmoothingCycleFineTune
 
 from .Models import load_models
 MODELS = load_models()
@@ -128,11 +129,10 @@ class SessionHandler():
             random_port = get_free_tcp_port()
             gpu_id = worker["gpu_id"]
             
-            process = self._spawn_local_worker(random_port, model_fn, gpu_id, fine_tune_layer, model_type)
-            model = ModelSessionRPC(session_id, random_port)
+            #process = self._spawn_local_worker(random_port, model_fn, gpu_id, fine_tune_layer, model_type)
+            #model = ModelSessionRPC(session_id, random_port)
             
-            #process = self._spawn_local_worker(random_port, model_fn, gpu_id, fine_tune_layer)
-            #model = TorchSmoothingCycleFineTune(model_fn, gpu_id, -2, 3)
+            model = TorchSmoothingCycleFineTune(model_fn, gpu_id, -2, 3)
             
             session = Session(session_id, model)
             self._SESSION_MAP[session_id] = session
