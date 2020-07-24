@@ -1,11 +1,9 @@
-
-from web_tool.ServerModelsAbstract import BackendModel
+from .ModelSessionAbstract import ModelSession
 import torch as T
 import numpy as np
 import torch.nn as nn
 import copy
 import os, json
-from training.pytorch.utils.eval_segm import mean_IoU, pixel_accuracy
 from torch.autograd import Variable
 import time
 from scipy.special import softmax
@@ -35,7 +33,7 @@ class AugmentModel(nn.Module):
     def forward(self,inputs):
         return self.last(inputs)
     
-class TorchSmoothingCycleFineTune(BackendModel):
+class TorchSmoothingCycleFineTune(ModelSession):
 
     def __init__(self, model_fn, gpuid, fine_tune_layer, num_models):
 
@@ -67,7 +65,11 @@ class TorchSmoothingCycleFineTune(BackendModel):
         self.corr_labels = [[] for _ in range(num_models) ]
         self.num_corrections_since_retrain = [ [ 0 for _ in range(num_models) ] ]
 
-    def run(self, naip_data, naip_fn, extent):
+    @property
+    def last_tile(self):
+        return 0
+
+    def run(self, naip_data, inference_mode=False):
         print(naip_data.shape)
       
         x = naip_data
@@ -205,7 +207,8 @@ class TorchSmoothingCycleFineTune(BackendModel):
             self.num_corrections_since_retrain = [ [ 0 for _ in range(self.num_models)] ]
         return True, message, num_undone
 
-    def add_sample(self, tdst_row, bdst_row, tdst_col, bdst_col, class_idx, model_idx):
+    def add_sample(self, tdst_row, bdst_row, tdst_col, bdst_col, class_idx):
+        model_idx=0
         print("adding sample: class %d (incremented to %d) at (%d, %d), model %d" % (class_idx, class_idx+1 , tdst_row, tdst_col, model_idx))
 
         for i in range(tdst_row,bdst_row+1):
@@ -237,7 +240,8 @@ class TorchSmoothingCycleFineTune(BackendModel):
            
         return features
 
+    def save_state_to(self, directory):
+        pass
 
-
-
-
+    def load_state_from(self, directory):
+        pass

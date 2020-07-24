@@ -113,7 +113,7 @@ class SessionHandler():
 
     def create_session(self, session_id, model_key):
         if session_id in self._SESSION_MAP:
-            raise ValueError("session_id %d has already been created" % (session_id))
+            raise ValueError("session_id %s has already been created" % (session_id))
 
         if model_key not in MODELS:
             raise ValueError("%s is not a valid model, check the keys in models.json" % (model_key))

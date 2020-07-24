@@ -180,7 +180,6 @@ def record_correction():
 
     SESSION_HANDLER.get_session(bottle.request.session.id).add_entry(data) # record this interaction
 
-    model_idx = data["model_idx"]
 
     #
     lon, lat = data["point"]["x"], data["point"]["y"]
@@ -189,6 +188,7 @@ def record_correction():
     color_list = [item["color"] for item in class_list]
     class_idx = data["value"] # what we want to switch the class to
     origin_crs = data["point"]["crs"]
+    model_idx = data["modelIdx"]
 
     # load the current predicted patches crs and transform
     data_crs, data_transform = SESSION_HANDLER.get_session(bottle.request.session.id).current_transform
@@ -273,11 +273,9 @@ def pred_patch():
     #   Apply reweighting
     #   Fix padding
     # ------------------------------------------------------
-    tic_model_run = float(time.time())
     output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(patch, False)
     assert len(output.shape) == 3, "The model function should return an image shaped as (height, width, num_classes)"
     assert (output.shape[2] < output.shape[0] and output.shape[2] < output.shape[1]), "The model function should return an image shaped as (height, width, num_classes)" # assume that num channels is less than img dimensions
-    toc_model_run = time.time() - tic_model_run
 
     # ------------------------------------------------------
     # Step 4
@@ -297,21 +295,21 @@ def pred_patch():
     # Step 5
     #   Convert images to base64 and return  
     # ------------------------------------------------------
-    img_soft = np.round(class_prediction_to_img(cropped_warped_output, False, color_list)*255,0).astype(np.uint8)
+    img_soft = class_prediction_to_img(cropped_warped_output, False, color_list)
     img_soft = cv2.imencode(".png", cv2.cvtColor(img_soft, cv2.COLOR_RGB2BGR))[1].tostring()
     img_soft = base64.b64encode(img_soft).decode("utf-8")
     data["output_soft"] = img_soft
 
-    img_hard = np.round(class_prediction_to_img(cropped_warped_output, True, color_list)*255,0).astype(np.uint8)
+    img_hard = class_prediction_to_img(cropped_warped_output, True, color_list)
     img_hard = cv2.imencode(".png", cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGR))[1].tostring()
     img_hard = base64.b64encode(img_hard).decode("utf-8")
     data["output_hard"] = img_hard
 
     print("pred_patch took %0.2f seconds, of which:" % (time.time()-tic))
-    print("-- loading data: %0.2f seconds" % (toc_data_load))
-    print("-- running model: %0.2f seconds" % (toc_model_run))
-    print("-- warping/cropping: %0.2f seconds" % (time_for_crops_and_warps))
-    print("-- coloring: %0.2f seconds" % (time_for_coloring))
+    # print("-- loading data: %0.2f seconds" % (toc_data_load))
+    # print("-- running model: %0.2f seconds" % (toc_model_run))
+    # print("-- warping/cropping: %0.2f seconds" % (time_for_crops_and_warps))
+    # print("-- coloring: %0.2f seconds" % (time_for_coloring))
     bottle.response.status = 200
     return json.dumps(data)
 
@@ -331,7 +329,7 @@ def pred_tile():
     color_list = [item["color"] for item in class_list]
     dataset = data["dataset"]
     zone_layer_name = data["zoneLayerName"]
-    model_idx = data["model_idx"]
+    model_idx = data["modelIdx"]
 
     if dataset not in DATASETS:
         raise ValueError("Dataset doesn't seem to be valid, do the datasets in js/tile_layers.js correspond to those in TileLayers.py")    
@@ -364,7 +362,6 @@ def pred_tile():
     #   Convert images to base64 and return  
     # ------------------------------------------------------
     tmp_id = get_random_string(8)
-    #img_hard = np.round(class_prediction_to_img(output, True, color_list)*255,0).astype(np.uint8)
     img_hard = class_prediction_to_img(output, True, color_list)
     img_hard = cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGRA)
     img_hard[nodata_mask] = [0,0,0,0]
