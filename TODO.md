@@ -9,7 +9,7 @@
   - [ ] Use the existing master branch to get expected responses from various functions
   - [ ] Convert the existing cases to use `unittest`
 - [x] Rebase/merge the feature/cycle branch
-- [ ] Create a script to automatically calculate the bounds for each dataset so that we can include those in the entries in `datasets.json`.
+- [x] Create a script to automatically calculate the bounds for each dataset so that we can include those in the entries in `datasets.json`.
   - Without the bounds of a tileLayer, leaflet will try to grab imagery for the entire viewport (and will get many 404 errors in return). This is annoying. 
 
 ## Landing page
@@ -37,7 +37,8 @@
 ## Server
 
 - [ ] Create small debug page (e.g. `/sessions.html`) that shows a list of the active sessions
-- [ ] Make the Session object start ModelSessions with kwargs from `models.json`.
+- [x] Make the Session object start ModelSessions with kwargs from `models.json`.
+- [ ] Most of the paths that server.py uses are hardcoded (e.g. `tmp/downloads/`). Replace these with constants.
 
 ## Documentation
 
