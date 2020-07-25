@@ -43,6 +43,9 @@ bottle.TEMPLATE_PATH.insert(0, "./" + ROOT_DIR + "/views") # let bottle know whe
 import cheroot.wsgi
 import beaker.middleware
 
+CHECKPOINT_DIR = "tmp/checkpoints/"
+SESSION_TIMEOUT_SECONDS = 15
+
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
 
@@ -61,8 +64,8 @@ def manage_sessions():
 
     if SESSION_HANDLER.is_expired(bottle.request.session.id): # Someone is trying to use a session that we have deleted due to inactivity
         SESSION_HANDLER.cleanup_expired_session(bottle.request.session.id)
-        bottle.request.session.delete() # TODO: I'm not sure how the actual session is deleted on the client side
-        LOGGER.info("Cleaning up an out of date session")
+        bottle.request.session.delete() # This sets a Set-cookie header to expire the current bottle.request.session.id on the frontend
+        LOGGER.info("Cleaned up an out of date session")
     elif not SESSION_HANDLER.is_active(bottle.request.session.id):
         LOGGER.debug("We are getting a request that doesn't have an active session")
     else:
@@ -444,7 +447,13 @@ def get_input():
     return json.dumps(data)
 
 
-def list_checkpoints():
+def create_checkpoint():
+    pass
+
+def get_checkpoints():
+    checkpoints = []
+
+
     return """[
         {"dataset": "hcmc_sentinel", "model": "sentinel_demo", "name": "Checkpoint test 1", "directory": "data/checkpoints/checkpoint_test_1/"},
         {"dataset": "hcmc_sentinel", "model": "sentinel_demo", "name": "Checkpoint test 2", "directory": "data/checkpoints/checkpoint_test_2/"},
@@ -454,7 +463,22 @@ def list_checkpoints():
     ]"""
 
 def whoami():
-    return str(bottle.request.session) + " " + str(bottle.request.session.id)
+    page = f"""
+    Your <b>bottle</b> session object: {str(bottle.request.session)} <br/>
+    Your <b>bottle</b> session id: {str(bottle.request.session.id)} <br /> <br />
+
+    List of <b>bottle</b> session ids that the server has registered as valid <i>Session</i> objects:
+    <ul>
+    """
+
+    for session_id, session in SESSION_HANDLER._SESSION_MAP.items():
+        page += f"<li>{str(session_id)}</li>"
+    page += "</ul>"
+
+    active_session = SESSION_HANDLER.is_active(bottle.request.session.id)
+    page += f"<br/><br/>Your session is active: {active_session}"
+
+    return page
 
 
 #---------------------------------------------------------------------------------------
@@ -490,16 +514,6 @@ def main():
     parser = argparse.ArgumentParser(description="AI for Earth Land Cover")
 
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debugging", default=False)
-
-    # TODO: make sure the storage type is passed onto the Session objects
-    parser.add_argument(
-        '--storage_type',
-        action="store", dest="storage_type", type=str,
-        choices=["table", "file"],
-        default=None
-    )
-    parser.add_argument("--storage_path", action="store", dest="storage_path", type=str, help="Path to directory where output will be stored", default=None)
-
     parser.add_argument("--host", action="store", dest="host", type=str, help="Host to bind to", default="0.0.0.0")
     parser.add_argument("--port", action="store", dest="port", type=int, help="Port to listen on", default=8080)
 
@@ -508,11 +522,19 @@ def main():
 
     # Create session factory to handle incoming requests
     SESSION_HANDLER = SessionHandler(args)
-    SESSION_HANDLER.start_monitor()
+    SESSION_HANDLER.start_monitor(SESSION_TIMEOUT_SECONDS)
 
     # Setup logging
     log_path = os.path.join(os.getcwd(), "tmp/logs/")
     setup_logging(log_path, "server")
+
+    # Make sure some directories exist
+    os.makedirs(CHECKPOINT_DIR, exist_ok=True)
+    os.makedirs("tmp/downloads/", exist_ok=True)
+    os.makedirs("tmp/logs/", exist_ok=True)
+    os.makedirs("tmp/output/", exist_ok=True) # TODO: Remove this after we rework  
+    os.makedirs("tmp/session/", exist_ok=True)
+
 
 
     # Setup the bottle server 
@@ -553,8 +575,12 @@ def main():
     app.route("/killSession", method="OPTIONS", callback=do_options)
     app.route("/killSession", method="POST", callback=kill_session)
 
-    app.route("/listCheckpoints", method="GET", callback=list_checkpoints)
+    # Checkpoints
+    app.route("/createCheckpoint", method="OPTIONS", callback=do_options)
+    app.route("/createCheckpoint", method="POST", callback=create_checkpoint)
+    app.route("/getCheckpoints", method="GET", callback=get_checkpoints)
 
+    # Sessions
     app.route("/whoami", method="GET", callback=whoami)
 
     # Content paths

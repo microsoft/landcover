@@ -16,7 +16,7 @@ from .Models import load_models
 
 
 
-def session_monitor(session_handler, session_timeout_seconds=10):
+def session_monitor(session_handler, session_timeout_seconds):
     ''' This is a `Thread()` that is starting when the program is run. It is responsible for finding which of the `Session()` objects
     in `SESSION_MAP` haven't been used recently and killing them.
 
@@ -26,11 +26,11 @@ def session_monitor(session_handler, session_timeout_seconds=10):
     while True:
         session_ids_to_kill = []
         for session_id, session in session_handler._SESSION_MAP.items():
-            LOGGER.debug("SESSION MONITOR - Checking session (%s) for activity" % (session_id))
             time_inactive = time.time() - session.last_interaction_time
+            LOGGER.debug("SESSION MONITOR - Checking session (%s) for activity, inactive for %d seconds" % (session_id, time_inactive))
             if time_inactive > session_timeout_seconds:
                 session_ids_to_kill.append(session_id)
-        
+
         for session_id in session_ids_to_kill:
             LOGGER.info("SESSION MONITOR - Session (%s) has been inactive for over %d seconds, destroying" % (session_id, session_timeout_seconds))
             session_handler.kill_session(session_id)
@@ -170,12 +170,13 @@ class SessionHandler():
 
     def touch_session(self, session_id):
         if self.is_active(session_id):
+            LOGGER.debug("Touching session (%s)" % (session_id))
             self._SESSION_MAP[session_id].last_interaction_time = time.time()
         else:
             raise ValueError("Tried to update time on a non-existing Session")
 
 
-    def start_monitor(self, session_timeout_seconds=900):
+    def start_monitor(self, session_timeout_seconds):
         session_monitor_thread = threading.Thread(target=session_monitor, args=(self, session_timeout_seconds))
         session_monitor_thread.setDaemon(True)
         session_monitor_thread.start()
