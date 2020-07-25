@@ -36,7 +36,7 @@
 
 ## Server
 
-- [ ] Create small debug page (e.g. `/sessions.html`) that shows a list of the active sessions
+- [x] Create small debug page that shows a list of the active sessions (created as `/whoami`)
 - [x] Make the Session object start ModelSessions with kwargs from `models.json`.
 - [ ] Most of the paths that server.py uses are hardcoded (e.g. `tmp/downloads/`). Replace these with constants.
 
@@ -54,16 +54,15 @@
   - [x] Rename ServerModelsAbstract to ModelSessionAbstract throughout.
     - [x] Clean up (remove NAIP references) and re-document the interface
     - [x] Add `save_state_to()` and `load_state_from()` methods to the interface. Now, "ServerModels" will be responsible for serializing their state to a directory.
-    - [ ] Implement `save_state_to()` and `load_state_from()` in the keras ModelSession class
+    - [x] Implement `save_state_to()` and `load_state_from()` in the keras ModelSession class
   - [ ] Add a checkpoint model button to the front-end.
     - [ ] This should prompt for a checkpoint name.
     - [ ] This should save the model to disk.
     - [ ] This should save an entry in a checkpoint database.
-  - [ ] The landing page should have an additional section that shows available checkpoints for each (dataset, model) pair.
+  - [x] The landing page should have an additional section that shows available checkpoints for each (dataset, model) pair.
     - The expected flow is: "user selects a dataset" --> "valid list of models are displayed" --> "user selects a model" --> "current list of checkpoints are displayed" --> "user selects a checkpoint or 'new'" --> "start server button is enabled"
     - [x] Add "valid_models" key to each dataset that is a list of acceptable models.
     - [x] Additionally, the landing page should give the option to start from an empty model.
-  - [ ] Add instructions for install/running a local redis server to store checkpoints in.
 
 - [ ] The commnication between `server.py` and `worker.py` needs to be re-worked.
   - Currently `server.py` will spawn an instance of `worker.py` for every "session" that is created through the front-end. Communication between the server and the worker are handled by `rpyc` RPC calls. In long running computations on the worker (e.g. running a model over a tile), the connection will time-out. Also, the RPC call seems to incur a significant overhead when passing large arrays (e.g. a 7000x7000x20 numpy array).

@@ -18,14 +18,6 @@ var doRetrain = function(){
                 notifySuccess(data, textStatus, jqXHR, 5000);
                 gRetrainCounts += 1;
 
-                if(data["cached_model"] !== null){
-                    var url = new URL(window.location.href);
-                    url.searchParams.set("cachedModel", data["cached_model"])
-                    $("#lblURL").val(url.toString());
-                }else{
-                    $("#lblURL").val("Debug mode - no model checkpoints");
-                }
-
                 $("#label-retrains").html(gRetrainCounts);
                 $(".classCounts").html("0")
                 for(c in CLASSES){
@@ -75,7 +67,7 @@ var doReset = function(notify=true, initialReset=false){
                     CLASSES[c]["count"] = 0;
                 }
             }
-            $("#lblURL").val("");
+            // TODO: Reset the class list
         },
         error: notifyFail,
         dataType: "json",
@@ -453,7 +445,7 @@ var doKillSession = function () {
         url: window.location.origin + "/killSession",
         data: JSON.stringify({}),
         success: function (data, textStatus, jqXHR) {
-            // TODO: Not sure if this is necessary. When we call `session.delete()` on the Beaker session on the server it will send an "expiration on the cookie requesting the browser to clear it" back to the browser. Will this be processed immediately, i.e. before we get here in the execution flow, or do we need to do this wait?
+            // TODO: Not sure if this is necessary. When we call `session.delete()` on the Beaker session on the server it will send an "expiration on the cookie requesting the browser to clear it" back to the browser. Will this be processed immediately, i.e. before we get here in the execution flow, or do we need to do this wait? See https://beaker.readthedocs.io/en/latest/sessions.html#removing-expired-old-sessions
             setTimeout(function(){window.location.href = "/"}, 1000); // Wait a bit so that the session cookie can be deleted
         },
         error: function (jqXHR, textStatus) {

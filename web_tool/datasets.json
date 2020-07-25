@@ -20,9 +20,9 @@
                 "tms": true,
                 "maxNativeZoom": 16,
                 "maxZoom": 20,
-                "minZoom": 10
-            },
-            "bounds": null
+                "minZoom": 10,
+                "bounds": [[10.516963329949858, 106.88465642003204], [10.850214900118745, 106.55144323441078]]
+            }
         },
         "shapeLayers": [
             {
@@ -64,9 +64,9 @@
                 "tms": true,
                 "maxNativeZoom": 16,
                 "maxZoom": 20,
-                "minZoom": 10
-            },
-            "bounds": null
+                "minZoom": 10,
+                "bounds": [[38.43467413843691, -75.37107263863105], [38.50279589938556, -75.44149473165253]]
+            }
         },
         "shapeLayers": [
             {

@@ -409,7 +409,7 @@
         $.getJSON('models.json'),
         $.getJSON('datasets.mine.json'),
         $.getJSON('models.mine.json'),
-        $.getJSON('/listCheckpoints'),
+        $.getJSON('/getCheckpoints'),
       ];
 
       Promise.allSettled(data).then(function (results) {        
