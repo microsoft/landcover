@@ -69,7 +69,7 @@ class KerasDenseFineTune(ModelSession):
             original_shape = output.shape
             output = output_features.reshape(-1, output_features.shape[2])
             output = self.augment_model.predict_proba(output)
-            output = output.reshape(original_shape[0], original_shape[1],  -1)
+            output = output.reshape(original_shape[0], original_shape[1], -1)
 
         if not inference_mode:
             self._last_tile = output_features
@@ -177,7 +177,6 @@ class KerasDenseFineTune(ModelSession):
             counts[y:y+self.input_size, x:x+self.input_size] += kernel
 
         output = output / counts[..., np.newaxis]
-        output = output[:,:,1:]
         output_features = output_features / counts[..., np.newaxis]
 
         return output, output_features
