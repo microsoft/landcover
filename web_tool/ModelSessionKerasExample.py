@@ -5,7 +5,6 @@ import joblib
 import numpy as np
 
 import sklearn.base
-from sklearn.neural_network import MLPClassifier
 from sklearn.ensemble import RandomForestClassifier
 
 import tensorflow as tf
@@ -18,17 +17,6 @@ from . import ROOT_DIR
 from .ModelSessionAbstract import ModelSession
 
 class KerasDenseFineTune(ModelSession):
-
-    # AUGMENT_MODEL = MLPClassifier(
-    #     hidden_layer_sizes=(),
-    #     activation='relu',
-    #     alpha=0.0001,
-    #     solver='lbfgs',
-    #     tol=0.0001,
-    #     verbose=False,
-    #     validation_fraction=0.0,
-    #     n_iter_no_change=50
-    # )
 
     AUGMENT_MODEL = RandomForestClassifier()
 
