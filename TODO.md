@@ -11,6 +11,7 @@
 - [x] Rebase/merge the feature/cycle branch
 - [x] Create a script to automatically calculate the bounds for each dataset so that we can include those in the entries in `datasets.json`.
   - Without the bounds of a tileLayer, leaflet will try to grab imagery for the entire viewport (and will get many 404 errors in return). This is annoying. 
+- [ ] Datasets, Models, and SessionHandler should probably all be static classes with @staticmethod methods like Checkpoints. 
 
 ## Landing page
 
@@ -39,6 +40,7 @@
 - [x] Create small debug page that shows a list of the active sessions (created as `/whoami`)
 - [x] Make the Session object start ModelSessions with kwargs from `models.json`.
 - [ ] Most of the paths that server.py uses are hardcoded (e.g. `tmp/downloads/`). Replace these with constants.
+- [ ] The logic of `pred_patch`, `pred_tile`, etc. should probably all be moved to the Session class. `server.py` should just be in charge of routing requests to the correct place.
 
 ## Documentation
 
@@ -50,15 +52,15 @@
 - [ ] Document the process by which users can train / add an unsupervised model using the `training/train_autoencoder.py` script.
 
 ## Larger projects that span multiple pieces of the codebase
-- [ ] Total rework of model saving and loading. Currently the tool generates a custom link that a model can be restored at however this is brittle and unintuitive to users.
+- [x] Total rework of model saving and loading. Currently the tool generates a custom link that a model can be restored at however this is brittle and unintuitive to users.
   - [x] Rename ServerModelsAbstract to ModelSessionAbstract throughout.
     - [x] Clean up (remove NAIP references) and re-document the interface
     - [x] Add `save_state_to()` and `load_state_from()` methods to the interface. Now, "ServerModels" will be responsible for serializing their state to a directory.
     - [x] Implement `save_state_to()` and `load_state_from()` in the keras ModelSession class
-  - [ ] Add a checkpoint model button to the front-end.
-    - [ ] This should prompt for a checkpoint name.
-    - [ ] This should save the model to disk.
-    - [ ] This should save an entry in a checkpoint database.
+  - [x] Add a checkpoint model button to the front-end.
+    - [x] This should prompt for a checkpoint name.
+    - [x] This should save the model to disk.
+    - [x] This should save an entry in a checkpoint database.
   - [x] The landing page should have an additional section that shows available checkpoints for each (dataset, model) pair.
     - The expected flow is: "user selects a dataset" --> "valid list of models are displayed" --> "user selects a model" --> "current list of checkpoints are displayed" --> "user selects a checkpoint or 'new'" --> "start server button is enabled"
     - [x] Add "valid_models" key to each dataset that is a list of acceptable models.
