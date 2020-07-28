@@ -137,40 +137,19 @@
             //----------------------------------------------------------------------
             // Parse URL arguments
             //----------------------------------------------------------------------
-            let args = getURLArguments()
-            EXP_NAME = args.userID
+            var args = getURLArguments()
             gBackendURL = SERVERS[args.backendID]["url"];
-            
-            if(!(args.dataset in DATASETS) && (args.dataset !== null)){
-                args.dataset = null;
-                new Noty({
-                    type: "error",
-                    text: "Requested dataset doesn't exist, using default",
-                    layout: 'topCenter',
-                    timeout: 5000,
-                    theme: 'metroui'
-                }).show();
-            }
-            if(args.dataset === null){
-                args.dataset = "esri_world_imagery";
-            }
             gCurrentDataset = args.dataset;
             gCurrentModel = args.model;
+            gCurrentCheckpoint = args.checkpoint;
 
-            if(args.cachedModel !== null){
-                doLoad(args.cachedModel); // load a cached version of the model
-            }else{
-                //doReset(false, true); // reset the backend server
+
+            if(gCurrentCheckpoint === null || gCurrentCheckpoint === "new"){
+                console.debug("New checkpoint, not loading anything");
+            } else{
+                console.debug("Existing checkpoint, loading stuff");
             }
-            
-            //----------------------------------------------------------------------
-            // Start user study if necessary
-            //----------------------------------------------------------------------
-            var userStudy = false;
-            if(args.maxTime !== null){
-                runUserStudyTimer(args.maxTime);
-                userStudy = true;
-            }
+
 
             //----------------------------------------------------------------------
             // Load the dataset specific shapes
@@ -358,8 +337,9 @@
 
             $("#btnRetrain").click(doRetrain);
             $("#btnUndo").click(doUndo);
-            $("#btnReset").click(function(){doReset(true, initialReset=false)});
+            $("#btnReset").click(doReset);
             $("#btnDownload").click(doDownloadTile);
+            $("#btnCheckpoint").click(doCreateCheckpoint)
 
             $("#btnKillSession").click(doKillSession)
 

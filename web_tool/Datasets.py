@@ -114,3 +114,10 @@ def load_datasets():
                 LOGGER.warning("There is a conflicting dataset key in datasets.mine.json, skipping.")
 
     return datasets
+
+def is_valid_dataset(dataset_key):
+
+    dataset_json = json.load(open(os.path.join(ROOT_DIR, "datasets.json"),"r"))
+    dataset_mine_json = json.load(open(os.path.join(ROOT_DIR, "datasets.mine.json"),"r"))
+
+    return (dataset_key in dataset_json) or (dataset_key in dataset_mine_json)

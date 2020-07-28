@@ -178,7 +178,12 @@ class KerasDenseFineTune(ModelSession):
 
         if self.augment_model_trained:
             with open(os.path.join(directory, "trained.txt"), "w") as f:
-                pass
+                f.write("")
+
+        return {
+            "message": "Saved model state", 
+            "success": True
+        }
 
     def load_state_from(self, directory):
 
@@ -192,3 +197,8 @@ class KerasDenseFineTune(ModelSession):
 
         self.augment_model = joblib.load(os.path.join(directory, "augment_model.p"))
         self.augment_model_trained = os.path.exists(os.path.join(directory, "trained.txt"))
+
+        return {
+            "message": "Loaded model state", 
+            "success": True
+        }

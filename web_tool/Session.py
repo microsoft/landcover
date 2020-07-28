@@ -16,6 +16,7 @@ import numpy as np
 import joblib
 
 from .Utils import get_random_string, AtomicCounter
+from .Checkpoints import Checkpoints
 
 import logging
 LOGGER = logging.getLogger("server")
@@ -37,10 +38,6 @@ class Session():
     def __init__(self, session_id, model):
         LOGGER.info("Instantiating a new session object with id: %s" % (session_id))
 
-        self.storage_type = "file" # this will be "table" or "file"
-        self.storage_path = "tmp/output/" # this will be a file path
-        self.table_service = None # this will be an instance of TableService
-
         self.model = model
         self.current_transform = ()
 
@@ -60,17 +57,6 @@ class Session():
         self.current_snapshot_idx = 0
         self.current_request_counter = AtomicCounter()
         self.request_list = []
-
-        if self.storage_type == "table":
-            self.table_service.insert_entity("webtoolsessions",
-            {
-                "PartitionKey": str(np.random.randint(0,8)),
-                "RowKey": str(uuid.uuid4()),
-                "session_id": self.current_snapshot_string,
-                "server_hostname": os.uname()[1],
-                "server_sys_argv": ' '.join(sys.argv),
-                "base_model": from_cached
-            })
 
     def load(self, encoded_model_fn):
         model_fn = base64.b64decode(encoded_model_fn).decode('utf-8')
@@ -104,32 +90,61 @@ class Session():
             return base64.b64encode(model_fn.encode('utf-8')).decode('utf-8') # this is super dumb
         else:
             return None
-    
-    def add_entry(self, data):
-        data = data.copy()
-        data["time"] = datetime.datetime.now()
-        data["current_snapshot_index"] = self.current_snapshot_idx
-        current_request_counter = self.current_request_counter.increment()
-        data["current_request_index"] = current_request_counter
 
-        assert "experiment" in data
 
-        if self.storage_type == "file":
-            self.request_list.append(data)
+    def create_checkpoint(self, dataset_name, model_name, checkpoint_name, classes):
         
-        elif self.storage_type == "table":
+        if "-" in checkpoint_name:
+            return {
+                "message": "Checkpoint name cannot contain '-'",
+                "success": False
+            }
+        elif checkpoint_name == "new":
+            return {
+                "message": "Checkpoint name cannot be 'new'",
+                "success": False
+            }
 
-            data["PartitionKey"] = self.current_snapshot_string
-            data["RowKey"] = "%s_%d" % (data["experiment"], current_request_counter)
 
-            for k in data.keys():
-                if isinstance(data[k], dict) or isinstance(data[k], list):
-                    data[k] = json.dumps(data[k])
+        try:
+            directory = Checkpoints.create_new_checkpoint_directory(dataset_name, model_name, checkpoint_name)
+        except ValueError as e:
+            return {
+                "message": e.args[0],
+                "success": False
+            }
+
+        with open(os.path.join(directory, "classes.json"), "w") as f:
+            f.write(json.dumps(classes))
+
+        return self.model.save_state_to(directory)
+
+    def add_entry(self, data):
+        # data = data.copy()
+        # data["time"] = datetime.datetime.now()
+        # data["current_snapshot_index"] = self.current_snapshot_idx
+        # current_request_counter = self.current_request_counter.increment()
+        # data["current_request_index"] = current_request_counter
+
+        # assert "experiment" in data
+
+        # if self.storage_type == "file":
+        #     self.request_list.append(data)
+        
+        # elif self.storage_type == "table":
+
+        #     data["PartitionKey"] = self.current_snapshot_string
+        #     data["RowKey"] = "%s_%d" % (data["experiment"], current_request_counter)
+
+        #     for k in data.keys():
+        #         if isinstance(data[k], dict) or isinstance(data[k], list):
+        #             data[k] = json.dumps(data[k])
             
-            try:
-                self.table_service.insert_entity("webtoolinteractions", data)
-            except Exception as e:
-                LOGGER.error(e)
-        else:
-            # The storage_type / --storage_path command line args were not set
-            pass
+        #     try:
+        #         self.table_service.insert_entity("webtoolinteractions", data)
+        #     except Exception as e:
+        #         LOGGER.error(e)
+        # else:
+        #     # The storage_type / --storage_path command line args were not set
+        #     pass
+        pass

@@ -4,10 +4,7 @@
 var doRetrain = function(){
     var request = {
         "type": "retrain",
-        "dataset": gCurrentDataset,
-        "experiment": EXP_NAME,
         "retrainArgs": gRetrainArgs,
-        "SESSION": SESSION_ID
     };
     $.ajax({
         type: "POST",
@@ -40,25 +37,19 @@ var doRetrain = function(){
     });
 };
 
-
-
 //-----------------------------------------------------------------
 // Reset backend server state
 //-----------------------------------------------------------------
-var doReset = function(notify=true, initialReset=false){
+var doReset = function(){
     var request = {
         "type": "reset",
-        "dataset": gCurrentDataset,
-        "experiment": EXP_NAME,
-        "initialReset": initialReset,
-        "SESSION": SESSION_ID
     };
     $.ajax({
         type: "POST",
         url: gBackendURL + "resetModel",
         data: JSON.stringify(request),
         success: function(data, textStatus, jqXHR){
-            if(data["success"] && notify){
+            if(data["success"]){
                 notifySuccess(data, textStatus, jqXHR);
                 
                 $("#label-retrains").html("0");
@@ -74,8 +65,6 @@ var doReset = function(notify=true, initialReset=false){
         contentType: "application/json"
     });
 };
-
-
 
 //-----------------------------------------------------------------
 // Download tile
@@ -101,12 +90,10 @@ var doDownloadTile = function(){
     var request = {
         "type": "download",
         "dataset": gCurrentDataset,
-        "experiment": EXP_NAME,
         "polygon": polygon.toGeoJSON(),
         "classes": CLASSES,
         "zoneLayerName": null,
         "modelIdx": parseInt(gActiveImgIdx),
-        "SESSION": SESSION_ID
     };
 
     var outputLayer = L.imageOverlay("", polygon.getBounds(), {pane: "labels"}).addTo(gMap);
@@ -147,8 +134,6 @@ var doDownloadTile = function(){
     }).show();
 };
 
-
-
 //-----------------------------------------------------------------
 // Submit new training example
 //-----------------------------------------------------------------
@@ -158,7 +143,6 @@ var doSendCorrection = function(point, idx){
     var request = {
         "type": "correction",
         "dataset": gCurrentDataset,
-        "experiment": EXP_NAME,
         "point": {
             "x": Math.round(pointProjected.x),
             "y": Math.round(pointProjected.y),
@@ -167,7 +151,6 @@ var doSendCorrection = function(point, idx){
         "classes": CLASSES,
         "value" : gSelectedClassIdx,
         "modelIdx": parseInt(gActiveImgIdx),
-        "SESSION": SESSION_ID
     };
 
 
@@ -195,8 +178,6 @@ var doUndo = function(){
     var request = {
         "type": "undo",
         "dataset": gCurrentDataset,
-        "experiment": EXP_NAME,
-        "SESSION": SESSION_ID
     };
 
     if(!gUndoInProgress){
@@ -241,8 +222,6 @@ var doUndo = function(){
         }).show();
     }
 };
-
-
 
 //-----------------------------------------------------------------
 // Get predictions
@@ -289,7 +268,6 @@ var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
     var request = {
         "type": "runInference",
         "dataset": gCurrentDataset,
-        "experiment": EXP_NAME,
         "extent": {
             "xmax": bottomrightProjected.x,
             "xmin": topleftProjected.x,
@@ -298,7 +276,6 @@ var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
             "crs": "epsg:3857"
         },
         "classes": CLASSES,
-        "SESSION": SESSION_ID
     };
 
     console.debug(serviceURL);
@@ -354,8 +331,6 @@ var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
     });
 };
 
-
-
 //-----------------------------------------------------------------
 // Get NAIP input
 //-----------------------------------------------------------------
@@ -368,7 +343,6 @@ var requestInputPatch = function(idx, polygon, serviceURL){
     var request = {
         "type": "getInput",
         "dataset": gCurrentDataset,
-        "experiment": EXP_NAME,
         "extent": {
             "xmax": bottomrightProjected.x,
             "xmin": topleftProjected.x,
@@ -376,7 +350,6 @@ var requestInputPatch = function(idx, polygon, serviceURL){
             "ymin": bottomrightProjected.y,
             "crs": "epsg:3857"
         },
-        "SESSION": SESSION_ID
     };
 
     $.ajax({
@@ -400,42 +373,6 @@ var requestInputPatch = function(idx, polygon, serviceURL){
     });
 };
 
-
-
-//-----------------------------------------------------------------
-// Load a saved model state from the backend
-//-----------------------------------------------------------------
-var doLoad = function(cachedModel){
-    var request = {
-        "type": "load",
-        "dataset": gCurrentDataset,
-        "experiment": EXP_NAME,
-        "cachedModel": cachedModel,
-        "SESSION": SESSION_ID
-    };
-    $.ajax({
-        type: "POST",
-        url: gBackendURL + "doLoad",
-        data: JSON.stringify(request),
-        success: function(data, textStatus, jqXHR){
-            console.debug(data);
-
-            new Noty({
-                type: "success",
-                text: "Successfully loaded checkpoint!",
-                layout: 'topCenter',
-                timeout: 4000,
-                theme: 'metroui'
-            }).show();
-
-        },
-        error: notifyFail,
-        dataType: "json",
-        contentType: "application/json"
-    });
-};
-
-
 //-----------------------------------------------------------------
 // Kill the current session on the backend and return to the landing page
 //-----------------------------------------------------------------
@@ -455,3 +392,30 @@ var doKillSession = function () {
         contentType: "application/json"
     });
 };
+
+//-----------------------------------------------------------------
+// Create a checkpoint for the current model/dataset
+//-----------------------------------------------------------------
+var doCreateCheckpoint = function(){
+    var name = prompt("Enter a unique name for checkpoint")
+
+    var request = {
+        "type": "createCheckpoint",
+        "dataset": gCurrentDataset,
+        "model": gCurrentModel,
+        "checkpointName": name,
+        "classes": CLASSES
+    };
+
+    $.ajax({
+        type: "POST",
+        url: window.location.origin + "/createCheckpoint",
+        data: JSON.stringify(request),
+        success: notifySuccess,
+        error: notifyFail,
+        dataType: "json",
+        contentType: "application/json"
+    });
+
+
+}
