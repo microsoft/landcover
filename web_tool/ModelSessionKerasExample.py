@@ -132,9 +132,9 @@ class KerasDenseFineTune(ModelSession):
             "success": True
         }
 
-    def run_model_on_tile(self, naip_tile, batch_size=32):
-        height = naip_tile.shape[0]
-        width = naip_tile.shape[1]
+    def run_model_on_tile(self, tile, batch_size=32):
+        height = tile.shape[0]
+        width = tile.shape[1]
         
         output = np.zeros((height, width, self.output_channels), dtype=np.float32)
         output_features = np.zeros((height, width, self.output_features), dtype=np.float32)
@@ -151,9 +151,9 @@ class KerasDenseFineTune(ModelSession):
 
         for y_index in (list(range(0, height - self.input_size, self.stride_y)) + [height - self.input_size,]):
             for x_index in (list(range(0, width - self.input_size, self.stride_x)) + [width - self.input_size,]):
-                naip_im = naip_tile[y_index:y_index+self.input_size, x_index:x_index+self.input_size, :]
+                img = tile[y_index:y_index+self.input_size, x_index:x_index+self.input_size, :]
 
-                batch.append(naip_im)
+                batch.append(img)
                 batch_indices.append((y_index, x_index))
                 batch_count+=1
 

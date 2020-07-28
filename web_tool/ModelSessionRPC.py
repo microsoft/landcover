@@ -7,6 +7,11 @@ LOGGER = logging.getLogger("server")
 from .ModelSessionAbstract import ModelSession
 from .Utils import serialize, deserialize
 
+def clean_output_dict(data):
+    return {
+        "message": data["message"],
+        "success": data["success"]
+    }
 
 class ModelSessionRPC(ModelSession):
 
@@ -39,14 +44,14 @@ class ModelSessionRPC(ModelSession):
     def run(self, tile, inference_mode):
         return deserialize(self.connection.root.exposed_run(serialize(tile), inference_mode))
     def retrain(self):
-        return self.connection.root.exposed_retrain()
+        return clean_output_dict(self.connection.root.exposed_retrain())
     def add_sample_point(self, row, col, class_idx):
-        return self.connection.root.exposed_add_sample_point(row, col, class_idx)
+        return clean_output_dict(self.connection.root.exposed_add_sample_point(row, col, class_idx))
     def undo(self):
-        return self.connection.root.exposed_undo()
+        return clean_output_dict(self.connection.root.exposed_undo())
     def reset(self):
-        return self.connection.root.exposed_reset()
+        return clean_output_dict(self.connection.root.exposed_reset())
     def save_state_to(self, directory):
-        return self.connection.root.exposed_save_state_to(directory)
+        return clean_output_dict(self.connection.root.exposed_save_state_to(directory))
     def load_state_from(self, directory):
-        return self.connection.root.exposed_load_state_from(directory)
+        return clean_output_dict(self.connection.root.exposed_load_state_from(directory))
