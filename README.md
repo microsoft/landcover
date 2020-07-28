@@ -97,13 +97,12 @@ On the web-application page:
   - In the demo models, retraining will completely overfit the last layer of the CNN using the cumulative provided point examples.
 - Use "s" to toggle the opacity of the prediction layer on the map between 0 and 100.
 
-![Landing page](figures/landing_page.png)
-<center>
-<b>Figure 1. Landing page example</b>
-</center>
+<p align="center">
+  <img src="figures/landing_page.png" height="500">
+  <b>Figure 1. Landing page example</b>
+</p>
 
-
-![Web application](figures/web_application.png)
-<center>
-<b>Figure 2. Web application example</b>
-</center>
+<p align="center">
+  <img src="figures/web_application.png" height="500">
+  <b>Figure 2. Web application example</b>
+</p>
