@@ -33,6 +33,10 @@ class ModelSessionRPC(ModelSession):
                     'allow_public_attrs': False
                 })
                 LOGGER.info("Made a connection")
+
+                if "load_dir" in kwargs:
+                    self.load_state_from(kwargs["load_dir"])
+
                 break
             except ConnectionRefusedError:
                 i+=1

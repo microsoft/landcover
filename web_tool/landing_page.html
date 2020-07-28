@@ -177,7 +177,7 @@
     var checkpointPanels = [];
 
 
-    var newCheckpointTab = `<a class="list-group-item list-group-item-action" data-toggle="list" data-name="new" href="#checkpoint-new" role="tab">New Checkpoint</a>`;
+    var newCheckpointTab = `<a class="list-group-item list-group-item-action" data-toggle="list" data-name="-1" href="#checkpoint-new" role="tab">New Checkpoint</a>`;
     var newCheckpointPanel = `
     <div class="tab-pane" id="checkpoint-new" role="tabpanel">
       <div class="tab-pane-content">
@@ -198,7 +198,7 @@
       // On checkpoint tab change
       //-----------------------
       $('#checkpoint-tab-list a[data-toggle="list"]').on('shown.bs.tab', function (e) {
-        selectedCheckpoint = $(e.target).data("name");
+        selectedCheckpoint = parseInt($(e.target).data("name"));
         printSelectedItems();
       })
     };

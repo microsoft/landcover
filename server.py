@@ -44,7 +44,7 @@ bottle.TEMPLATE_PATH.insert(0, "./" + ROOT_DIR + "/views") # let bottle know whe
 import cheroot.wsgi
 import beaker.middleware
 
-SESSION_TIMEOUT_SECONDS = 15
+SESSION_TIMEOUT_SECONDS = 900
 
 
 #---------------------------------------------------------------------------------------
@@ -415,15 +415,12 @@ def create_checkpoint():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
     
-    print(data)
-
     result = SESSION_HANDLER.get_session(bottle.request.session.id).create_checkpoint(data["dataset"], data["model"], data["checkpointName"], data["classes"])
 
     bottle.response.status = 200 if result["success"] else 500
     return json.dumps(result)
 
 def get_checkpoints():
-    
     checkpoints = Checkpoints.list_checkpoints()
     return json.dumps(checkpoints, indent=2)
 

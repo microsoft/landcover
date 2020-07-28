@@ -241,3 +241,45 @@ var forEachFeatureOnClick = function(feature, layer) {
         }
     });
 }
+
+
+var loadClasses = function(classesToLoad){
+    for(var i=0;i<classesToLoad.length;i++){
+        var currentClass = classesToLoad[i];
+        
+        var newClassIdx = CLASSES.length;
+        var newClassName = currentClass["name"];
+        var newColor = currentClass["color"];
+
+        var newClassElement =  $("<div class='radio'>");
+        var newLabel = $(" \
+            <label><input type='radio' name='radClasses' class='radClasses' value='"+newClassName+"'><span class='className'>"+newClassName+"</span> (<span class='classCounts'>0</span> samples since last retrain)<i class='fa fa-edit ml-1 classNameEdit'></i></label> \
+        ");
+
+        var newPicker = document.createElement('button');
+        newPicker.classList.add("circle");
+        newPicker.classList.add("jscolor");
+        newPicker.setAttribute("data-class-label", newClassName);
+        newPicker.setAttribute("data-class-idx", newClassIdx);
+        var output = new jscolor(newPicker, {
+            valueElement: null,
+            value: newColor.substr(1),
+            position:'left',
+            zIndex:2001,
+            closable:true,
+            closeText:'Close',
+            onFineChange:'updateClassColor(this)'
+        });
+
+        newClassElement.append(newPicker);
+        newClassElement.append(newLabel);        
+    
+        $("#classList").append(newClassElement);
+
+        CLASSES.push({
+            "name": newClassName,
+            "color": newColor,
+            "count": 0
+        });
+    }
+};

@@ -14,6 +14,7 @@ from .ModelSessionRPC import ModelSessionRPC
 
 from .Models import load_models
 from .Datasets import is_valid_dataset
+from .Checkpoints import Checkpoints
 
 
 def session_monitor(session_handler, session_timeout_seconds):
@@ -48,7 +49,7 @@ def get_free_tcp_port():
     addr, port = tcp.getsockname()
     tcp.close()
     return port
-    
+
 
 class SessionHandler():
 
@@ -109,7 +110,7 @@ class SessionHandler():
         return process
 
 
-    def create_session(self, session_id, dataset_key, model_key, checkpoint_key):
+    def create_session(self, session_id, dataset_key, model_key, checkpoint_idx):
         if session_id in self._SESSION_MAP:
             raise ValueError("session_id %s has already been created" % (session_id))
 
@@ -119,7 +120,6 @@ class SessionHandler():
         if model_key not in self.model_configs:
             raise ValueError("%s is not a valid model, check the keys in models.json and models.mine.json" % (model_key))
 
-        
         worker = self._WORKER_POOL.get() # this will block until we have a free worker resource
         if worker["type"] == "local":
             gpu_id = worker["gpu_id"]
@@ -127,7 +127,13 @@ class SessionHandler():
             # Create local worker and ModelSession object to pass to the Session()
             random_port = get_free_tcp_port()
             process = self._spawn_local_worker(random_port, gpu_id, model_key)
-            model = ModelSessionRPC(gpu_id, session_id=session_id, port=random_port)
+            
+
+            if checkpoint_idx > -1:
+                checkpoints = Checkpoints.list_checkpoints()
+                model = ModelSessionRPC(gpu_id, session_id=session_id, port=random_port, load_dir=checkpoints[checkpoint_idx]["directory"])
+            else:
+                model = ModelSessionRPC(gpu_id, session_id=session_id, port=random_port)
 
             # Create Session object
             session = Session(session_id, model)
