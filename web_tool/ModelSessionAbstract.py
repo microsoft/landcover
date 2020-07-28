@@ -83,7 +83,7 @@ class ModelSession(abc.ABC):
         '''Resonsible for serializing the _current_ state of the class to a directory with the purpose of re-hydrating later. 
         
         Args:
-            directory: The directory to serialize to. This is garunteed to exist and only contain two files: "request_replay.p" and "samples.geojson".
+            directory: The directory to serialize to. This is guaranteed to exist and only contain: "classes.json", "request_replay.p" and "samples.geojson".
         '''
         raise NotImplementedError()
 
