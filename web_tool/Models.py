@@ -10,11 +10,7 @@ from . import ROOT_DIR
 def _load_model(model):
     if not os.path.exists(model["model"]["fn"]):
         return False
-    return {
-        "fn": model["model"]["fn"],
-        "type": model["model"]["type"],
-        "fine_tune_layer": model["model"]["fineTuneLayer"]
-    }
+    return model["model"]
 
 def load_models():
     models = dict()
@@ -24,7 +20,7 @@ def load_models():
         model_object = _load_model(model)
         
         if model_object is False:
-            LOGGER.warning("Files are missing, we will not be able to serve the following model: '%s'" % (key)) 
+            LOGGER.error("Model files are missing, we will not be able to serve the following model: '%s'" % (key)) 
         else:
             models[key] = model_object
 
@@ -37,7 +33,7 @@ def load_models():
                 model_object = _load_model(model)
                 
                 if model_object is False:
-                    LOGGER.warning("Files are missing, we will not be able to serve the following model: '%s'" % (key)) 
+                    LOGGER.error("Model files are missing, we will not be able to serve the following model: '%s'" % (key)) 
                 else:
                     models[key] = model_object
             else:

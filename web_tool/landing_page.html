@@ -177,7 +177,7 @@
     var checkpointPanels = [];
 
 
-    var newCheckpointTab = `<a class="list-group-item list-group-item-action" data-toggle="list" data-name="new" href="#checkpoint-new" role="tab">New Checkpoint</a>`;
+    var newCheckpointTab = `<a class="list-group-item list-group-item-action" data-toggle="list" data-name="-1" href="#checkpoint-new" role="tab">New Checkpoint</a>`;
     var newCheckpointPanel = `
     <div class="tab-pane" id="checkpoint-new" role="tabpanel">
       <div class="tab-pane-content">
@@ -198,7 +198,7 @@
       // On checkpoint tab change
       //-----------------------
       $('#checkpoint-tab-list a[data-toggle="list"]').on('shown.bs.tab', function (e) {
-        selectedCheckpoint = $(e.target).data("name");
+        selectedCheckpoint = parseInt($(e.target).data("name"));
         printSelectedItems();
       })
     };
@@ -261,12 +261,11 @@
       //-----------------------
       for (var dsName in datasets) {
         var dataset = datasets[dsName];
-        var tab = `<a class="list-group-item list-group-item-action" data-toggle="list" data-name="${dsName}" href="#dataset-${dsName}"  role="tab">${dataset["metadata"]["displayName"]} - ${dataset["metadata"]["imageryName"]}</a>`;
+        var tab = `<a class="list-group-item list-group-item-action" data-toggle="list" data-name="${dsName}" href="#dataset-${dsName}"  role="tab">${dataset["metadata"]["displayName"]}</a>`;
         var panel = `
             <div class="tab-pane" id="dataset-${dsName}" role="tabpanel">
               <div class="tab-pane-content">
                 <span class="tab-title">Location: </span><span class="tab-text">${dataset["metadata"]["displayName"]}</span><br>
-                <span class="tab-title">Imagery Source: </span><span class="tab-text">${dataset["metadata"]["imageryName"]}</span><br>
                 <!--<img src="${dataset["previewFn"]}" class="thumbnail" />-->
               </div>
             </div>
@@ -369,7 +368,8 @@
 
           var request = {
             "dataset": selectedDataset,
-            "model": selectedModel
+            "model": selectedModel,
+            "checkpoint": selectedCheckpoint
           }
 
           $.ajax({
@@ -409,7 +409,7 @@
         $.getJSON('models.json'),
         $.getJSON('datasets.mine.json'),
         $.getJSON('models.mine.json'),
-        $.getJSON('/listCheckpoints'),
+        $.getJSON('/getCheckpoints'),
       ];
 
       Promise.allSettled(data).then(function (results) {        

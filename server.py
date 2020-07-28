@@ -36,6 +36,7 @@ from web_tool.Utils import setup_logging, get_random_string, class_prediction_to
 from web_tool import ROOT_DIR
 from web_tool.Session import Session, manage_session_folders, SESSION_FOLDER
 from web_tool.SessionHandler import SessionHandler
+from web_tool.Checkpoints import Checkpoints
 SESSION_HANDLER = None
 
 import bottle 
@@ -43,34 +44,32 @@ bottle.TEMPLATE_PATH.insert(0, "./" + ROOT_DIR + "/views") # let bottle know whe
 import cheroot.wsgi
 import beaker.middleware
 
-#---------------------------------------------------------------------------------------
-#---------------------------------------------------------------------------------------
+SESSION_TIMEOUT_SECONDS = 900
 
 
-def setup_sessions():
-    '''This method is called before every request. Adds the beaker SessionMiddleware on as request.session.
+#---------------------------------------------------------------------------------------
+# before_request and after_request methods
+#---------------------------------------------------------------------------------------
+
+def manage_sessions():
+    '''This method is called before every request.
+    
+    Adds the beaker SessionMiddleware class on as request.session.
+
+    Checks to see if there a session assosciated with the current request.
+    If there is then update the last interaction time on that session.
     '''
     bottle.request.session = bottle.request.environ['beaker.session']
     bottle.request.client_ip = bottle.request.environ.get('HTTP_X_FORWARDED_FOR') or bottle.request.environ.get('REMOTE_ADDR')
 
-
-def manage_sessions():
-    '''This method is called before every request. Checks to see if there a session assosciated with the current request.
-    If there is then update the last interaction time on that session.
-    '''
-
     if SESSION_HANDLER.is_expired(bottle.request.session.id): # Someone is trying to use a session that we have deleted due to inactivity
         SESSION_HANDLER.cleanup_expired_session(bottle.request.session.id)
-        bottle.request.session.delete() # TODO: I'm not sure how the actual session is deleted on the client side
-        LOGGER.info("Cleaning up an out of date session")
+        bottle.request.session.delete() # This sets a Set-cookie header to expire the current bottle.request.session.id on the frontend
+        LOGGER.info("Cleaned up an out of date session")
     elif not SESSION_HANDLER.is_active(bottle.request.session.id):
-        LOGGER.warning("We are getting a request that doesn't have an active session")
+        LOGGER.debug("We are getting a request that doesn't have an active session")
     else:
         SESSION_HANDLER.touch_session(bottle.request.session.id) # let the SESSION_HANDLER know that this session has activity
-
-
-#---------------------------------------------------------------------------------------
-#---------------------------------------------------------------------------------------
 
 
 def enable_cors():
@@ -91,14 +90,14 @@ def do_options():
 
 
 #---------------------------------------------------------------------------------------
+# Session handling endpoints
 #---------------------------------------------------------------------------------------
-
 
 def create_session():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
 
-    SESSION_HANDLER.create_session(bottle.request.session.id, data["model"])
+    SESSION_HANDLER.create_session(bottle.request.session.id, data["dataset"], data["model"], data["checkpoint"])
     
     bottle.response.status = 200
     return json.dumps(data)
@@ -108,85 +107,82 @@ def kill_session():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
 
-    SESSION_HANDLER.kill_session(bottle.request.session.id)
-    SESSION_HANDLER.cleanup_expired_session(bottle.request.session.id)
+    try:
+        SESSION_HANDLER.kill_session(bottle.request.session.id)
+        SESSION_HANDLER.cleanup_expired_session(bottle.request.session.id)
+    except ValueError as e:
+        LOGGER.info(e)
+
     bottle.request.session.delete()
-
     bottle.response.status = 200
     return json.dumps(data)
 
 
-def do_load():
-    bottle.response.content_type = 'application/json'
-    data = bottle.request.json
-    
-    cached_model = data["cachedModel"]
+def whoami():
+    page = f"""
+    Your <b>bottle</b> session object: {str(bottle.request.session)} <br/>
+    Your <b>bottle</b> session id: {str(bottle.request.session.id)} <br /> <br />
 
-    SESSION_HANDLER.get_session(bottle.request.session.id).reset(False, from_cached=cached_model)
-    SESSION_HANDLER.get_session(bottle.request.session.id).load(cached_model)
+    List of <b>bottle</b> session ids that the server has registered as valid <i>Session</i> objects:
+    <ul>
+    """
 
-    data["message"] = "Loaded new model from %s" % (cached_model)
-    data["success"] = True
+    for session_id, session in SESSION_HANDLER._SESSION_MAP.items():
+        page += f"<li>{str(session_id)}</li>"
+    page += "</ul>"
 
-    bottle.response.status = 200
-    return json.dumps(data)
+    active_session = SESSION_HANDLER.is_active(bottle.request.session.id)
+    page += f"<br/><br/>Your session is active: {active_session}"
 
+    return page
+
+
+#---------------------------------------------------------------------------------------
+# API endpoints
+#---------------------------------------------------------------------------------------
 
 def reset_model():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
-    data["remote_address"] = bottle.request.client_ip
     
-    initial_reset = data.get("initialReset", False)
-    if not initial_reset:
-        SESSION_HANDLER.get_session(bottle.request.session.id).add_entry(data) # record this interaction
-        SESSION_HANDLER.get_session(bottle.request.session.id).save(data["experiment"])
+    result = SESSION_HANDLER.get_session(bottle.request.session.id).reset()
 
-    SESSION_HANDLER.get_session(bottle.request.session.id).reset()
-
-    data["message"] = "Reset model"
-    data["success"] = True
-
-    bottle.response.status = 200
-    return json.dumps(data)
+    bottle.response.status = 200 if result["success"] else 500
+    return json.dumps(result)
 
 
 def retrain_model():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
-    data["remote_address"] = bottle.request.client_ip
     
-    success, message = SESSION_HANDLER.get_session(bottle.request.session.id).model.retrain(**data["retrainArgs"])
+    result = SESSION_HANDLER.get_session(bottle.request.session.id).model.retrain(**data["retrainArgs"])
     
-    if success:
-        bottle.response.status = 200
-        encoded_model_fn = SESSION_HANDLER.get_session(bottle.request.session.id).save(data["experiment"])
-        data["cached_model"] = encoded_model_fn 
-        SESSION_HANDLER.get_session(bottle.request.session.id).add_entry(data) # record this interaction
-    else:
-        data["error"] = message
-        bottle.response.status = 500
+    bottle.response.status = 200 if result["success"] else 500
+    return json.dumps(result)
 
-    data["message"] = message
-    data["success"] = success
 
-    return json.dumps(data)
+def do_undo():
+    bottle.response.content_type = 'application/json'
+    data = bottle.request.json
+
+    result = SESSION_HANDLER.get_session(bottle.request.session.id).model.undo()
+    
+    bottle.response.status = 200 if result["success"] else 500
+    return json.dumps(result)
 
 
 def record_correction():
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
-    data["remote_address"] = bottle.request.client_ip
 
-    SESSION_HANDLER.get_session(bottle.request.session.id).add_entry(data) # record this interaction
 
-    #
     lon, lat = data["point"]["x"], data["point"]["y"]
     class_list = data["classes"]
     name_list = [item["name"] for item in class_list]
     color_list = [item["color"] for item in class_list]
     class_idx = data["value"] # what we want to switch the class to
     origin_crs = data["point"]["crs"]
+    model_idx = data["modelIdx"]
 
     # load the current predicted patches crs and transform
     data_crs, data_transform = SESSION_HANDLER.get_session(bottle.request.session.id).current_transform
@@ -199,40 +195,17 @@ def record_correction():
     dst_row = int(np.floor(dst_row))
     dst_col = int(np.floor(dst_col))
 
-    SESSION_HANDLER.get_session(bottle.request.session.id).model.add_sample_point(dst_row, dst_col, class_idx)
+    result = SESSION_HANDLER.get_session(bottle.request.session.id).model.add_sample_point(dst_row, dst_col, class_idx)
 
-    data["message"] = "Successfully submitted correction"
-    data["success"] = True
-    data["count"] = 1
-
-    bottle.response.status = 200
-    return json.dumps(data)
-
-
-def do_undo():
-    ''' Method called for POST `/doUndo`
-    '''
-    bottle.response.content_type = 'application/json'
-    data = bottle.request.json
-    data["remote_address"] = bottle.request.client_ip
-
-    SESSION_HANDLER.get_session(bottle.request.session.id).add_entry(data) # record this interaction
-
-    # Forward the undo command to the backend model
-    success, message, num_undone = SESSION_HANDLER.get_session(bottle.request.session.id).model.undo()
-    data["message"] = message
-    data["success"] = success
-    data["count"] = num_undone
-
-    bottle.response.status = 200
-    return json.dumps(data)
+    bottle.response.status = 200 if result["success"] else 500
+    print(result)
+    print(type(result))
+    return json.dumps(result)
 
 
 def pred_patch():
-    ''' Method called for POST `/predPatch`'''
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
-    data["remote_address"] = bottle.request.client_ip
 
     SESSION_HANDLER.get_session(bottle.request.session.id).add_entry(data) # record this interaction
 
@@ -242,6 +215,8 @@ def pred_patch():
     class_list = data["classes"]
     name_list = [item["name"] for item in class_list]
     color_list = [item["color"] for item in class_list]
+
+    tic = float(time.time())
 
     # ------------------------------------------------------
     # Step 1
@@ -272,7 +247,6 @@ def pred_patch():
     output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(patch, False)
     assert len(output.shape) == 3, "The model function should return an image shaped as (height, width, num_classes)"
     assert (output.shape[2] < output.shape[0] and output.shape[2] < output.shape[1]), "The model function should return an image shaped as (height, width, num_classes)" # assume that num channels is less than img dimensions
-    print("pred_patch, after model.run:", output.shape)
 
     # ------------------------------------------------------
     # Step 4
@@ -292,25 +266,28 @@ def pred_patch():
     # Step 5
     #   Convert images to base64 and return  
     # ------------------------------------------------------
-    img_soft = np.round(class_prediction_to_img(cropped_warped_output, False, color_list)*255,0).astype(np.uint8)
+    img_soft = class_prediction_to_img(cropped_warped_output, False, color_list)
     img_soft = cv2.imencode(".png", cv2.cvtColor(img_soft, cv2.COLOR_RGB2BGR))[1].tostring()
     img_soft = base64.b64encode(img_soft).decode("utf-8")
     data["output_soft"] = img_soft
 
-    img_hard = np.round(class_prediction_to_img(cropped_warped_output, True, color_list)*255,0).astype(np.uint8)
+    img_hard = class_prediction_to_img(cropped_warped_output, True, color_list)
     img_hard = cv2.imencode(".png", cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGR))[1].tostring()
     img_hard = base64.b64encode(img_hard).decode("utf-8")
     data["output_hard"] = img_hard
 
+    print("pred_patch took %0.2f seconds, of which:" % (time.time()-tic))
+    # print("-- loading data: %0.2f seconds" % (toc_data_load))
+    # print("-- running model: %0.2f seconds" % (toc_model_run))
+    # print("-- warping/cropping: %0.2f seconds" % (time_for_crops_and_warps))
+    # print("-- coloring: %0.2f seconds" % (time_for_coloring))
     bottle.response.status = 200
     return json.dumps(data)
 
 
 def pred_tile():
-    ''' Method called for POST `/predTile`'''
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
-    data["remote_address"] = bottle.request.client_ip
 
     SESSION_HANDLER.get_session(bottle.request.session.id).add_entry(data) # record this interaction
 
@@ -321,7 +298,8 @@ def pred_tile():
     color_list = [item["color"] for item in class_list]
     dataset = data["dataset"]
     zone_layer_name = data["zoneLayerName"]
-   
+    model_idx = data["modelIdx"]
+
     if dataset not in DATASETS:
         raise ValueError("Dataset doesn't seem to be valid, do the datasets in js/tile_layers.js correspond to those in TileLayers.py")    
     
@@ -353,7 +331,7 @@ def pred_tile():
     #   Convert images to base64 and return  
     # ------------------------------------------------------
     tmp_id = get_random_string(8)
-    img_hard = np.round(class_prediction_to_img(output, True, color_list)*255,0).astype(np.uint8)
+    img_hard = class_prediction_to_img(output, True, color_list)
     img_hard = cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGRA)
     img_hard[nodata_mask] = [0,0,0,0]
 
@@ -398,11 +376,8 @@ def pred_tile():
 
 
 def get_input():
-    ''' Method called for POST `/getInput`
-    '''
     bottle.response.content_type = 'application/json'
     data = bottle.request.json
-    data["remote_address"] = bottle.request.client_ip
     
     SESSION_HANDLER.get_session(bottle.request.session.id).add_entry(data) # record this interaction
 
@@ -432,22 +407,26 @@ def get_input():
     return json.dumps(data)
 
 
-def list_checkpoints():
-    return """[
-        {"dataset": "hcmc_sentinel", "model": "sentinel_demo", "name": "Checkpoint test 1", "directory": "data/checkpoints/checkpoint_test_1/"},
-        {"dataset": "hcmc_sentinel", "model": "sentinel_demo", "name": "Checkpoint test 2", "directory": "data/checkpoints/checkpoint_test_2/"},
-        {"dataset": "hcmc_sentinel", "model": "sentinel_demo", "name": "Checkpoint test 3", "directory": "data/checkpoints/checkpoint_test_3/"},
-        {"dataset": "naip_maryland", "model": "naip_demo", "name": "Checkpoint test 4", "directory": "data/checkpoints/checkpoint_test_4/"},
-        {"dataset": "naip_maryland", "model": "naip_demo", "name": "Checkpoint test 5", "directory": "data/checkpoints/checkpoint_test_5/"}
-    ]"""
-
-def whoami():
-    return str(bottle.request.session) + " " + str(bottle.request.session.id)
-
-
 #---------------------------------------------------------------------------------------
+# Checkpoint handling endpoints
 #---------------------------------------------------------------------------------------
 
+def create_checkpoint():
+    bottle.response.content_type = 'application/json'
+    data = bottle.request.json
+    
+    result = SESSION_HANDLER.get_session(bottle.request.session.id).create_checkpoint(data["dataset"], data["model"], data["checkpointName"], data["classes"])
+
+    bottle.response.status = 200 if result["success"] else 500
+    return json.dumps(result)
+
+def get_checkpoints():
+    checkpoints = Checkpoints.list_checkpoints()
+    return json.dumps(checkpoints, indent=2)
+
+#---------------------------------------------------------------------------------------
+# Static file serving endpoints
+#---------------------------------------------------------------------------------------
 
 def get_landing_page():
     return bottle.static_file("landing_page.html", root="./" + ROOT_DIR + "/")
@@ -468,26 +447,14 @@ def get_everything_else(filepath):
     return bottle.static_file(filepath, root="./" + ROOT_DIR + "/")
 
 
-
 #---------------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------------
-
 
 def main():
     global SESSION_HANDLER
     parser = argparse.ArgumentParser(description="AI for Earth Land Cover")
 
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debugging", default=False)
-
-    # TODO: make sure the storage type is passed onto the Session objects
-    parser.add_argument(
-        '--storage_type',
-        action="store", dest="storage_type", type=str,
-        choices=["table", "file"],
-        default=None
-    )
-    parser.add_argument("--storage_path", action="store", dest="storage_path", type=str, help="Path to directory where output will be stored", default=None)
-
     parser.add_argument("--host", action="store", dest="host", type=str, help="Host to bind to", default="0.0.0.0")
     parser.add_argument("--port", action="store", dest="port", type=int, help="Port to listen on", default=8080)
 
@@ -496,18 +463,25 @@ def main():
 
     # Create session factory to handle incoming requests
     SESSION_HANDLER = SessionHandler(args)
-    SESSION_HANDLER.start_monitor()
+    SESSION_HANDLER.start_monitor(SESSION_TIMEOUT_SECONDS)
 
     # Setup logging
     log_path = os.path.join(os.getcwd(), "tmp/logs/")
     setup_logging(log_path, "server")
+
+    # Make sure some directories exist
+    os.makedirs("tmp/checkpoints/", exist_ok=True)
+    os.makedirs("tmp/downloads/", exist_ok=True)
+    os.makedirs("tmp/logs/", exist_ok=True)
+    os.makedirs("tmp/output/", exist_ok=True) # TODO: Remove this after we rework  
+    os.makedirs("tmp/session/", exist_ok=True)
+
 
 
     # Setup the bottle server 
     app = bottle.Bottle()
 
     app.add_hook("after_request", enable_cors)
-    app.add_hook("before_request", setup_sessions)
     app.add_hook("before_request", manage_sessions) # before every request we want to check to make sure there are no session issues
 
     # API paths
@@ -532,17 +506,18 @@ def main():
     app.route("/doUndo", method="OPTIONS", callback=do_options)
     app.route("/doUndo", method="POST", callback=do_undo)
 
-    app.route("/doLoad", method="OPTIONS", callback=do_options)
-    app.route("/doLoad", method="POST", callback=do_load)
-
     app.route("/createSession", method="OPTIONS", callback=do_options)
     app.route("/createSession", method="POST", callback=create_session)
 
     app.route("/killSession", method="OPTIONS", callback=do_options)
     app.route("/killSession", method="POST", callback=kill_session)
 
-    app.route("/listCheckpoints", method="GET", callback=list_checkpoints)
+    # Checkpoints
+    app.route("/createCheckpoint", method="OPTIONS", callback=do_options)
+    app.route("/createCheckpoint", method="POST", callback=create_checkpoint)
+    app.route("/getCheckpoints", method="GET", callback=get_checkpoints)
 
+    # Sessions
     app.route("/whoami", method="GET", callback=whoami)
 
     # Content paths

@@ -52,7 +52,7 @@ var addInferenceMouseHandlers = function(){
             // Run the add sample path
             if(gCurrentSelection !== null){
                 if(isPointInsidePolygon(e.latlng, gCurrentSelection)){
-                    if(gCurrentBasemapLayerName == DATASETS[gCurrentDataset]["metadata"]["imageryName"]){
+                    if(gCurrentBasemapLayerName == DATASETS[gCurrentDataset]["basemapLayers"][0]["layerName"]){
                         curSelPoly = getPolyAround(e.latlng, 1, false);
                         var idx = gCurrentPatches.length-1;
                         doSendCorrection(e.latlng, idx);
@@ -78,7 +78,7 @@ var addInferenceMouseHandlers = function(){
                             }
                         }, 700);
                     }else{
-                        notifyFailMessage("Please add corrections using the '"+DATASETS[gCurrentDataset]["metadata"]["imageryName"]+"' imagery layer.")
+                        notifyFailMessage("Please add corrections using the '"+DATASETS[gCurrentDataset]["basemapLayers"][0]["layerName"]+"' imagery layer.")
                     }
                 }else{
                     console.debug("Click not in selection");
@@ -149,6 +149,8 @@ var addOpacityKeyHandlers = function(opacitySlider){
                 gMap.getPane('labels').style.opacity = 1.0;
                 opacitySlider.slider.value = 100
                 opacitySlider._updateValue();
+            } else if(e.which == 67) { // "c" - cycle chosen model
+                $(".exampleImage")[(gActiveImgIdx+1) % 3].click();
             }
         }
     });

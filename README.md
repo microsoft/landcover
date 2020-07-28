@@ -1,7 +1,7 @@
 # Land cover mapping project
 
-This repository holds both the "frontend" web-application and "backend" web API server that make up our "Land Cover Mapping" tool.
-An instance of this tool may be live [here](http://aka.ms/landcoverdemo).
+This repository holds both the _frontend_ web-application and _backend_ server that make up our "Land Cover Mapping" tool.
+
 
 ## Project setup instructions
 
@@ -41,35 +41,68 @@ cd ../../../
 # Note: if using a DSVM on Azure, as of 7/6/2020 you need to first run `sudo chown -R $USER /anaconda/`
 
 cd landcover
-conda env create --file environment.yml
+conda env create --file environment_precise.yml
 cd ..
 ```
 
-### Configure the *web-tool*
 
-A few more steps are needed to configure the interactive *web-tool*.
+## Configuration instructions for the web-tool
 
-- Create and edit `web_tool/endpoints.mine.js`. Replace "localhost" with the address of your machine (or leave it alone it you are running locally), and choose the port you will use (defaults to 8080). Note: make sure this port is open to your machine if you are using a remote sever (e.g. with a DSVM on Azure, use the Networking tab to open port 8080).
+A last step is required to configure the _backend_ server with the demo models/data.
+
+Create and edit `web_tool/endpoints.mine.js`. Replace "localhost" with the address of your machine (or leave it alone it you are running locally), and choose the port you will use (defaults to 8080). Note: make sure this port is open to your machine if you are using a remote sever (e.g. with a DSVM on Azure, use the Networking tab to open port 8080).
 
 ```bash
 cp landcover/web_tool/endpoints.js landcover/web_tool/endpoints.mine.js
 nano landcover/web_tool/endpoints.mine.js
 ```
 
+### Adding new datasets
+
+The _backend_ server looks for dataset definitions in two places: `web_tool/datasets.json` and `web_tool/datasets.mine.json`. The latter is included in `.gitignore` and is where you can add custom datasets following the template of the default datasets in `web_tool/datasets.json`.
+
+### Adding new models
+
+Similar to datasets, the _backend_ server looks for model definitions in two places: `web_tool/models.json` and `web_tool/models.mine.json`. The latter is included in `.gitignore` and is where you can add custom models following the template of the default datasets in `web_tool/models.json`.
+
+The additional step you need to take for adding custom models is creating a class that extends `ModelSession` (from `web_tool/ModelSessionAbstract.py`) to wrap your custom model, then create a constructor in `worker.py` to handle your custom class type. Note: we have included implementations of `ModelSession` that handle standard use cases of Keras and PyTorch based models. The `ModelSession` interface exists to allow for easy customization of retraining and inference logic.  
+
+### Using GPU workers
+
 - Edit `self._WORKERS` of the SessionHandler class in SessionHandler.py to include the GPU resources you want to use on your machine. By default this is set to use GPU IDs 0 through 4.
 
-``` bash
-nano landcover/web_tool/SessionHandler.py
-```
 
-## Running an instance of the *web-tool*
+## Running an instance of the web-tool
 
-Whether you setup the server in an Azure VM or locally, the following steps should apply to start an instance of the server:
+Whether you configured the web-tool in an Azure VM or locally, the following steps should apply to start an instance of the _backend_ server:
 
 - Open a terminal on the machine and `cd` to the root directory (`wherever/you/cloned/landcover/`)
-- `python server.py local`
-  - This will start an HTTP server on :8080 that both serves the "frontend" web application and responds to API calls from the "frontend", allowing the web-app to interface with our CNN models (i.e. the "backend").
-  - The tool comes preloaded with a dataset (defined in `web_tool/datasets.json`) and two models (defined in `web_tool/models.json`).
-- You should now be able to visit `http://<your machine's address>:8080/` and see the "frontend" interface.
+- `conda activate landcover` 
+- `python server.py`
+  - This will start an HTTP server on :8080 that both serves the _frontend_ web-application and responds to API calls from the _frontend_, allowing the web-app to interface with models (i.e. the _backend_).
+  - The web-tool comes preloaded with two datasets (defined in `web_tool/datasets.json`) and two models (defined in `web_tool/models.json`).
+- You should now be able to visit `http://<your machine's address>:8080/` and see the _frontend_ web-application.
 
-### Directions for using the "frontend" interface
+### Directions for using the _frontend_
+
+The _frontend_ contains two pages: a landing page (Figure 1), and the web-application (Figure 2).
+
+On the landing page you must select: a "dataset", a "model", and a "checkpoint" in order to start a session in the web application. Pressing "Start Server" will start a "Session" that is connected to a GPU or CPU resource and take you to the web-application page where you can interactively run inference with and fine-tune the selected model.
+
+On the web-application page:
+- Use "shift+click" to run inference with the model.
+- Select a class from the list on the right side of the page and "click" within the area that you previously ran inference on (highlighted in red on the map) to provide a point examples of the selected class.
+- Press the "Retrain" button or "r" to retrain the last layer of the model.
+  - Note: You must add at least one sample from each class before retraining
+  - In the demo models, retraining will completely overfit the last layer of the CNN using the cumulative provided point examples.
+- Use "s" to toggle the opacity of the prediction layer on the map between 0 and 100.
+
+<p align="center">
+  <img src="figures/landing_page.png" height="500">
+  <b>Figure 1. Landing page example</b>
+</p>
+
+<p align="center">
+  <img src="figures/web_application.png" height="500">
+  <b>Figure 2. Web application example</b>
+</p>

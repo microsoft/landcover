@@ -13,19 +13,16 @@ import numpy as np
 
 import rasterio
 
-import keras.backend as K
-import keras.callbacks
-import keras.utils
-from keras.optimizers import SGD, Adam, RMSprop, Adadelta
-from keras.models import Model
-from keras.layers import Input, Dense, Activation, MaxPooling2D, Conv2D, BatchNormalization
-from keras.layers import Concatenate, Cropping2D, Lambda
-from keras.losses import categorical_crossentropy, mean_squared_error
-
-from keras.preprocessing.image import ImageDataGenerator
+import tensorflow.keras as keras
+import tensorflow.keras.backend as K
+from tensorflow.keras.optimizers import SGD, Adam, RMSprop, Adadelta
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, Dense, Activation, MaxPooling2D, Conv2D, BatchNormalization
+from tensorflow.keras.layers import Concatenate, Cropping2D, Lambda
+from tensorflow.keras.losses import categorical_crossentropy, mean_squared_error
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 from sklearn.cluster import MiniBatchKMeans
-
 import scipy.spatial.distance
 
 def manual_kmeans_predict(x_all, cluster_centers, step_size=100000):
@@ -135,7 +132,7 @@ def main():
     parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", required=True)
 
     args = parser.parse_args(sys.argv[1:])
-    args.batch_size = 10
+    args.batch_size = 16
     args.num_epochs = 30
 
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -145,43 +142,29 @@ def main():
     start_time = float(time.time())
     
     print("Loading data")
-
     all_data = []
-    # (np.array([np.rollaxis(rasterio.open(in_file, "r").read(), 0, 3) for in_file in args.input_fn]))
     for in_file in args.input_fn:
         f = rasterio.open(in_file, "r")
         temp = f.read()
         temp = np.rollaxis(temp, 0, 3)
-        all_data.append(np.array(temp))
+        all_data.append(temp)
         f.close()
 
     all_data = np.array(all_data)
     all_data_shape = all_data.shape
-
     all_data[np.isnan(all_data)] = 0
-
-    # data = np.concatenate([
-    #     data,
-    #     data[:,:,0][:,:,np.newaxis]
-    # ], axis=2)
-
-    # assert data.shape[2] == 4
     print("Loaded data with shape:", all_data_shape)
 
     # Extract color features from each file
     all_data_color_features = []
     data_shapes_index = []
     count = 0
-
     for data in all_data:
         data_original_shape = data.shape
         data_color_features = data.reshape(-1,data_original_shape[2])
-        #mask = (data_color_features == 0).sum(axis=1) != data_original_shape[2]
-        #all_data_color_features.append(data_color_features[mask])
         all_data_color_features.append(data_color_features)
         data_shapes_index.append(data_original_shape)
         count += 1
-
     # Set all data color features to numpy array
     all_data_color_features = np.array(np.vstack(all_data_color_features))
     print("Total shape: {}".format(all_data_color_features.shape))
@@ -204,7 +187,7 @@ def main():
 
     # Assuming all data has same # of bands
     bands = all_data[0].shape[2]
-    n_samples_each = 20
+    n_samples_each = 500
     n_samples = n_samples_each * all_data.shape[0]
     height, width = 150, 150
     x_all = np.zeros((n_samples, height, width, bands), dtype=np.float32)
@@ -224,7 +207,7 @@ def main():
             
             img = data[y:y+height, x:x+width, :].astype(np.float32)
             target = all_data_color_labels[count][y:y+height, x:x+width].copy()
-            
+                        
             x_all[i] = img
             y_all[i] = target
         count += 1
@@ -253,16 +236,16 @@ def main():
     )
 
 
-    model_checkpoint = keras.callbacks.ModelCheckpoint(args.output_fn, monitor='train_loss', verbose=1, save_best_only=False, save_weights_only=False, mode='auto', period=1)
+    model_checkpoint = keras.callbacks.ModelCheckpoint(args.output_fn, monitor='train_loss', verbose=1, save_best_only=False, save_weights_only=False, mode='auto')
     #model.fit(x_all, y_all, batch_size=32, epochs=30, verbose=1, callbacks=[model_checkpoint], validation_split=0.1)
 
-    model.fit_generator(
+    model.fit(
         datagen.flow(x_all, y_all, batch_size=args.batch_size),
-        steps_per_epoch=x_all.shape[0] / args.batch_size,
+        steps_per_epoch=x_all.shape[0] // args.batch_size - 1,
         epochs=args.num_epochs,
         callbacks=[model_checkpoint],
         validation_data=datagen.flow(x_all, y_all, batch_size=args.batch_size),
-        validation_steps=50
+        validation_steps=10
     )
 
 

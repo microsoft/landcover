@@ -1,6 +1,7 @@
 import time
 import threading
 import subprocess
+import json
 import socket
 from queue import Queue
 
@@ -12,10 +13,11 @@ from .Session import Session
 from .ModelSessionRPC import ModelSessionRPC
 
 from .Models import load_models
-MODELS = load_models()
+from .Datasets import is_valid_dataset
+from .Checkpoints import Checkpoints
 
 
-def session_monitor(session_handler, session_timeout_seconds=900):
+def session_monitor(session_handler, session_timeout_seconds):
     ''' This is a `Thread()` that is starting when the program is run. It is responsible for finding which of the `Session()` objects
     in `SESSION_MAP` haven't been used recently and killing them.
 
@@ -25,11 +27,11 @@ def session_monitor(session_handler, session_timeout_seconds=900):
     while True:
         session_ids_to_kill = []
         for session_id, session in session_handler._SESSION_MAP.items():
-            #LOGGER.info("SESSION MONITOR - Checking session (%s) for activity" % (session_id))
             time_inactive = time.time() - session.last_interaction_time
+            LOGGER.debug("SESSION MONITOR - Checking session (%s) for activity, inactive for %d seconds" % (session_id, time_inactive))
             if time_inactive > session_timeout_seconds:
                 session_ids_to_kill.append(session_id)
-        
+
         for session_id in session_ids_to_kill:
             LOGGER.info("SESSION MONITOR - Session (%s) has been inactive for over %d seconds, destroying" % (session_id, session_timeout_seconds))
             session_handler.kill_session(session_id)
@@ -68,6 +70,7 @@ class SessionHandler():
         
         self.args = args
 
+        self.model_configs = load_models()
 
     def is_active(self, session_id):
         return session_id in self._SESSION_MAP
@@ -96,40 +99,46 @@ class SessionHandler():
         self._expired_sessions.remove(session_id)
 
 
-    def _spawn_local_worker(self, port, model_fn, gpu_id, fine_tune_layer, model_type):
+    def _spawn_local_worker(self, port, gpu_id, model_key):
         command = [
             "/usr/bin/env", "python", "worker.py",
-            "--model", model_type,
-            "--model_fn", model_fn,
-            "--fine_tune_layer", str(fine_tune_layer),
-            "--port", str(port)
+            "--port", str(port),
+            "--gpu_id", str(gpu_id),
+            "--model_key", model_key,
         ]
-        if gpu_id is not None:
-            command.append("--gpu")
-            command.append("%d" % (gpu_id))
         process = subprocess.Popen(command, shell=False)
         return process
 
 
-    def create_session(self, session_id, model_key):
+    def create_session(self, session_id, dataset_key, model_key, checkpoint_idx):
         if session_id in self._SESSION_MAP:
-            raise ValueError("session_id %d has already been created" % (session_id))
+            raise ValueError("session_id %s has already been created" % (session_id))
 
-        if model_key not in MODELS:
-            raise ValueError("%s is not a valid model, check the keys in models.json" % (model_key))
-        
-        model_fn = MODELS[model_key]["fn"]
-        model_type = MODELS[model_key]["type"]
-        fine_tune_layer = MODELS[model_key]["fine_tune_layer"]
+        if not is_valid_dataset(dataset_key):
+            raise ValueError("%s is not a valid dataset, check the keys in datasets.json and datasets.mine.json" % (model_key))
 
-        worker = self._WORKER_POOL.get() # this will block until we have a free one
+        if model_key not in self.model_configs:
+            raise ValueError("%s is not a valid model, check the keys in models.json and models.mine.json" % (model_key))
 
+        worker = self._WORKER_POOL.get() # this will block until we have a free worker resource
         if worker["type"] == "local":
-            random_port = get_free_tcp_port()
             gpu_id = worker["gpu_id"]
-            process = self._spawn_local_worker(random_port, model_fn, gpu_id, fine_tune_layer, model_type)
-            model = ModelSessionRPC(session_id, random_port)
+            
+            # Create local worker and ModelSession object to pass to the Session()
+            random_port = get_free_tcp_port()
+            process = self._spawn_local_worker(random_port, gpu_id, model_key)
+            
+
+            if checkpoint_idx > -1:
+                checkpoints = Checkpoints.list_checkpoints()
+                model = ModelSessionRPC(gpu_id, session_id=session_id, port=random_port, load_dir=checkpoints[checkpoint_idx]["directory"])
+            else:
+                model = ModelSessionRPC(gpu_id, session_id=session_id, port=random_port)
+
+            # Create Session object
             session = Session(session_id, model)
+            
+            # Assosciate the front-end session with the Session and Worker
             self._SESSION_MAP[session_id] = session
             self._SESSION_INFO[session_id] = {
                 "worker": worker,
@@ -150,7 +159,10 @@ class SessionHandler():
         '''
         if self.is_active(session_id):
             # kill the remote process
-            self._SESSION_INFO[session_id]["process"].kill()
+            try:
+                self._SESSION_INFO[session_id]["process"].kill()
+            except:
+                LOGGER.info("Worker process didn't need to be killed, ignoring...")
             # add the worker back into the worker pool
             self._WORKER_POOL.put(self._SESSION_INFO[session_id]["worker"])
             del self._SESSION_INFO[session_id]
@@ -172,12 +184,13 @@ class SessionHandler():
 
     def touch_session(self, session_id):
         if self.is_active(session_id):
+            LOGGER.debug("Touching session (%s)" % (session_id))
             self._SESSION_MAP[session_id].last_interaction_time = time.time()
         else:
             raise ValueError("Tried to update time on a non-existing Session")
 
 
-    def start_monitor(self, session_timeout_seconds=900):
+    def start_monitor(self, session_timeout_seconds):
         session_monitor_thread = threading.Thread(target=session_monitor, args=(self, session_timeout_seconds))
         session_monitor_thread.setDaemon(True)
         session_monitor_thread.start()
