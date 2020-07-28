@@ -261,12 +261,11 @@
       //-----------------------
       for (var dsName in datasets) {
         var dataset = datasets[dsName];
-        var tab = `<a class="list-group-item list-group-item-action" data-toggle="list" data-name="${dsName}" href="#dataset-${dsName}"  role="tab">${dataset["metadata"]["displayName"]} - ${dataset["metadata"]["imageryName"]}</a>`;
+        var tab = `<a class="list-group-item list-group-item-action" data-toggle="list" data-name="${dsName}" href="#dataset-${dsName}"  role="tab">${dataset["metadata"]["displayName"]}</a>`;
         var panel = `
             <div class="tab-pane" id="dataset-${dsName}" role="tabpanel">
               <div class="tab-pane-content">
                 <span class="tab-title">Location: </span><span class="tab-text">${dataset["metadata"]["displayName"]}</span><br>
-                <span class="tab-title">Imagery Source: </span><span class="tab-text">${dataset["metadata"]["imageryName"]}</span><br>
                 <!--<img src="${dataset["previewFn"]}" class="thumbnail" />-->
               </div>
             </div>

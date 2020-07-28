@@ -183,11 +183,17 @@
             //----------------------------------------------------------------------
 
             // Create the basemap for the current dataset
-            var baseLayer = L.tileLayer(DATASETS[gCurrentDataset]["basemapLayer"]["url"], DATASETS[gCurrentDataset]["basemapLayer"]["args"]);
+            var baseLayer = L.tileLayer(DATASETS[gCurrentDataset]["basemapLayers"][0]["url"], DATASETS[gCurrentDataset]["basemapLayers"][0]["args"]);
             
             // This is the list of basemaps that will be displayed on the control in bottom left of GUI
-            gCurrentBasemapLayerName = DATASETS[gCurrentDataset]["metadata"]["imageryName"];
-            gBasemaps[DATASETS[gCurrentDataset]["metadata"]["imageryName"]] = baseLayer;
+            gCurrentBasemapLayerName = DATASETS[gCurrentDataset]["basemapLayers"][0]["layerName"];
+
+            gBasemaps[gCurrentBasemapLayerName] = baseLayer;
+            for(var i=1; i<DATASETS[gCurrentDataset]["basemapLayers"].length; i++){
+                var layerName = DATASETS[gCurrentDataset]["basemapLayers"][i]["layerName"];
+                var layer = L.tileLayer(DATASETS[gCurrentDataset]["basemapLayers"][i]["url"], DATASETS[gCurrentDataset]["basemapLayers"][i]["args"])
+                gBasemaps[layerName] = layer;
+            }
             gBasemaps["OpenStreetMap"] = getOSMLayer();
             gBasemaps["ESRI World Imagery"] = getESRILayer();
 
@@ -203,8 +209,8 @@
             gMap = L.map('map', {
                 zoomControl: false,
                 crs: L.CRS.EPSG3857, // this is the projection CRS (EPSG:3857), but it is different than the data CRS (EPSG:4326). See https://gis.stackexchange.com/questions/225765/leaflet-map-crs-is-3857-but-coordinates-4326/225786.
-                center: DATASETS[gCurrentDataset]["basemapLayer"]["initialLocation"],
-                zoom: DATASETS[gCurrentDataset]["basemapLayer"]["initialZoom"],
+                center: DATASETS[gCurrentDataset]["basemapLayers"][0]["initialLocation"],
+                zoom: DATASETS[gCurrentDataset]["basemapLayers"][0]["initialZoom"],
                 keyboard: false,
                 minZoom: baseLayer.options.minZoom,
                 layers: initialLayers
