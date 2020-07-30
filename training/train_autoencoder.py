@@ -13,16 +13,16 @@ import numpy as np
 
 import rasterio
 
-import keras.backend as K
-import keras.callbacks
-import keras.utils
-from keras.optimizers import SGD, Adam, RMSprop, Adadelta
-from keras.models import Model
-from keras.layers import Input, Dense, Activation, MaxPooling2D, Conv2D, BatchNormalization
-from keras.layers import Concatenate, Cropping2D, Lambda
-from keras.losses import categorical_crossentropy, mean_squared_error
+import tensorflow.keras.backend as K
+import tensorflow.keras.callbacks
+import tensorflow.keras.utils
+from tensorflow.keras.optimizers import SGD, Adam, RMSprop, Adadelta
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, Dense, Activation, MaxPooling2D, Conv2D, BatchNormalization
+from tensorflow.keras.layers import Concatenate, Cropping2D, Lambda
+from tensorflow.keras.losses import categorical_crossentropy, mean_squared_error
 
-from keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 from sklearn.cluster import MiniBatchKMeans
 
@@ -135,7 +135,7 @@ def main():
     parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", required=True)
 
     args = parser.parse_args(sys.argv[1:])
-    args.batch_size = 10
+    args.batch_size = 128
     args.num_epochs = 30
 
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -188,7 +188,7 @@ def main():
 
     # Fit KMeans on all data color features
     print("Fitting KMeans model for labels")
-    num_classes = 64
+    num_classes = 40
     kmeans = MiniBatchKMeans(n_clusters=num_classes, verbose=1, init_size=2**16, n_init=20, batch_size=2**14, compute_labels=False)
     kmeans = kmeans.fit(all_data_color_features)
     labels = manual_kmeans_predict(all_data_color_features, cluster_centers=kmeans.cluster_centers_)
@@ -204,7 +204,7 @@ def main():
 
     # Assuming all data has same # of bands
     bands = all_data[0].shape[2]
-    n_samples_each = 20
+    n_samples_each = 2000
     n_samples = n_samples_each * all_data.shape[0]
     height, width = 150, 150
     x_all = np.zeros((n_samples, height, width, bands), dtype=np.float32)
@@ -231,8 +231,8 @@ def main():
 
     del all_data, all_data_color_features, all_data_color_labels
     
-    x_all = x_all/255.0
-    y_all = keras.utils.to_categorical(y_all, num_classes=num_classes)
+    x_all = np.clip((x_all/3000.0), 0, 1)
+    y_all = tensorflow.keras.utils.to_categorical(y_all, num_classes=num_classes)
 
     model = basic_model((height, width, bands), num_classes, lr=0.003)
     model.summary()
@@ -253,7 +253,7 @@ def main():
     )
 
 
-    model_checkpoint = keras.callbacks.ModelCheckpoint(args.output_fn, monitor='train_loss', verbose=1, save_best_only=False, save_weights_only=False, mode='auto', period=1)
+    model_checkpoint = tensorflow.keras.callbacks.ModelCheckpoint(args.output_fn, monitor='train_loss', verbose=1, save_best_only=False, save_weights_only=False, mode='auto', period=1)
     #model.fit(x_all, y_all, batch_size=32, epochs=30, verbose=1, callbacks=[model_checkpoint], validation_split=0.1)
 
     model.fit_generator(
