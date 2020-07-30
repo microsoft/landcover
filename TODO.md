@@ -34,6 +34,7 @@
   - [ ] The front-end should display all basemaps for the selected dataset.
   - [ ] Add a hotkey to switch between the custom basemap layers
 - [ ] The front-end does not need to call `get_input()` or display the image/model results in the top-right corner
+- [ ] The front-end expects `add_sample_point` to return which class was selected, however we only return `{message: "", success: bool}`, this causes the class counter to break
 
 ## Server
 
