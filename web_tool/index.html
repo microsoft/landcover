@@ -79,7 +79,7 @@
                         </div>
 
                         <div style="text-align: center; margin-top:10px;">
-                            <input type="text" id="lblURL" value="" placeholder="Visit this URL to start from a saved checkpoint" readonly="readonly"/>
+                            <button id="btnCheckpoint">Create Checkpoint</button>
                         </div>
 
                         <div style="text-align: center; margin-top:5px;">
@@ -137,40 +137,20 @@
             //----------------------------------------------------------------------
             // Parse URL arguments
             //----------------------------------------------------------------------
-            let args = getURLArguments()
-            EXP_NAME = args.userID
+            var args = getURLArguments()
             gBackendURL = SERVERS[args.backendID]["url"];
-            
-            if(!(args.dataset in DATASETS) && (args.dataset !== null)){
-                args.dataset = null;
-                new Noty({
-                    type: "error",
-                    text: "Requested dataset doesn't exist, using default",
-                    layout: 'topCenter',
-                    timeout: 5000,
-                    theme: 'metroui'
-                }).show();
-            }
-            if(args.dataset === null){
-                args.dataset = "esri_world_imagery";
-            }
             gCurrentDataset = args.dataset;
             gCurrentModel = args.model;
+            gCurrentCheckpoint = args.checkpoint;
 
-            if(args.cachedModel !== null){
-                doLoad(args.cachedModel); // load a cached version of the model
-            }else{
-                //doReset(false, true); // reset the backend server
+
+            if(gCurrentCheckpoint === null || gCurrentCheckpoint === "-1"){
+                console.debug("New checkpoint, not loading anything");
+                loadClasses(MODELS[gCurrentModel]["classes"]);
+            } else{
+                loadClasses(CHECKPOINTS[gCurrentCheckpoint]["classes"]);
             }
-            
-            //----------------------------------------------------------------------
-            // Start user study if necessary
-            //----------------------------------------------------------------------
-            var userStudy = false;
-            if(args.maxTime !== null){
-                runUserStudyTimer(args.maxTime);
-                userStudy = true;
-            }
+
 
             //----------------------------------------------------------------------
             // Load the dataset specific shapes
@@ -197,61 +177,23 @@
             //----------------------------------------------------------------------
             CORRECTION_WINDOW_SIZE = DATASETS[gCurrentDataset]["dataLayer"]["resolution"];
 
-            //----------------------------------------------------------------------
-            // Load the specific model classes
-            //----------------------------------------------------------------------
-            
-            for(var i=0;i<MODELS[gCurrentModel]["classes"].length;i++){
-                var currentClass = MODELS[gCurrentModel]["classes"][i];
-                
-                var newClassIdx = CLASSES.length;
-                var newClassName = currentClass["name"];
-                var newColor = currentClass["color"];
-
-                var newClassElement =  $("<div class='radio'>");
-                var newLabel = $(" \
-                    <label><input type='radio' name='radClasses' class='radClasses' value='"+newClassName+"'><span class='className'>"+newClassName+"</span> (<span class='classCounts'>0</span> samples since last retrain)<i class='fa fa-edit ml-1 classNameEdit'></i></label> \
-                ");
-
-                var newPicker = document.createElement('button');
-                newPicker.classList.add("circle");
-                newPicker.classList.add("jscolor");
-                newPicker.setAttribute("data-class-label", newClassName);
-                newPicker.setAttribute("data-class-idx", newClassIdx);
-                var output = new jscolor(newPicker, {
-                    valueElement: null,
-                    value: newColor.substr(1),
-                    position:'left',
-                    zIndex:2001,
-                    closable:true,
-                    closeText:'Close',
-                    onFineChange:'updateClassColor(this)'
-                });
-
-                newClassElement.append(newPicker);
-                newClassElement.append(newLabel);        
-            
-                $("#classList").append(newClassElement);
-
-                CLASSES.push({
-                    "name": newClassName,
-                    "color": newColor,
-                    "count": 0
-                });
-            }
-        
-
 
             //----------------------------------------------------------------------
             // Setup map layers
             //----------------------------------------------------------------------
 
             // Create the basemap for the current dataset
-            var baseLayer = L.tileLayer(DATASETS[gCurrentDataset]["basemapLayer"]["url"], DATASETS[gCurrentDataset]["basemapLayer"]["args"]);
+            var baseLayer = L.tileLayer(DATASETS[gCurrentDataset]["basemapLayers"][0]["url"], DATASETS[gCurrentDataset]["basemapLayers"][0]["args"]);
             
             // This is the list of basemaps that will be displayed on the control in bottom left of GUI
-            gCurrentBasemapLayerName = DATASETS[gCurrentDataset]["metadata"]["imageryName"];
-            gBasemaps[DATASETS[gCurrentDataset]["metadata"]["imageryName"]] = baseLayer;
+            gCurrentBasemapLayerName = DATASETS[gCurrentDataset]["basemapLayers"][0]["layerName"];
+
+            gBasemaps[gCurrentBasemapLayerName] = baseLayer;
+            for(var i=1; i<DATASETS[gCurrentDataset]["basemapLayers"].length; i++){
+                var layerName = DATASETS[gCurrentDataset]["basemapLayers"][i]["layerName"];
+                var layer = L.tileLayer(DATASETS[gCurrentDataset]["basemapLayers"][i]["url"], DATASETS[gCurrentDataset]["basemapLayers"][i]["args"])
+                gBasemaps[layerName] = layer;
+            }
             gBasemaps["OpenStreetMap"] = getOSMLayer();
             gBasemaps["ESRI World Imagery"] = getESRILayer();
 
@@ -267,8 +209,8 @@
             gMap = L.map('map', {
                 zoomControl: false,
                 crs: L.CRS.EPSG3857, // this is the projection CRS (EPSG:3857), but it is different than the data CRS (EPSG:4326). See https://gis.stackexchange.com/questions/225765/leaflet-map-crs-is-3857-but-coordinates-4326/225786.
-                center: DATASETS[gCurrentDataset]["basemapLayer"]["initialLocation"],
-                zoom: DATASETS[gCurrentDataset]["basemapLayer"]["initialZoom"],
+                center: DATASETS[gCurrentDataset]["basemapLayers"][0]["initialLocation"],
+                zoom: DATASETS[gCurrentDataset]["basemapLayers"][0]["initialZoom"],
                 keyboard: false,
                 minZoom: baseLayer.options.minZoom,
                 layers: initialLayers
@@ -358,8 +300,9 @@
 
             $("#btnRetrain").click(doRetrain);
             $("#btnUndo").click(doUndo);
-            $("#btnReset").click(function(){doReset(true, initialReset=false)});
+            $("#btnReset").click(doReset);
             $("#btnDownload").click(doDownloadTile);
+            $("#btnCheckpoint").click(doCreateCheckpoint)
 
             $("#btnKillSession").click(doKillSession)
 

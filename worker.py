@@ -17,13 +17,13 @@ LOGGER = logging.getLogger("server")
 import rpyc
 from rpyc.utils.server import OneShotServer, ThreadedServer
 
-
 from web_tool.ModelSessionKerasExample import KerasDenseFineTune
 from web_tool.ModelSessionPytorchSolar import SolarFineTuning
 from web_tool.ModelSessionPyTorchExample import TorchFineTuning
 from web_tool.ModelSessionPyTorchCycle import TorchSmoothingCycleFineTune
 from web_tool.Utils import setup_logging, serialize, deserialize
 
+from web_tool.Models import load_models
 
 class MyService(rpyc.Service):
 
@@ -63,49 +63,36 @@ class MyService(rpyc.Service):
         return self.model.load_state_from(directory)
 
 def main():
-    global MODEL
     parser = argparse.ArgumentParser(description="AI for Earth Land Cover Worker")
 
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debugging", default=False)
-
     parser.add_argument("--port", action="store", type=int, help="Port we are listenning on", default=0)
-    parser.add_argument("--model", action="store", dest="model",
-        choices=[
-            "keras_example",
-            "pytorch_example",
-            "pytorch_smoothing_multiple",
-            "pytorch_solar"
-        ],
-        help="Model to use", required=True
-    )
-    parser.add_argument("--model_fn", action="store", dest="model_fn", type=str, help="Model fn to use", default=None)
-    parser.add_argument("--fine_tune_layer", action="store", dest="fine_tune_layer", type=int, help="Layer of model to fine tune", default=-2)
-
-    parser.add_argument("--num_models", action="store", dest="num_models", type=int, help="Number of models", default=3)
-    
-    parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", required=False)
-
+    parser.add_argument("--gpu_id", action="store", dest="gpu_id", type=int, help="GPU to use", required=False)
+    parser.add_argument("--model_key", action="store", dest="model_key", type=str, help="Model key from models.json to use")
     args = parser.parse_args(sys.argv[1:])
 
     # Setup logging
     log_path = os.path.join(os.getcwd(), "tmp/logs/")
     setup_logging(log_path, "worker")
 
-
-    # Setup model
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ["CUDA_VISIBLE_DEVICES"] = "" if args.gpuid is None else str(args.gpuid)
+    os.environ["CUDA_VISIBLE_DEVICES"] = "" if args.gpu_id is None else str(args.gpu_id)
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
+    model_configs = load_models()
+    if not args.model_key in model_configs:
+        LOGGER.error("'%s' is not recognized as a valid model, exiting..." % (args.model_key))
+        return
+    model_type = model_configs[args.model_key]["type"]
 
-    if args.model == "keras_example":
-        model = KerasDenseFineTune(args.model_fn, args.gpuid, args.fine_tune_layer)
-    elif args.model == "pytorch_example":
-        model = TorchFineTuning(args.model_fn, args.gpuid, args.fine_tune_layer)
+    if model_type == "keras_example":
+        model = KerasDenseFineTune(args.gpu_id, **model_configs[args.model_key])
+    elif model_type == "pytorch_example":
+        model = TorchFineTuning(args.model_fn, args.gpu_id, args.fine_tune_layer)
+    elif model_type == "pytorch_smoothing_multiple":
+        model = TorchSmoothingCycleFineTune(args.model_fn, args.gpu_id, args.fine_tune_layer, args.num_models)
     elif args.model == "pytorch_solar":
-        model = SolarFineTuning(args.model_fn, args.gpuid, args.fine_tune_layer)
-    elif args.model == "pytorch_smoothing_multiple":
-        model = TorchSmoothingCycleFineTune(args.model_fn, args.gpuid, args.fine_tune_layer, args.num_models)
+        model = SolarFineTuning(args.gpu_id, **model_configs[args.model_key])
     else:
         raise NotImplementedError("The given model type is not implemented yet.")
 

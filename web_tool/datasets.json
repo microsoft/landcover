@@ -2,7 +2,6 @@
     "hcmc_sentinel": {
         "metadata": {
             "displayName": "Ho Chi Minh City, Vietnam",
-            "imageryName": "Sentinel Imagery",
             "locationName": null
         },
         "dataLayer": {
@@ -11,19 +10,22 @@
             "padding": 500,
             "resolution": 10
         },
-        "basemapLayer": {
-            "initialZoom": 11,
-            "url": "data/basemaps/hcmc_sentinel_tiles/{z}/{x}/{y}.png",
-            "initialLocation": [ 10.682, 106.752 ],
-            "args": {
-                "attribution": "Georeferenced Image",
-                "tms": true,
-                "maxNativeZoom": 16,
-                "maxZoom": 20,
-                "minZoom": 10
-            },
-            "bounds": null
-        },
+        "basemapLayers": [
+            {
+                "layerName": "Sentinel Imagery",
+                "initialZoom": 11,
+                "url": "data/basemaps/hcmc_sentinel_tiles/{z}/{x}/{y}.png",
+                "initialLocation": [ 10.682, 106.752 ],
+                "args": {
+                    "attribution": "Georeferenced Image",
+                    "tms": true,
+                    "maxNativeZoom": 16,
+                    "maxZoom": 20,
+                    "minZoom": 10,
+                    "bounds": [[10.516963329949858, 106.88465642003204], [10.850214900118745, 106.55144323441078]]
+                }
+            }
+        ],
         "shapeLayers": [
             {
                 "shapesFn": "data/zones/hcmc_sentinel_admin_1_clipped.geojson",
@@ -46,7 +48,6 @@
     "naip_maryland": {
         "metadata": {
             "displayName": "Maryland 2017",
-            "imageryName": "NAIP Imagery",
             "locationName": null
         },
         "dataLayer": {
@@ -55,19 +56,22 @@
             "padding": 20,
             "resolution": 1
         },
-        "basemapLayer": {
-            "initialZoom": 11,
-            "url": "data/basemaps/m_3807537_ne_18_1_20170611_tiles/{z}/{x}/{y}.png",
-            "initialLocation": [ 38.477018, -75.402312],
-            "args": {
-                "attribution": "Georeferenced Image",
-                "tms": true,
-                "maxNativeZoom": 16,
-                "maxZoom": 20,
-                "minZoom": 10
-            },
-            "bounds": null
-        },
+        "basemapLayers": [
+            {
+                "layerName": "NAIP 2017 Imagery",
+                "initialZoom": 11,
+                "url": "data/basemaps/m_3807537_ne_18_1_20170611_tiles/{z}/{x}/{y}.png",
+                "initialLocation": [ 38.477018, -75.402312],
+                "args": {
+                    "attribution": "Georeferenced Image",
+                    "tms": true,
+                    "maxNativeZoom": 16,
+                    "maxZoom": 20,
+                    "minZoom": 10,
+                    "bounds": [[38.43467413843691, -75.37107263863105], [38.50279589938556, -75.44149473165253]]
+                }
+            }
+        ],
         "shapeLayers": [
             {
                 "shapesFn": "data/zones/m_3807537_ne_18_1_20170611_boundary.geojson",
