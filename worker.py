@@ -91,7 +91,7 @@ def main():
         model = TorchFineTuning(args.model_fn, args.gpu_id, args.fine_tune_layer)
     elif model_type == "pytorch_smoothing_multiple":
         model = TorchSmoothingCycleFineTune(args.model_fn, args.gpu_id, args.fine_tune_layer, args.num_models)
-    elif args.model == "pytorch_solar":
+    elif model_type == "pytorch_solar":
         model = SolarFineTuning(args.gpu_id, **model_configs[args.model_key])
     else:
         raise NotImplementedError("The given model type is not implemented yet.")

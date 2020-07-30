@@ -42,10 +42,10 @@ class SolarFineTuning(ModelSession):
         warm_start=True
     )
 
-    def __init__(self, model_dir, gpuid, fine_tune_layer):
-        self.model_fn = os.path.join(model_dir ,"training/checkpoint.pth.tar")
+    def __init__(self, gpuid, **kwargs):
+        self.model_fn = os.path.join(kwargs["fn"] ,"training/checkpoint.pth.tar")
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.opts = load_options(model_dir +'/opt')
+        self.opts = load_options(kwargs["fn"] +'/opt')
 
         self.output_channels = 2
         self.output_features = 16
@@ -164,10 +164,10 @@ class SolarFineTuning(ModelSession):
             if i % print_every_k_steps == 0:
                 print("Step pixel acc: ", acc)
 
-        success = True
-        message = "Fine-tuned model with %d samples." % len(self.corr_features)
-        print(message)
-        return success, message
+        return {
+                "message": "Fine-tuned model with %d samples." % len(self.corr_features),
+                "success": True
+        }
     
 
     
@@ -175,10 +175,24 @@ class SolarFineTuning(ModelSession):
         if len(self.corr_features)>0:
             self.corr_features = self.corr_features[:-1]
             self.corr_labels = self.corr_labels[:-1]
+            return {
+                "message": "Undid training sample",
+                "success": True
+            }
+        else:
+            return {
+                "message": "Nothing to undo",
+                "success": False
+            }
+        
 
     def add_sample_point(self, row, col, class_idx):
         self.corr_labels.append(class_idx)
         self.corr_features.append(self.current_features[row, col,:])
+        return {
+                "message": "Training sample for class %d added" % (class_idx),
+                "success": True
+        }
         
     def reset(self):
         self._init_model()
@@ -266,10 +280,20 @@ class SolarFineTuning(ModelSession):
         return softmax(output), output_features
 
     def save_state_to(self, directory):
-        pass
+        
+        
+        return {
+            "message": "Saved model state", 
+            "success": True
+        }
 
     def load_state_from(self, directory):
-        pass
+        
+        
+        return {
+            "message": "Loaded model state", 
+            "success": True
+        }
 
     @property
     def last_tile(self):
