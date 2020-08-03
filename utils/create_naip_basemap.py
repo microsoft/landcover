@@ -6,11 +6,16 @@ import sys
 import os
 import time
 import subprocess
+import tempfile
+import urllib
 from multiprocessing import Pool
 
 import numpy as np
 
 NAIP_BLOB_ROOT = 'https://naipblobs.blob.core.windows.net/naip'
+temp_dir = os.path.join(tempfile.gettempdir(), 'naip')
+os.makedirs(temp_dir, exist_ok=True)
+NAIP_INDEX_FN = os.path.join(temp_dir, "naip_v002_index.csv")
 
 OUTPUT_DIR = "/home/caleb/data/oh_2017_naip/"
 OUTPUT_TILE_DIR = "/home/caleb/data/oh_2017_naip_tiles/"
@@ -18,14 +23,31 @@ NUM_WORKERS = 64
 STATE = "oh" # use state code
 YEAR = 2017
 
-# TODO: download in a cross-platform friendly way, save to tempfile, remove after use. 
-if not os.path.exists("naip_v002_index.csv"):
-    os.system("wget 'https://naipblobs.blob.core.windows.net/naip-index/naip_v002_index.zip'")
-    os.system("unzip naip_v002_index.zip")
-    os.remove("naip_v002_index.zip")
+
+def download_url(url, output_dir, force_download=False, verbose=False):
+    """
+    Download a URL
+    """
+    parsed_url = urllib.parse.urlparse(url)
+    url_as_filename = os.path.basename(parsed_url.path)
+    destination_filename = os.path.join(output_dir, url_as_filename)
+
+    if (not force_download) and (os.path.isfile(destination_filename)):
+        if verbose: print('Bypassing download of already-downloaded file {}'.format(os.path.basename(url)))
+        return destination_filename
+    
+    if verbose: print('Downloading file {} to {}'.format(os.path.basename(url),destination_filename),end='')
+    urllib.request.urlretrieve(url, destination_filename)  
+    assert(os.path.isfile(destination_filename))
+    nBytes = os.path.getsize(destination_filename)
+    if verbose: print('...done, {} bytes.'.format(nBytes))
+    return destination_filename
+
+if not os.path.exists(NAIP_INDEX_FN):
+    download_url("https://naipblobs.blob.core.windows.net/naip-index/naip_v002_index.csv", temp_dir)
 
 fns = []
-with open("naip_v002_index.csv", "r") as f:    
+with open(NAIP_INDEX_FN, "r") as f:    
     for line in f:
         line = line.strip()
         if line != "":
@@ -71,6 +93,9 @@ command = [
 subprocess.call(" ".join(command), shell=True)
 
 
+# We run gdal2tiles once for each zoom level that we want as output as the multithreaded part of gdal2tiles.py _only_ works for the largest zoom level you select.
+# E.g. if we run `gdal2tiles.py -z 8-16 --processes=32 basemap.vrt OUTPUT_DIR/` then level 16 would be built with 32 threads, however levels 8 through 15 would be built with a single thread.
+# This is OK if you are making a basemap for a relatively small area, however for large areas it is (much) faster to generate all the levels with multiple threads.  
 for zoom_level in range(8,17):
    print("Running zoom level $i")
    command = [
