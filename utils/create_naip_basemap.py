@@ -1,5 +1,4 @@
-'''Script for download all NAIP imagery for a given (state, year) pair, reprojecting it to EPSG:3857, and throwing away the NIR band.
-Use in conjunction with gdal2tiles.py for creating state-wide basemaps.
+'''Script for creating a XYZ style basemap for all NAIP imagery for a given (state, year).
 
 This goes really fast on Azure VMs in US East with large number of cores.
 '''
@@ -14,6 +13,7 @@ import numpy as np
 NAIP_BLOB_ROOT = 'https://naipblobs.blob.core.windows.net/naip'
 
 OUTPUT_DIR = "/home/caleb/data/oh_2017_naip/"
+OUTPUT_TILE_DIR = "/home/caleb/data/oh_2017_naip_tiles/"
 NUM_WORKERS = 64
 STATE = "oh" # use state code
 YEAR = 2017
@@ -43,7 +43,6 @@ def do_work(fn):
     command = [
         "GDAL_SKIP=DODS",
         "gdalwarp",
-        "-dstnodata", "\"0 0 0\"",
         "-t_srs", "epsg:3857",
         "'%s'" % (url),
         OUTPUT_DIR + output_tmp_fn
@@ -63,3 +62,18 @@ def do_work(fn):
 
 p = Pool(NUM_WORKERS)
 _ = p.map(do_work, fns)
+
+
+
+command = [
+    "gdalbuildvrt", "-srcnodata", "\"0 0 0\"", "basemap.vrt", "%s*.tif" % (OUTPUT_DIR)
+]
+subprocess.call(" ".join(command), shell=True)
+
+
+for zoom_level in range(8,17):
+   print("Running zoom level $i")
+   command = [
+       "gdal2tiles.py", "-z", str(zoom_level), "--processes=%d" % (NUM_WORKERS), "basemap.vrt", OUTPUT_TILE_DIR
+   ]
+   subprocess.call(" ".join(command), shell=True)
