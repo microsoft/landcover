@@ -20,7 +20,6 @@ from rpyc.utils.server import OneShotServer, ThreadedServer
 from web_tool.ModelSessionKerasExample import KerasDenseFineTune
 from web_tool.ModelSessionPytorchSolar import SolarFineTuning
 from web_tool.ModelSessionPyTorchExample import TorchFineTuning
-from web_tool.ModelSessionPyTorchCycle import TorchSmoothingCycleFineTune
 from web_tool.Utils import setup_logging, serialize, deserialize
 
 from web_tool.Models import load_models
@@ -88,9 +87,7 @@ def main():
     if model_type == "keras_example":
         model = KerasDenseFineTune(args.gpu_id, **model_configs[args.model_key])
     elif model_type == "pytorch_example":
-        model = TorchFineTuning(args.model_fn, args.gpu_id, args.fine_tune_layer)
-    elif model_type == "pytorch_smoothing_multiple":
-        model = TorchSmoothingCycleFineTune(args.model_fn, args.gpu_id, args.fine_tune_layer, args.num_models)
+        model = TorchFineTuning(args.gpu_id, **model_configs[args.model_key])
     elif model_type == "pytorch_solar":
         model = SolarFineTuning(args.gpu_id, **model_configs[args.model_key])
     else:
