@@ -7,7 +7,7 @@ import os
 import time
 import subprocess
 import tempfile
-import urllib
+import urllib.request
 from multiprocessing import Pool
 
 import numpy as np
@@ -22,6 +22,8 @@ OUTPUT_TILE_DIR = "/home/caleb/data/oh_2017_naip_tiles/"
 NUM_WORKERS = 64
 STATE = "oh" # use state code
 YEAR = 2017
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(OUTPUT_TILE_DIR, exist_ok=True)
 
 
 def download_url(url, output_dir, force_download=False, verbose=False):
@@ -55,6 +57,8 @@ with open(NAIP_INDEX_FN, "r") as f:
                 if ("/%s/" % (STATE)) in line and ("/%d/" % (YEAR)) in line:
                     fns.append(line)
 
+print("Working on %d files" % (len(fns)))
+
 def do_work(fn):
     time.sleep(np.random.random()*2)
     
@@ -69,7 +73,7 @@ def do_work(fn):
         "'%s'" % (url),
         OUTPUT_DIR + output_tmp_fn
     ]
-    subprocess.call(" ".join(command), shell=True)
+    subprocess.call(" ".join(command), shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     
     
     command = [
@@ -78,7 +82,7 @@ def do_work(fn):
         OUTPUT_DIR + output_tmp_fn,
         OUTPUT_DIR + output_fn
     ]
-    subprocess.call(" ".join(command), shell=True)
+    subprocess.call(" ".join(command), shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     
     os.remove(OUTPUT_DIR + output_tmp_fn)
 
@@ -97,8 +101,11 @@ subprocess.call(" ".join(command), shell=True)
 # E.g. if we run `gdal2tiles.py -z 8-16 --processes=32 basemap.vrt OUTPUT_DIR/` then level 16 would be built with 32 threads, however levels 8 through 15 would be built with a single thread.
 # This is OK if you are making a basemap for a relatively small area, however for large areas it is (much) faster to generate all the levels with multiple threads.  
 for zoom_level in range(8,17):
-   print("Running zoom level $i")
+   print("Running zoom level %d" % (zoom_level))
    command = [
        "gdal2tiles.py", "-z", str(zoom_level), "--processes=%d" % (NUM_WORKERS), "basemap.vrt", OUTPUT_TILE_DIR
    ]
    subprocess.call(" ".join(command), shell=True)
+
+
+os.remove("basemap.vrt")
