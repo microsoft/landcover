@@ -264,7 +264,7 @@ def pred_patch():
 
     patch, crs, transform, bounds = DATASETS[dataset]["data_loader"].get_data_from_extent(extent)
     print("pred_patch, after get_data_from_extent:", patch.shape)
-
+    
     SESSION_HANDLER.get_session(bottle.request.session.id).current_transform = (crs, transform)
 
     # ------------------------------------------------------
@@ -273,7 +273,7 @@ def pred_patch():
     #   Apply reweighting
     #   Fix padding
     # ------------------------------------------------------
-    outputs = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(patch, False)
+    outputs = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(patch, False, bounds)
     #assert len(output.shape) == 3, "The model function should return an image shaped as (height, width, num_classes)"
     #assert (output.shape[2] < output.shape[0] and output.shape[2] < output.shape[1]), "The model function should return an image shaped as (height, width, num_classes)" # assume that num channels is less than img dimensions
 

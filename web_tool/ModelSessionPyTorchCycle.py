@@ -69,8 +69,9 @@ class TorchSmoothingCycleFineTune(ModelSession):
     def last_tile(self):
         return 0
 
-    def run(self, naip_data, inference_mode=False):
+    def run(self, naip_data, inference_mode, bounds):
         print(naip_data.shape)
+        print(bounds)
       
         x = naip_data
         x = np.swapaxes(x, 0, 2)
