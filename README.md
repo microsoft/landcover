@@ -50,7 +50,7 @@ cd ..
 
 A last step is required to configure the _backend_ server with the demo models/data.
 
-Create and edit `web_tool/endpoints.mine.js`. Replace "localhost" with the address of your machine (or leave it alone it you are running locally), and choose the port you will use (defaults to 8080). Note: make sure this port is open to your machine if you are using a remote sever (e.g. with a DSVM on Azure, use the Networking tab to open port 8080).
+Create and edit `web_tool/endpoints.mine.js`. Replace "localhost" with the address of your machine (or leave it alone if you are running locally), and choose the port you will use (defaults to 8080). Note: make sure this port is open to your machine if you are using a remote sever (e.g. with a DSVM on Azure, use the Networking tab to open port 8080).
 
 ```bash
 cp landcover/web_tool/endpoints.js landcover/web_tool/endpoints.mine.js
@@ -69,7 +69,7 @@ The additional step you need to take for adding custom models is creating a clas
 
 ### Using GPU workers
 
-- Edit `self._WORKERS` of the SessionHandler class in SessionHandler.py to include the GPU resources you want to use on your machine. By default this is set to use GPU IDs 0 through 4.
+- Edit `self._WORKERS` of the `SessionHandler` class in `SessionHandler.py` to include the GPU resources you want to use on your machine. By default this is set to use GPU IDs 0 through 4.
 
 
 ## Running an instance of the web-tool
