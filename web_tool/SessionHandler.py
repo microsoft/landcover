@@ -101,7 +101,7 @@ class SessionHandler():
 
     def _spawn_local_worker(self, port, gpu_id, model_key):
         command = [
-            "/usr/bin/env", "python", "worker.py",
+            "/usr/bin/env", "python3", "worker.py",
             "--port", str(port),
             "--gpu_id", str(gpu_id),
             "--model_key", model_key,

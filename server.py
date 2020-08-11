@@ -532,7 +532,7 @@ def main():
     manage_session_folders()
     session_opts = {
         'session.type': 'file',
-        'session.cookie_expires': 3000,
+        #'session.cookie_expires': 3000, # session cookie
         'session.data_dir': SESSION_FOLDER,
         'session.auto': True
     }
