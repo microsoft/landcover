@@ -61,6 +61,8 @@ nano landcover/web_tool/endpoints.mine.js
 
 The _backend_ server looks for dataset definitions in two places: `web_tool/datasets.json` and `web_tool/datasets.mine.json`. The latter is included in `.gitignore` and is where you can add custom datasets following the template of the default datasets in `web_tool/datasets.json`.
 
+For a dataset entry, the `dataLayer` can point to a .tif file or a .vrt file (GDAL Virtual Format) uniting a set of .tif files - anything that `rasterio` loads. The `dataLayer` needs to contain all the channels required by the model.
+
 ### Adding new models
 
 Similar to datasets, the _backend_ server looks for model definitions in two places: `web_tool/models.json` and `web_tool/models.mine.json`. The latter is included in `.gitignore` and is where you can add custom models following the template of the default datasets in `web_tool/models.json`.

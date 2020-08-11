@@ -5,20 +5,20 @@ class ModelSession(abc.ABC):
     @property
     @abc.abstractmethod
     def last_tile(self):
-        '''This property should be updated by `run()` with the value of the last `tile` tensor that was passed when `inference_mode == False`.
+        """This property should be updated by `run()` with the value of the last `tile` tensor that was passed when `inference_mode == False`.
         The purpose of keeping track of this data is to provide context for the `row` and `col` indices used in `add_sample_point()`. This property does
         not need to be serialized to/from disk during `save_state_to()` and `load_state_from()`.
-        '''
+        """
         pass
 
     @abc.abstractmethod
     def __init__(self, gpu_id, **kwargs):
-        '''Responsible for initializaing the model and other necessary components from the pararmeters in the models.json file.
+        """Responsible for initializing the model and other necessary components from the parameters in the models.json file.
 
         Args:
             gpu_id: An int specifying which GPU to bind to, or None, to specify CPU.
             **kwargs: Key, value pairs created from the contents of this implementation's "model" key in models.json. (the model filename should be passed this way)
-        '''
+        """
         raise NotImplementedError()
 
     @abc.abstractmethod

@@ -61,7 +61,7 @@
                 "layerName": "NAIP 2017 Imagery",
                 "initialZoom": 11,
                 "url": "data/basemaps/m_3807537_ne_18_1_20170611_tiles/{z}/{x}/{y}.png",
-                "initialLocation": [ 38.477018, -75.402312],
+                "initialLocation": [38.477018, -75.402312],
                 "args": {
                     "attribution": "Georeferenced Image",
                     "tms": true,
