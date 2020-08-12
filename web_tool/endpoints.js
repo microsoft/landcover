@@ -1,3 +1,3 @@
 var SERVERS = [
-    {"url": "http://boto.eastus.cloudapp.azure.com:8080/"},
+    {"url": "http://localhost:8080/"},
 ];
