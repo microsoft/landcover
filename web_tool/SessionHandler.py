@@ -1,17 +1,15 @@
-import time
-import threading
-import subprocess
-import json
 import socket
-from queue import Queue
+import subprocess
+import threading
+import time
 
 import logging
 LOGGER = logging.getLogger("server")
 
+from queue import Queue
+
 from .Session import Session
-
 from .ModelSessionRPC import ModelSessionRPC
-
 from .Models import load_models
 from .Datasets import is_valid_dataset
 from .Checkpoints import Checkpoints
@@ -56,8 +54,8 @@ class SessionHandler():
     def __init__(self, args):
         self._WORKERS = [ # TODO: I hardcode that there are 4 GPUs available on the local machine
             {"type": "local", "gpu_id": 0},
-            {"type": "local", "gpu_id": 1},
-            {"type": "local", "gpu_id": 2}
+            # {"type": "local", "gpu_id": 1},
+            # {"type": "local", "gpu_id": 2}
         ]
 
         self._WORKER_POOL = Queue()

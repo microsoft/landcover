@@ -2,39 +2,30 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 # pylint: disable=E1137,E1136,E0110,E1101
-import sys
-import os
-import time
-import datetime
-import collections
 import argparse
 import base64
 import json
-import uuid
-import threading
+import logging
+import os
+import sys
+import time
 
-import numpy as np
 import cv2
-
 import fiona
 import fiona.transform
-
+import numpy as np
 import rasterio
 import rasterio.warp
 
-import pickle
-import joblib
-
-import logging
 LOGGER = logging.getLogger("server")
 
 from web_tool.DataLoader import warp_data_to_3857, crop_data_by_extent, crop_data_by_geometry
 from web_tool.Datasets import load_datasets, get_area_from_geometry
 DATASETS = load_datasets()
 
-from web_tool.Utils import setup_logging, get_random_string, class_prediction_to_img, get_shape_layer_by_name, AtomicCounter
+from web_tool.Utils import setup_logging, get_random_string, class_prediction_to_img
 from web_tool import ROOT_DIR
-from web_tool.Session import Session, manage_session_folders, SESSION_FOLDER
+from web_tool.Session import manage_session_folders, SESSION_FOLDER
 from web_tool.SessionHandler import SessionHandler
 from web_tool.Checkpoints import Checkpoints
 SESSION_HANDLER = None
