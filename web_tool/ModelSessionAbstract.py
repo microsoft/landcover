@@ -45,7 +45,7 @@ class ModelSession(abc.ABC):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def retrain(self):
+    def retrain(self, **kwargs):
         """Responsible for updating the parameters of the internal model given the fine-tuning samples
         that have been passed through `add_sample_point()`.
         The mechanism by which this happen is entirely up to the implementation of the class. Some

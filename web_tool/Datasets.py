@@ -64,12 +64,15 @@ def _load_dataset(dataset):
                 shape_layer["crs"] = crs["init"] # TODO: will this break with fiona version; I think `.crs` will turn into a PyProj object
                 shape_layers[shape_layer["name"]] = shape_layer
             else:
+                LOGGER.warning("Step 1 failed in loading dataset {}".format(dataset["metadata"]["displayName"]))
+                # TODO: check that the displayName field is present
                 return False # TODO: maybe we should make these errors more descriptive (explain why we can't load a dataset)
 
     # Step 2: make sure the dataLayer exists
     if dataset["dataLayer"]["type"] == "CUSTOM":
         fn = dataset["dataLayer"]["path"]
         if not os.path.exists(fn):
+            LOGGER.warning("Step 2 failed in loading dataset {}".format(dataset["metadata"]["displayName"]))
             return False # TODO: maybe we should make these errors more descriptive (explain why we can't load a dataset)
 
     # Step 3: setup the appropriate DatasetLoader
@@ -80,6 +83,7 @@ def _load_dataset(dataset):
     elif dataset["dataLayer"]["type"] == "BASEMAP":
         data_loader = DataLoaderBasemap(dataset["dataLayer"]["path"], dataset["dataLayer"]["padding"])
     else:
+        LOGGER.warning("Step 3 failed in loading dataset {}".format(dataset["metadata"]["displayName"]))
         return False # TODO: maybe we should make these errors more descriptive (explain why we can't load a dataset)
 
     return {
