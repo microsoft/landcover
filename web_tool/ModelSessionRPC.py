@@ -32,8 +32,8 @@ class ModelSessionRPC(ModelSession):
     @property
     def last_tile(self):
         return deserialize(self.connection.root.exposed_last_tile)
-    def run(self, tile, inference_mode, bounds):
-        return deserialize(self.connection.root.exposed_run(serialize(tile), inference_mode, bounds))
+    def run(self, tile, inference_mode, bounds, transform):
+        return deserialize(self.connection.root.exposed_run(serialize(tile), inference_mode, bounds, transform))
     def retrain(self):
         return self.connection.root.exposed_retrain()
     def add_sample_point(self, row, col, class_idx):
@@ -46,3 +46,5 @@ class ModelSessionRPC(ModelSession):
         return self.connection.root.exposed_save_state_to(directory)
     def load_state_from(self, directory):
         return self.connection.root.exposed_load_state_from(directory)
+    def record_cycle(self, model_idx):
+        return self.connection.root.record_cycle(model_idx)

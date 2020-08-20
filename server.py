@@ -261,6 +261,7 @@ def pred_patch():
     if dataset not in DATASETS:
         raise ValueError("Dataset doesn't seem to be valid, do the datasets in js/tile_layers.js correspond to those in TileLayers.py")
 
+    print(extent)
 
     patch, crs, transform, bounds = DATASETS[dataset]["data_loader"].get_data_from_extent(extent)
     print("pred_patch, after get_data_from_extent:", patch.shape)
@@ -273,16 +274,17 @@ def pred_patch():
     #   Apply reweighting
     #   Fix padding
     # ------------------------------------------------------
-    outputs = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(patch, False, bounds)
+    outputs = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(patch, False, bounds, transform)
     #assert len(output.shape) == 3, "The model function should return an image shaped as (height, width, num_classes)"
     #assert (output.shape[2] < output.shape[0] and output.shape[2] < output.shape[1]), "The model function should return an image shaped as (height, width, num_classes)" # assume that num channels is less than img dimensions
-
+    #outputs = [outputs[0],outputs[0],outputs[0]]
     # ------------------------------------------------------
     # Step 4
     #   Warp output to EPSG:3857 and crop off the padded area
     # ------------------------------------------------------
     outputs_soft = []
     outputs_hard = []
+
     for output in outputs:
 
         if output.shape[2] > len(color_list):
@@ -341,7 +343,7 @@ def pred_tile():
         bottle.response.status = 400
         return json.dumps({"error": "Cannot currently download imagery with 'Basemap' based datasets"})
 
-    output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(tile, True)
+    output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(tile, True, raster_bounds, raster_transform)
     output = output[model_idx]
     print("pred_tile, after model.run:", output.shape)
     
@@ -439,6 +441,19 @@ def get_input():
     bottle.response.status = 200
     return json.dumps(data)
 
+
+def user_cycled():
+    bottle.response.content_type = 'application/json'
+    data = bottle.request.json
+    data["remote_address"] = bottle.request.client_ip
+
+    model_idx = data["modelIdx"]
+    model_idx = int(model_idx)
+    SESSION_HANDLER.get_session(bottle.request.session.id).add_entry(data) # record this interaction
+
+    SESSION_HANDLER.get_session(bottle.request.session.id).model.record_cycle(model_idx)
+    
+    return json.dumps(data)
 
 def list_checkpoints():
     return """[
@@ -549,6 +564,9 @@ def main():
     app.route("/killSession", method="OPTIONS", callback=do_options)
     app.route("/killSession", method="POST", callback=kill_session)
 
+    app.route("/userCycled", method="OPTIONS", callback=do_options)
+    app.route("/userCycled", method="POST", callback=user_cycled)
+    
     app.route("/listCheckpoints", method="GET", callback=list_checkpoints)
 
     app.route("/whoami", method="GET", callback=whoami)

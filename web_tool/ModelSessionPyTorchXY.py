@@ -28,42 +28,58 @@ class CoreModel(nn.Module):
 class AugmentModel(nn.Module):
     def __init__(self):
         super(AugmentModel,self).__init__()
-        self.last = T.nn.Conv2d(64,22,1,1,0)
+        self.lastweight = T.nn.Parameter(T.zeros(8,64,22).uniform_())
+        self.lastbias = T.nn.Parameter(T.zeros(8,22).uniform_())
         
-    def forward(self,inputs):
-        return self.last(inputs)
-    
-class TorchSmoothingCycleFineTune(ModelSession):
+    def forward(self,features):
+        outs = (T.einsum('bfxy,mfo->bmoxy',features,self.lastweight) + self.lastbias.unsqueeze(2).unsqueeze(3)).softmax(2)
+        return outs
+        
+class XYModel(nn.Module):
+    def __init__(self):
+        super(XYModel,self).__init__()
+        self.pos1 = T.nn.Conv2d(2,256,1)
+        self.pos5 = T.nn.Conv2d(256,8,1)
 
-    def __init__(self, model_fn, gpuid, fine_tune_layer, num_models):
+    def forward(self,inputs):
+        c = self.pos1(inputs).relu()
+        return self.pos5(c).softmax(1)+0.0001
+    
+class TorchSmoothingXYFineTune(ModelSession):
+
+    def __init__(self, model_fn, gpuid, fine_tune_layer):
 
         os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
         os.environ["CUDA_VISIBLE_DEVICES"] = str(gpuid)
         
         self.model_fn = model_fn
         self.device = T.device("cuda:0" if T.cuda.is_available() else "cpu")
-
-        self.num_models = num_models
         
         self.core_model = CoreModel()
-        self.augment_models = [ AugmentModel() for _ in range(num_models) ]
+        self.augment_model = AugmentModel()
+        self.pos_model = XYModel()
         
         self.init_model()
 
         print(sum(x.numel() for x in self.core_model.parameters()))
 
-        for model in self.augment_models:
-            for param in model.parameters():
-                param.requires_grad = True
-            print(sum(x.numel() for x in model.parameters()))
+        for param in self.core_model.parameters():
+            param.requires_grad = False
+        for param in self.augment_model.parameters():
+            param.requires_grad = False
+        for param in self.pos_model.parameters():
+            param.requires_grad = True
 
         self.features = None
 
         self.naip_data = None
+
+        self.coord_data = None
         
-        self.corr_features = [[] for _ in range(num_models) ]
-        self.corr_labels = [[] for _ in range(num_models) ]
-        self.num_corrections_since_retrain = [ [ 0 for _ in range(num_models) ] ]
+        self.corr_features = []
+        self.corr_coords = []
+        self.corr_labels = []
+        self.num_corrections_since_retrain = [ 0 ]
 
     @property
     def last_tile(self):
@@ -72,33 +88,48 @@ class TorchSmoothingCycleFineTune(ModelSession):
     def run(self, naip_data, inference_mode, bounds, transform):
         print(naip_data.shape)
         print(bounds)
-      
         x = naip_data
         x = np.swapaxes(x, 0, 2)
         x = np.swapaxes(x, 1, 2)
         x = x[:4, :, :]
         naip_data = x / 255.0
 
+        print(transform)
+
         self.last_outputs = []
 
         self.naip_data = naip_data  # keep non-trimmed size, i.e. with padding
 
-        
+        self.coord_data = np.zeros((1,2,)+naip_data.shape[1:])      
+        self.coord_data[:,0] = np.random.ranf()-0.5
+        self.coord_data[:,1] = np.random.ranf()-0.5
+
+        #corner_x = bounds[0] - np.array(transform)[2]
+        #corner_y = bounds[1] - np.array(transform)[5]
+        corner_x = np.array(transform)[2] - 342471
+        corner_y = -np.array(transform)[5] + 4311703
+        print(corner_x,corner_y)
+
+        self.coord_data[:,1] = (corner_x/5000)-0.5
+        self.coord_data[:,0] = (corner_y/5000)-0.5
+
+        self.coord_data[:,0] += np.arange(naip_data.shape[1]).reshape(-1,1)/5000
+        self.coord_data[:,1] += np.arange(naip_data.shape[2])/5000
 
         with T.no_grad():
 
             if naip_data.shape[1] < 300:
-
-                features = self.run_core_model_on_tile(naip_data)
+                features = self.run_core_and_augment_model_on_tile(naip_data)
                 self.features = features.cpu().numpy()
 
-                for i in range(self.num_models):
+                weights = self.pos_model(T.from_numpy(self.coord_data).float().to(self.device))
+                out = T.einsum('bmoxy,bmxy->boxy',features,weights).cpu().numpy()[0,1:]
+                #out = self.features[0,0,1:]
+                #out = self.features[0,1:]
 
-                    out = self.augment_models[i](features).cpu().numpy()[0,1:]
-                    out = np.rollaxis(out, 0, 3)
-                    out = softmax(out, 2)
+                out = np.rollaxis(out, 0, 3)
                 
-                    self.last_outputs.append(out)
+                self.last_outputs.append(out)
 
             else:
 
@@ -152,47 +183,49 @@ class TorchSmoothingCycleFineTune(ModelSession):
 
         return features_out, preds_out
 
-    def retrain(self, train_steps=100, learning_rate=1e-3):
+    def retrain(self, train_steps=1000, learning_rate=1e-2):
       
-        print_every_k_steps = 99
+        print_every_k_steps = 409
         
         self.init_model()
         
-        self.num_corrections_since_retrain.append([0 for _ in range(self.num_models)])
+        self.num_corrections_since_retrain.append(0)
 
-        for model, corr_features, corr_labels in zip(self.augment_models, self.corr_features, self.corr_labels):
-            batch_x = T.from_numpy(np.array(corr_features)).float().to(self.device)
-            batch_y = T.from_numpy(np.array(corr_labels)).to(self.device)
+        batch_x = T.from_numpy(np.array(self.corr_features)).float().to(self.device)
+        batch_c = T.from_numpy(np.array(self.corr_coords)).float().to(self.device)
+        batch_y = T.from_numpy(np.array(self.corr_labels)).to(self.device)
 
 
-            if batch_x.shape[0] > 0:
-            
-                optimizer = T.optim.Adam(model.parameters(), lr=learning_rate, eps=1e-5)
-                criterion = T.nn.CrossEntropyLoss().to(self.device)
+        if batch_x.shape[0] > 0:
+        
+            optimizer = T.optim.Adam(self.pos_model.parameters(), lr=learning_rate, eps=1e-5)
+            criterion = T.nn.CrossEntropyLoss().to(self.device)
 
-                for i in range(train_steps):
-                    #print('step %d' % i)
-                    acc = 0
+            for i in range(train_steps):
+                #print('step %d' % i)
+                acc = 0
+                
+                with T.enable_grad():
+
+                    optimizer.zero_grad()
                     
-                    with T.enable_grad():
+                    weights = self.pos_model(batch_c.unsqueeze(2).unsqueeze(3)).squeeze(3).squeeze(2)
+                    #print(weights.shape)
+                    pred = T.einsum('bmc,bm->bc',batch_x,weights)
 
-                        optimizer.zero_grad()
-                        
-                        pred = model(batch_x.unsqueeze(2).unsqueeze(3)).squeeze(3).squeeze(2)
-                        loss = criterion(pred,batch_y)
+                    loss = criterion(pred,batch_y)
 
 
-                        loss.backward()
-                        optimizer.step()
-                    
-                    if i % print_every_k_steps == 0:
-                        acc = (pred.argmax(1)==batch_y).float().mean().item()
-                        print("Step pixel acc: ", acc)
+                    loss.backward()
+                    optimizer.step()
+                
+                if i % print_every_k_steps == 0:
+                    acc = (pred.argmax(1)==batch_y).float().mean().item()
+                    print("Step pixel acc: ", acc)
 
-                    message = "Fine-tuned model with %d samples." % (len(corr_features))
+                message = "Fine-tuned model with %d samples." % (len(self.corr_features))
 
         success = True
-        message = "Fine-tuned models with {} samples.".format((','.join(str(len(x)) for x in self.corr_features)))
         print(message)
         return success, message
     
@@ -211,38 +244,39 @@ class TorchSmoothingCycleFineTune(ModelSession):
     def add_sample_point(self, row, col, class_idx, model_idx):
         print("adding sample: class %d (incremented to %d) at (%d, %d), model %d" % (class_idx, class_idx+1 , row, col, model_idx))
 
-        self.corr_labels[model_idx].append(class_idx+1)
-        self.corr_features[model_idx].append(self.features[0,:,row,col])
-        self.num_corrections_since_retrain[-1][model_idx] += 1
+        self.corr_labels.append(class_idx+1)
+        self.corr_features.append(self.features[0,:,:,row,col])
+        self.corr_coords.append(self.coord_data[0,:,row,col])
+        self.num_corrections_since_retrain[-1] += 1
 
     def init_model(self):
+        checkpoint = T.load(self.model_fn, map_location=self.device)
+        
+        self.core_model.load_state_dict(checkpoint, strict=False)
+        self.core_model.eval()
+        self.core_model.to(self.device)
+        
+        self.augment_model.load_state_dict(checkpoint, strict=False)
+        self.augment_model.eval()
+        self.augment_model.to(self.device)
 
-        with T.no_grad():
-            checkpoint = T.load(self.model_fn, map_location=self.device)
-            self.core_model.load_state_dict(checkpoint, strict=False)
-            self.core_model.eval()
-            self.core_model.to(self.device)
-
-            bias = checkpoint["lastbias"]
-            weight = checkpoint["lastweight"]
-
-            for i,model in enumerate(self.augment_models):
-                #model.load_state_dict(checkpoint, strict=False)
-                model.last.weight[:] = weight[i].T.unsqueeze(2).unsqueeze(3)
-                model.last.bias[:] = bias[i]
-                model.eval()
-                model.to(self.device)
+        self.pos_model.load_state_dict(checkpoint, strict=False)
+        self.pos_model.to(self.device)
         
     def reset(self):
         self.init_model()
-        for i in range(self.num_models): self.num_corrections_since_retrain[i] = 0
 
-    def run_core_model_on_tile(self, naip_tile):
+        self.corr_features = []
+        self.corr_coords = []
+        self.corr_labels = []
+        self.num_corrections_since_retrain = [ 0 ]
+
+    def run_core_and_augment_model_on_tile(self, naip_tile):
           
         _, w, h = naip_tile.shape
 
         x_c_tensor1 = T.from_numpy(naip_tile).float().to(self.device)
-        features = self.core_model(x_c_tensor1.unsqueeze(0))
+        features = self.augment_model(self.core_model(x_c_tensor1.unsqueeze(0)))
            
         return features
 

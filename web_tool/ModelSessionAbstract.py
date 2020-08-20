@@ -12,7 +12,7 @@ class ModelSession(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def run(self, tile, inference_mode, bounds):
+    def run(self, tile, inference_mode, bounds, transform):
         '''Responsible for running the model on arbitrarily sized inputs.
 
         Args:
@@ -75,4 +75,9 @@ class ModelSession(abc.ABC):
         Args:
             directory: The directory to re-hydrate from. This directory should have the output from `save_state_to()` in it.
         '''
+        raise NotImplementedError()
+
+
+    @abc.abstractmethod
+    def record_cycle(self, model_idx):
         raise NotImplementedError()
