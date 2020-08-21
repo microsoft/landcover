@@ -140,6 +140,9 @@ class DataLoaderCustom(DataLoader):
         self._shapes = shapes
         self._padding = padding
 
+        with rasterio.open(data_fn) as f:
+            self.profile = f.profile.copy()
+
     def get_data_from_extent(self, extent):
         f = rasterio.open(self.data_fn, "r")
         src_crs = f.crs

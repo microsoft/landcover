@@ -261,8 +261,6 @@ def pred_patch():
     if dataset not in DATASETS:
         raise ValueError("Dataset doesn't seem to be valid, do the datasets in js/tile_layers.js correspond to those in TileLayers.py")
 
-    print(extent)
-
     patch, crs, transform, bounds = DATASETS[dataset]["data_loader"].get_data_from_extent(extent)
     print("pred_patch, after get_data_from_extent:", patch.shape)
     
@@ -274,7 +272,7 @@ def pred_patch():
     #   Apply reweighting
     #   Fix padding
     # ------------------------------------------------------
-    outputs = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(patch, False, bounds, transform)
+    outputs = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(patch, False, bounds, DATASETS[dataset]["data_loader"].profile)
     #assert len(output.shape) == 3, "The model function should return an image shaped as (height, width, num_classes)"
     #assert (output.shape[2] < output.shape[0] and output.shape[2] < output.shape[1]), "The model function should return an image shaped as (height, width, num_classes)" # assume that num channels is less than img dimensions
     #outputs = [outputs[0],outputs[0],outputs[0]]
@@ -343,8 +341,8 @@ def pred_tile():
         bottle.response.status = 400
         return json.dumps({"error": "Cannot currently download imagery with 'Basemap' based datasets"})
 
-    output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(tile, True, raster_bounds, raster_transform)
-    output = output[model_idx]
+    output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(tile, True, raster_bounds, DATASETS[dataset]["data_loader"].profile)
+    #output = output[model_idx]
     print("pred_tile, after model.run:", output.shape)
     
     if output.shape[2] > len(color_list):

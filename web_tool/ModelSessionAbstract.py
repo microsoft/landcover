@@ -12,7 +12,7 @@ class ModelSession(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def run(self, tile, inference_mode, bounds, transform):
+    def run(self, tile, inference_mode, bounds, dataset_profile):
         '''Responsible for running the model on arbitrarily sized inputs.
 
         Args:
