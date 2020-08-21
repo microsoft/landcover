@@ -339,10 +339,12 @@ var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
                 if(i == gCurrentPatches[idx]["activeImgIdx"]){
                     gCurrentPatches[idx]["imageLayer"].setUrl(srcs[i][tSelection]);
                 }
-    
-                // Save the resulting data in all cases
-                gCurrentPatches[idx]["patches"][i]["srcs"] = srcs[i];
-    
+                
+                // Save the resulting data if we might need it
+                if(idx == gCurrentPatches.length-1){
+                    gCurrentPatches[idx]["patches"][i]["srcs"] = srcs[i];
+                }
+
                 // Update the right panel if we are the current "last item", we need to check for this because the order we send out requests to the API isn't necessarily the order they will come back
                 if(idx == gCurrentPatches.length-1){
                     var img = $("#exampleImage_"+i);
@@ -353,6 +355,11 @@ var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
                         img.addClass("active");
                     }
                 }
+            }
+
+            if(idx > 0){
+                delete gCurrentPatches[idx-1]["patches"];
+                delete gCurrentPatches[idx-1]["naipImg"];
             }
 
         },

@@ -106,6 +106,7 @@
 
     <!-- Leaflet JavaScript
     ================================================== -->
+    <!-- <script>L_DISABLE_3D = true;</script> -->
     <script src="js/leaflet.js" type="text/javascript"></script>
     <script src="js/leaflet-slider.js" type="text/javascript"></script>
     <script src="js/leaflet-sidebar.min.js" type="text/javascript"></script>
@@ -276,6 +277,7 @@
                 zoom: DATASETS[gCurrentDataset]["basemapLayers"][0]["initialZoom"],
                 keyboard: false,
                 minZoom: baseLayer.options.minZoom,
+                zoomAnimation: false,
                 layers: initialLayers
             });
             gMap.createPane('customPolygons');
