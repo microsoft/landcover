@@ -156,6 +156,55 @@ var doDownloadTile = function(){
 };
 
 
+var doDownloadAll = function(){
+
+    var request = {
+        "type": "downloadAll",
+        "dataset": gCurrentDataset,
+        "experiment": EXP_NAME,
+        "classes": CLASSES,
+        "zoneLayerName": null,
+        "modelIdx": parseInt(gActiveImgIdx),
+        "SESSION": SESSION_ID
+    };
+
+    $.ajax({
+        type: "POST",
+        url: gBackendURL + "getAllPredictions",
+        data: JSON.stringify(request),
+        timeout: 0,
+        success: function(data, textStatus, jqXHR){
+            new Noty({
+                type: "success",
+                text: "Tile download ready!",
+                layout: 'topCenter',
+                timeout: 5000,
+                theme: 'metroui'
+            }).show();
+
+            var pngURL = window.location.origin + "/" + data["downloadPNG"];
+            var tiffURL = window.location.origin + "/" + data["downloadTIFF"];
+            var statisticsURL = window.location.origin + "/" + data["downloadStatistics"];
+            $("#lblPNG").html("<a href='"+pngURL+"' target='_blank'>Download PNG</a>");
+            $("#lblTIFF").html("<a href='"+tiffURL+"' target='_blank'>Download TIFF</a>");
+            $("#lblStatistics").html("<a href='"+statisticsURL+"' target='_blank'>Download Class Statistics</a>");
+
+            gDownloadLayer.setUrl(pngURL);
+        },
+        error: notifyFail,
+        dataType: "json",
+        contentType: "application/json"
+    });
+
+    new Noty({
+        type: "success",
+        text: "Sent tile download request, please wait for 2-3 minutes. When the request is complete the download links will appear underneath the 'Download' button.",
+        layout: 'topCenter',
+        timeout: 10000,
+        theme: 'metroui'
+    }).show();
+};
+
 
 //-----------------------------------------------------------------
 // Submit new training example
@@ -309,16 +358,14 @@ var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
         "SESSION": SESSION_ID
     };
 
-    console.debug(serviceURL);
-    
+    var lengthThatMightChange = gCurrentPatches.length-1;
     $.ajax({
         type: "POST",
         url: serviceURL + "predPatch",
         data: JSON.stringify(request),
-        success: function(data, textStatus, jqXHR){
-            var resp = data;
-
-            var srcs = [
+        success: function(resp, textStatus, jqXHR){
+            
+            let srcs = [
                 {
                     "soft": "data:image/png;base64," + resp.output_soft[0],
                     "hard": "data:image/png;base64," + resp.output_hard[0],
@@ -333,7 +380,7 @@ var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
                 }
             ];
             
-            for(var i=0; i<3; i++){
+            for(let i=0; i<3; i++){
                 // Display the result on the map if we are the currently selected model
                 let tSelection = gDisplayHard ? "hard" : "soft";
                 if(i == gCurrentPatches[idx]["activeImgIdx"]){
@@ -341,12 +388,12 @@ var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
                 }
                 
                 // Save the resulting data if we might need it
-                if(idx == gCurrentPatches.length-1){
+                if(idx == lengthThatMightChange){
                     gCurrentPatches[idx]["patches"][i]["srcs"] = srcs[i];
                 }
 
                 // Update the right panel if we are the current "last item", we need to check for this because the order we send out requests to the API isn't necessarily the order they will come back
-                if(idx == gCurrentPatches.length-1){
+                if(idx == lengthThatMightChange){
                     var img = $("#exampleImage_"+i);
                     img.attr("src", srcs[i][tSelection]);
                     img.attr("data-name", resp.model_name);                    
@@ -461,6 +508,34 @@ var doKillSession = function () {
         data: JSON.stringify({}),
         success: function (data, textStatus, jqXHR) {
             window.location.href = "/";
+        },
+        error: function (jqXHR, textStatus) {
+            // TODO: Notify fail
+        },
+        dataType: "json",
+        contentType: "application/json"
+    });
+};
+
+//-----------------------------------------------------------------
+// Load a saved model state from the backend
+//-----------------------------------------------------------------
+var doUserCycle = function () {
+
+    var request = {
+        "type": "userCycled",
+        "dataset": gCurrentDataset,
+        "experiment": EXP_NAME,
+        "modelIdx": parseInt(gActiveImgIdx),
+        "SESSION": SESSION_ID
+    };
+
+    $.ajax({
+        type: "POST",
+        url: window.location.origin + "/userCycled",
+        data: JSON.stringify(request),
+        success: function (data, textStatus, jqXHR) {
+            // pass
         },
         error: function (jqXHR, textStatus) {
             // TODO: Notify fail

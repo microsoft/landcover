@@ -135,3 +135,5 @@ var gZoneMapsWeight = {};
 
 var gBasemaps = {};
 var gZonemaps = {};
+
+var gDownloadLayer = null;

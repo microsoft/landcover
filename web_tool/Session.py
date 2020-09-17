@@ -13,8 +13,12 @@ import pickle
 
 import numpy as np
 
+import fiona.transform
+import shapely.geometry
+
 import joblib
 
+from .DataLoader import warp_data_to_3857, crop_data_by_extent, crop_data_by_geometry, extent_to_transformed_geom
 from .Utils import get_random_string, AtomicCounter
 
 import logging
@@ -52,6 +56,8 @@ class Session():
         self.session_id = session_id
         self.creation_time = time.time()
         self.last_interaction_time = self.creation_time
+
+        self.tile_map = None
 
     def reset(self, soft=False, from_cached=None):
         if not soft:
@@ -133,3 +139,93 @@ class Session():
         else:
             # The storage_type / --storage_path command line args were not set
             pass
+
+    def pred_patch(self, patch, dataset_profile, target_extent, patch_transform):
+        # need to paste the returned predictions to self.output_map
+        outputs = self.model.run(patch, False)
+        output = outputs[self.model.current_model_idx]
+
+        print(self.model.current_model_idx)
+
+        # Crop output to extent
+        dataset_crs = dataset_profile["crs"].to_string()
+        dataset_transform = dataset_profile["transform"]
+        dataset_height = dataset_profile["height"]
+        dataset_width = dataset_profile["width"]
+
+        cropped_output = crop_data_by_extent(output, dataset_crs, patch_transform, target_extent)[0]
+
+        data_mask = cropped_output.sum(axis=2) > 0        
+
+        transformed_extent = extent_to_transformed_geom(target_extent, dataset_crs)
+        transformed_bounds = shapely.geometry.shape(transformed_extent).bounds
+
+        # Save in the correct place
+        minx, maxy = ~dataset_transform * (transformed_bounds[0], transformed_bounds[1])
+        maxx, miny = ~dataset_transform * (transformed_bounds[2], transformed_bounds[3])
+        minx = int(np.floor(minx))
+        miny = int(np.floor(miny))
+        maxx = int(np.ceil(maxx))
+        maxy = int(np.ceil(maxy))
+        patch_height = maxy - miny
+        patch_width = maxx - minx
+
+        # minx,miny,maxx,maxy can be outside of the tile boundary, we need to figure out the offsets to use
+        minx = max(0, minx)
+        miny = max(0, miny)
+        maxx = min(dataset_width, maxx)
+        maxy = min(dataset_height, maxy)
+
+        # Make sure our tile map is setup
+        if self.tile_map is None:
+            self.tile_map = np.zeros((dataset_height, dataset_width, output.shape[2]), dtype=np.float32)
+        current_image = self.tile_map[miny:maxy, minx:maxx]
+        current_image[data_mask] = cropped_output[data_mask]
+        self.tile_map[miny:maxy, minx:maxx] = current_image
+
+        return outputs
+
+    def pred_tile(self, tile, dataset_profile, target_polygon, tile_transform):
+        outputs = self.model.run(tile, True)
+        output = outputs[self.model.current_model_idx]
+
+        # Crop output to extent
+        dataset_crs = dataset_profile["crs"].to_string()
+        dataset_transform = dataset_profile["transform"]
+        dataset_height = dataset_profile["height"]
+        dataset_width = dataset_profile["width"]
+
+        transformed_target_shape = fiona.transform.transform_geom("epsg:4326", dataset_crs, target_polygon)
+        cropped_output = crop_data_by_geometry(output, dataset_crs, tile_transform, transformed_target_shape, dataset_crs)[0]
+
+        transformed_bounds = shapely.geometry.shape(transformed_target_shape).bounds
+
+        data_mask = cropped_output.sum(axis=2) > 0
+
+        # Save in the correct place
+        minx, maxy = ~dataset_transform * (transformed_bounds[0], transformed_bounds[1])
+        maxx, miny = ~dataset_transform * (transformed_bounds[2], transformed_bounds[3])
+        minx = int(np.floor(minx))
+        miny = int(np.floor(miny))
+        maxx = int(np.ceil(maxx))
+        maxy = int(np.ceil(maxy))
+        patch_height = maxy - miny
+        patch_width = maxx - minx
+
+        # minx,miny,maxx,maxy can be outside of the tile boundary, we need to figure out the offsets to use
+        minx = max(0, minx)
+        miny = max(0, miny)
+        maxx = min(dataset_width, maxx)
+        maxy = min(dataset_height, maxy)
+
+        # Make sure our tile map is setup
+        if self.tile_map is None:
+            self.tile_map = np.zeros((dataset_height, dataset_width, output.shape[2]), dtype=np.float32)
+        current_image = self.tile_map[miny:maxy, minx:maxx]
+        current_image[data_mask] = cropped_output[data_mask]
+        self.tile_map[miny:maxy, minx:maxx] = current_image
+
+        return output
+
+    def get_tile_predictions(self):
+        return self.tile_map

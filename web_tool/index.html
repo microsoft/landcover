@@ -77,6 +77,9 @@
                         <div style="text-align: center; margin-top:10px;">
                             <button id="btnDownload">Download</button>
                         </div>
+                        <div style="text-align: center; margin-top:10px;">
+                            <button id="btnDownloadAll">Download all</button>
+                        </div>
 
                         <div style="text-align: center; margin-top:10px;">
                             <input type="text" id="lblURL" value="" placeholder="Visit this URL to start from a saved checkpoint" readonly="readonly"/>
@@ -277,7 +280,7 @@
                 zoom: DATASETS[gCurrentDataset]["basemapLayers"][0]["initialZoom"],
                 keyboard: false,
                 minZoom: baseLayer.options.minZoom,
-                zoomAnimation: false,
+                zoomAnimation: true,
                 layers: initialLayers
             });
             gMap.createPane('customPolygons');
@@ -291,7 +294,6 @@
 
             gMap.createPane('downloadOutput');
             gMap.getPane('downloadOutput').style.zIndex = 200;
-
 
 
             //----------------------------------------------------------------------
@@ -367,8 +369,9 @@
             $("#btnUndo").click(doUndo);
             $("#btnReset").click(function(){doReset(true, initialReset=false)});
             $("#btnDownload").click(doDownloadTile);
+            $("#btnDownloadAll").click(doDownloadAll);
 
-            $("#btnKillSession").click(doKillSession)
+            $("#btnKillSession").click(doKillSession);
 
 
             $("#btnNewClass").click(function(){
@@ -457,7 +460,13 @@
                 gCurrentPatches[idx]["imageLayer"].setUrl(srcs[tSelection]);
                 gCurrentPatches[idx]["activeImgIdx"] = gActiveImgIdx;
                 $(this).attr("src", srcs[tSelection]);
+                doUserCycle();
             });
+
+            // No idea why this needs to be on a delay
+            window.setTimeout(function(){
+                gDownloadLayer = L.imageOverlay("", gZonemaps[DATASETS[gCurrentDataset]["shapeLayers"][0]["name"]].getBounds(), {pane: "labels"}).addTo(gMap);
+            }, 1000)
 
         });
 

@@ -236,7 +236,8 @@ def pred_patch():
     data = bottle.request.json
     data["remote_address"] = bottle.request.client_ip
 
-    SESSION_HANDLER.get_session(bottle.request.session.id).add_entry(data) # record this interaction
+    current_session = SESSION_HANDLER.get_session(bottle.request.session.id)
+    current_session.add_entry(data)
 
     # Inputs
     extent = data["extent"]
@@ -261,7 +262,7 @@ def pred_patch():
     if dataset not in DATASETS:
         raise ValueError("Dataset doesn't seem to be valid, do the datasets in js/tile_layers.js correspond to those in TileLayers.py")
 
-    patch, crs, transform, bounds = DATASETS[dataset]["data_loader"].get_data_from_extent(extent)
+    patch, crs, transform, bounds = DATASETS[dataset]["data_loader"].get_data_from_extent(extent)    
     print("pred_patch, after get_data_from_extent:", patch.shape)
     
     SESSION_HANDLER.get_session(bottle.request.session.id).current_transform = (crs, transform)
@@ -272,7 +273,9 @@ def pred_patch():
     #   Apply reweighting
     #   Fix padding
     # ------------------------------------------------------
-    outputs = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(patch, False, bounds, DATASETS[dataset]["data_loader"].profile)
+    #outputs = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(patch, False, bounds, DATASETS[dataset]["data_loader"].profile)
+    outputs = current_session.pred_patch(patch, DATASETS[dataset]["data_loader"].profile, extent, transform)
+
     #assert len(output.shape) == 3, "The model function should return an image shaped as (height, width, num_classes)"
     #assert (output.shape[2] < output.shape[0] and output.shape[2] < output.shape[1]), "The model function should return an image shaped as (height, width, num_classes)" # assume that num channels is less than img dimensions
     #outputs = [outputs[0],outputs[0],outputs[0]]
@@ -318,7 +321,8 @@ def pred_tile():
     data = bottle.request.json
     data["remote_address"] = bottle.request.client_ip
 
-    SESSION_HANDLER.get_session(bottle.request.session.id).add_entry(data) # record this interaction
+    current_session = SESSION_HANDLER.get_session(bottle.request.session.id)
+    current_session.add_entry(data)
 
     # Inputs
     geom = data["polygon"]
@@ -341,8 +345,8 @@ def pred_tile():
         bottle.response.status = 400
         return json.dumps({"error": "Cannot currently download imagery with 'Basemap' based datasets"})
 
-    output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(tile, True, raster_bounds, DATASETS[dataset]["data_loader"].profile)
-    #output = output[model_idx]
+    #output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(tile, False, raster_bounds, DATASETS[dataset]["data_loader"].profile)
+    output = current_session.pred_tile(tile, DATASETS[dataset]["data_loader"].profile, geom["geometry"], raster_transform)
     print("pred_tile, after model.run:", output.shape)
     
     if output.shape[2] > len(color_list):
@@ -400,6 +404,74 @@ def pred_tile():
         f.write("%d\t%s\t%0.4f%%\t%0.4f\n" % (vals[i], name_list[vals[i]], pct_area*100, real_area))
     f.close()
     data["downloadStatistics"] = "tmp/downloads/%s.txt" % (tmp_id)
+
+    bottle.response.status = 200
+    return json.dumps(data)
+
+
+def get_tile_predictions():
+    ''' Method called for POST `/getAllPredictions`'''
+    bottle.response.content_type = 'application/json'
+    data = bottle.request.json
+    data["remote_address"] = bottle.request.client_ip
+
+    current_session = SESSION_HANDLER.get_session(bottle.request.session.id)
+    current_session.add_entry(data)
+
+    # Inputs
+    class_list = data["classes"]
+    name_list = [item["name"] for item in class_list]
+    color_list = [item["color"] for item in class_list]
+    dataset = data["dataset"]
+
+    if dataset not in DATASETS:
+        raise ValueError("Dataset doesn't seem to be valid, do the datasets in js/tile_layers.js correspond to those in TileLayers.py")    
+    
+    raster_crs = DATASETS[dataset]["data_loader"].profile["crs"].to_string()
+    raster_transform = DATASETS[dataset]["data_loader"].profile["transform"]
+    raster_bounds = DATASETS[dataset]["data_loader"].bounds
+
+    output = current_session.get_tile_predictions()
+    print("get_tile_predictions, after model.run:", output.shape)
+    
+    if output.shape[2] > len(color_list):
+       LOGGER.warning("The number of output channels is larger than the given color list, cropping output to number of colors (you probably don't want this to happen")
+       output = output[:,:,:len(color_list)]
+    
+    output_hard = output.argmax(axis=2)
+
+    # apply nodata mask from naip_data
+    #nodata_mask = np.sum(tile == 0, axis=2) == tile.shape[2]
+    nodata_mask = output.sum(axis=2) == 0
+    #output_hard[nodata_mask] = 255
+    #als, counts = np.unique(output_hard[~nodata_mask], return_counts=True)
+
+    # ------------------------------------------------------
+    # Step 4
+    #   Convert images to base64 and return  
+    # ------------------------------------------------------
+    tmp_id = get_random_string(8)
+    img_hard = class_prediction_to_img(output, True, color_list)
+    img_hard = cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGRA)
+    img_hard[nodata_mask] = [0,0,0,0]
+
+    img_hard, img_hard_crs, img_hard_transform, img_hard_bounds = warp_data_to_3857(img_hard, raster_crs, raster_transform, raster_bounds, res_override=4.0)
+    print("get_tile_predictions, after warp_data_to_3857:", img_hard.shape)
+
+
+    cv2.imwrite("tmp/downloads/%s.png" % (tmp_id), img_hard)
+    data["downloadPNG"] = "tmp/downloads/%s.png" % (tmp_id)
+
+    new_profile = DATASETS[dataset]["data_loader"].profile.copy()
+    new_profile['driver'] = 'GTiff'
+    new_profile['dtype'] = 'uint8'
+    new_profile['compress'] = "lzw"
+    new_profile['count'] = 1
+    new_profile['nodata'] = 255
+    f = rasterio.open("tmp/downloads/%s.tif" % (tmp_id), 'w', **new_profile)
+    f.write(output_hard.astype(np.uint8), 1)
+    f.close()
+    data["downloadTIFF"] = "tmp/downloads/%s.tif" % (tmp_id)
 
     bottle.response.status = 200
     return json.dumps(data)
@@ -537,6 +609,9 @@ def main():
 
     app.route("/predTile", method="OPTIONS", callback=do_options)
     app.route('/predTile', method="POST", callback=pred_tile)
+
+    app.route("/getAllPredictions", method="OPTIONS", callback=do_options)
+    app.route('/getAllPredictions', method="POST", callback=get_tile_predictions)
     
     app.route("/getInput", method="OPTIONS", callback=do_options)
     app.route('/getInput', method="POST", callback=get_input)

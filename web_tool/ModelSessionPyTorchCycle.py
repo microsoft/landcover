@@ -66,80 +66,37 @@ class TorchSmoothingCycleFineTune(ModelSession):
         self.num_corrections_since_retrain = [ [ 0 for _ in range(num_models) ] ]
 
         self.current_model_idx = 0
-        self.tile_map = None
-        self.profile = None
 
     @property
     def last_tile(self):
         return 0
 
-    def run(self, naip_data, inference_mode, bounds, dataset_profile):
-        dataset_transform = dataset_profile["transform"]
-        dataset_height = dataset_profile["height"]
-        dataset_width = dataset_profile["width"]
+    def run(self, naip_data, inference_mode):
+        x = naip_data
+        x = np.swapaxes(x, 0, 2)
+        x = np.swapaxes(x, 1, 2)
+        x = x[:4, :, :]
+        naip_data = x / 255.0
 
-        minx, maxy = ~dataset_transform * (bounds[0], bounds[1])
-        maxx, miny = ~dataset_transform * (bounds[2], bounds[3])
-        minx = int(np.floor(minx))
-        miny = int(np.floor(miny))
-        maxx = int(np.ceil(maxx))
-        maxy = int(np.ceil(maxy))
-        patch_height = maxy - miny
-        patch_width = maxx - minx
+        self.last_outputs = []
+        self.naip_data = naip_data  # keep non-trimmed size, i.e. with padding
+        with T.no_grad():
 
-        if patch_height != naip_data.shape[0] or patch_width != naip_data.shape[1]:
-            print("ERROR: patch dimensions don't line up with bounds")
-            print(patch_height, patch_width, naip_data.shape)
-            patch_height = naip_data.shape[0]
-            patch_width = naip_data.shape[1]
+            if naip_data.shape[1] < 300:
 
-        # minx,miny,maxx,maxy can be outside of the tile boundary, we need to figure out the offsets to use
-        minx = max(0, minx)
-        miny = max(0, miny)
-        maxx = min(dataset_width, maxx)
-        maxy = min(dataset_height, maxy)
-    
+                features = self.run_core_model_on_tile(naip_data)
+                self.features = features.cpu().numpy()
 
-        if inference_mode:
-            return self.tile_map[miny:maxy, minx:maxx]
-        else:
-            x = naip_data
-            x = np.swapaxes(x, 0, 2)
-            x = np.swapaxes(x, 1, 2)
-            x = x[:4, :, :]
-            naip_data = x / 255.0
+                for i in range(self.num_models):
 
-            self.last_outputs = []
+                    out = self.augment_models[i](features).cpu().numpy()[0,1:]
+                    out = np.rollaxis(out, 0, 3)
+                    out = softmax(out, 2)
+                
+                    self.last_outputs.append(out)
 
-            self.naip_data = naip_data  # keep non-trimmed size, i.e. with padding
-
-            with T.no_grad():
-
-                if naip_data.shape[1] < 300:
-
-                    features = self.run_core_model_on_tile(naip_data)
-                    self.features = features.cpu().numpy()
-
-                    for i in range(self.num_models):
-
-                        out = self.augment_models[i](features).cpu().numpy()[0,1:]
-                        out = np.rollaxis(out, 0, 3)
-                        out = softmax(out, 2)
-                    
-                        self.last_outputs.append(out)
-
-                else:
-
-                    self.features, self.last_outputs = self.run_large(naip_data)
-
-
-            # Make sure our tile map is setup
-            if self.tile_map is None:
-                self.tile_map = np.zeros((dataset_height, dataset_width, self.last_outputs[0].shape[2]), dtype=np.float32)
-                self.profile = dataset_profile
-            #
-            padding = 10
-            self.tile_map[miny+padding:maxy-padding, minx+padding:maxx-padding] = self.last_outputs[self.current_model_idx][padding:-padding, padding:-padding]
+            else:
+                self.features, self.last_outputs = self.run_large(naip_data)
 
             return self.last_outputs
 
@@ -290,4 +247,4 @@ class TorchSmoothingCycleFineTune(ModelSession):
 
     def record_cycle(self, model_idx):
         print("Cycling to: %d" % (model_idx))
-        self.current_model = model_idx
+        self.current_model_idx = model_idx

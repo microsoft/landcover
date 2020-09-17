@@ -35,19 +35,23 @@ from .DataLoaderAbstract import DataLoader
 # ------------------------------------------------------
 
 def extent_to_transformed_geom(extent, dest_crs):
+    
     left, right = extent["xmin"], extent["xmax"]
     top, bottom = extent["ymax"], extent["ymin"]
+    src_crs = extent["crs"]
 
     geom = {
         "type": "Polygon",
         "coordinates": [[(left, top), (right, top), (right, bottom), (left, bottom), (left, top)]]
     }
 
-    src_crs = extent["crs"]
-    return fiona.transform.transform_geom(src_crs, dest_crs, geom)
+    if src_crs == dest_crs:
+        return geom
+    else:
+        return fiona.transform.transform_geom(src_crs, dest_crs, geom)
 
 
-def warp_data_to_3857(src_img, src_crs, src_transform, src_bounds):
+def warp_data_to_3857(src_img, src_crs, src_transform, src_bounds, res_override=None):
     ''' Assume that src_img is (height, width, channels)
     '''
     assert len(src_img.shape) == 3
@@ -55,7 +59,12 @@ def warp_data_to_3857(src_img, src_crs, src_transform, src_bounds):
 
     src_img_tmp = np.rollaxis(src_img.copy(), 2, 0)
 
-    x_res, y_res = src_transform[0], -src_transform[4]
+    if res_override is None:
+        x_res, y_res = src_transform[0], -src_transform[4]
+    else:
+        x_res = res_override
+        y_res = res_override
+    print("Warping to resolution:", x_res, y_res)
 
     dst_crs = rasterio.crs.CRS.from_epsg(3857)
     dst_bounds = rasterio.warp.transform_bounds(src_crs, dst_crs, *src_bounds)
@@ -142,6 +151,7 @@ class DataLoaderCustom(DataLoader):
 
         with rasterio.open(data_fn) as f:
             self.profile = f.profile.copy()
+            self.bounds = f.bounds
 
     def get_data_from_extent(self, extent):
         f = rasterio.open(self.data_fn, "r")
