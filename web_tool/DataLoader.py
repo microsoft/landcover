@@ -30,77 +30,141 @@ import pickle
 from . import ROOT_DIR
 from .DataLoaderAbstract import DataLoader
 
+
+class InMemoryRaster(object):
+
+    def __init__(self, data, crs, transform, bounds):
+        """A wrapper around the four pieces of information needed to define a raster datasource.
+
+        Args:
+            data (np.ndarray): The data in the raster. This should be formatted as "channels last", i.e. with shape (height, width, number of channels)
+            crs (str): The EPSG code describing the coordinate system of this raster, e.g. "epsg:4326"
+            transform (affine.Affine): An affine transformation for converting to/from pixel and global coordinates 
+            bounds (tuple): A tuple in the format (left, bottom, right, top) / (xmin, ymin, xmax, ymax) describing the boundary of the raster data in the units of `crs`
+        """
+        self.data = data
+        self.crs = crs
+        self.transform = transform
+        self.bounds = bounds
+        self.shape = data.shape
+        
+        # The following logic can be used to calculate the bounds from the data and transform
+        #height, width, _ = dst_img.shape
+        #left, top = dst_transform * (0, 0)
+        #right, bottom = dst_transform * (width, height)
+
+
 # ------------------------------------------------------
 # Miscellaneous methods
 # ------------------------------------------------------
 
-def extent_to_transformed_geom(extent, dest_crs):
+def extent_to_transformed_geom(extent, dst_crs):
+    """
+    This function takes an extent in the the format {'xmax': -8547225, 'xmin': -8547525, 'ymax': 4709841, 'ymin': 4709541, 'crs': 'epsg:3857'}
+    and converts it into a GeoJSON polygon, transforming it into the coordinate system specificed by dst_crs.
+    
+    Args:
+        extent: A geographic extent formatted as a dictionary with the following keys: xmin, xmax, ymin, ymax, crs
+        dst_crs: The desired CRS of the output GeoJSON polygon as a string
+
+    Returns:
+        A GeoJSON polygon formatted as described above
+    """
     left, right = extent["xmin"], extent["xmax"]
     top, bottom = extent["ymax"], extent["ymin"]
+    src_crs = extent["crs"]
 
     geom = {
         "type": "Polygon",
         "coordinates": [[(left, top), (right, top), (right, bottom), (left, bottom), (left, top)]]
     }
 
-    src_crs = extent["crs"]
-    return fiona.transform.transform_geom(src_crs, dest_crs, geom)
+    if src_crs == dst_crs: # TODO(Caleb): Check whether this comparison makes sense for CRS objects
+        return geom
+    else:
+        return fiona.transform.transform_geom(src_crs, dst_crs, geom)
 
 
-def warp_data_to_3857(src_img, src_crs, src_transform, src_bounds):
-    ''' Assume that src_img is (height, width, channels)
-    '''
-    assert len(src_img.shape) == 3
-    src_height, src_width, num_channels = src_img.shape
 
-    src_img_tmp = np.rollaxis(src_img.copy(), 2, 0)
+def warp_data_to_3857(input_raster):
+    """
+    Warps an input raster to EPSG:3857
 
-    x_res, y_res = src_transform[0], -src_transform[4]
+    Args:
+        input_raster (InMemoryRaster): An (in memory) raster datasource to warp
+
+    Returns:
+        output_raster (InMemoryRaster): The warped version of `input_raster
+    """
+    src_height, src_width, num_channels = input_raster.shape
+    src_img_tmp = np.rollaxis(input_raster.data.copy(), 2, 0) # convert image to "channels first" format
+
+    x_res, y_res = input_raster.transform[0], -input_raster.transform[4] # the pixel resolution of the raster is given by the affine transformation
 
     dst_crs = rasterio.crs.CRS.from_epsg(3857)
-    dst_bounds = rasterio.warp.transform_bounds(src_crs, dst_crs, *src_bounds)
+    dst_bounds = rasterio.warp.transform_bounds(input_raster.crs, dst_crs, *input_raster.bounds)
     dst_transform, width, height = rasterio.warp.calculate_default_transform(
-        src_crs,
+        input_raster.crs,
         dst_crs,
         width=src_width, height=src_height,
-        left=src_bounds[0],
-        bottom=src_bounds[1],
-        right=src_bounds[2],
-        top=src_bounds[3],
-        resolution=(x_res, y_res) # TODO: we use the resolution of the src_input, while this parameter needs the resolution of the destination. This will break if src_crs units are degrees instead of meters
+        left=input_raster.bounds[0],
+        bottom=input_raster.bounds[1],
+        right=input_raster.bounds[2],
+        top=input_raster.bounds[3],
+        resolution=(x_res, y_res) # TODO: we use the resolution of the src_input, while this parameter needs the resolution of the destination. This will break if src_crs units are degrees instead of meters.
     )
 
     dst_image = np.zeros((num_channels, height, width), np.float32)
     dst_image, dst_transform = rasterio.warp.reproject(
         source=src_img_tmp,
         destination=dst_image,
-        src_transform=src_transform,
-        src_crs=src_crs,
+        src_transform=input_raster.transform,
+        src_crs=input_raster.crs,
         dst_transform=dst_transform,
         dst_crs=dst_crs,
         resampling=rasterio.warp.Resampling.nearest
     )
-    dst_image = np.rollaxis(dst_image, 0, 3)
+    dst_image = np.rollaxis(dst_image, 0, 3) # convert image to "channels last" format
     
-    return dst_image, dst_crs, dst_transform, dst_bounds
+    return InMemoryRaster(dst_image, dst_crs, dst_transform, dst_bounds)
 
 
-def crop_data_by_extent(src_img, src_crs, src_transform, extent):
-    geom = extent_to_transformed_geom(extent, "epsg:3857") # TODO: hardcoded epsg:3857 because that's the only CRS that the frontend uses
-    return crop_data_by_geometry(src_img, src_crs, src_transform, geom, "epsg:3857")
+def crop_data_by_extent(input_raster, extent):
+    """Crops the input raster to the boundaries described by `extent`
+
+    Args:
+        input_raster (InMemoryRaster): An (in memory) raster datasource to crop
+        extent (dict): A geographic extent formatted as a dictionary with the following keys: xmin, xmax, ymin, ymax, crs
+
+    Returns:
+        output_raster: The cropped version of the input raster
+    """
+    geom = extent_to_transformed_geom(extent, "epsg:3857")
+    return crop_data_by_geometry(input_raster, geom, "epsg:3857")
 
 
-def crop_data_by_geometry(src_img, src_crs, src_transform, geometry, geometry_crs):
-    src_img_tmp = np.rollaxis(src_img.copy(), 2, 0)
+def crop_data_by_geometry(input_raster, geometry, geometry_crs):
+    """Crops the input raster by the input geometry.
+
+    Args:
+        input_raster (InMemoryRaster): An (in memory) raster datasource to crop
+        geometry (GeoJSON polygon): A polygon in GeoJSON format describing the boundary to crop the input raster to
+        geometry_crs (str): The 
+
+    Returns:
+        output_raster: The cropped version of the input raster
+    """
+    src_img_tmp = np.rollaxis(input_raster.data.copy(), 2, 0)
     
-    geometry = fiona.transform.transform_geom(geometry_crs, str(src_crs), geometry)
+    if geometry_crs != input_raster.crs:
+        geometry = fiona.transform.transform_geom(geometry_crs, input_raster.crs, geometry)
 
-    height, width, num_channels = src_img.shape
+    height, width, num_channels = input_raster.shape
     dummy_src_profile = {
-        'driver': 'GTiff', 'dtype': str(src_img.dtype),
+        'driver': 'GTiff', 'dtype': str(input_raster.data.dtype),
         'width': width, 'height': height, 'count': num_channels,
-        'crs': src_crs,
-        'transform': src_transform
+        'crs': input_raster.crs,
+        'transform': input_raster.transform
     }
     
     test_f = rasterio.io.MemoryFile()
@@ -113,7 +177,11 @@ def crop_data_by_geometry(src_img, src_crs, src_transform, geometry, geometry_cr
     
     dst_img = np.rollaxis(dst_img, 0, 3)
     
-    return dst_img, dst_transform
+    height, width, _ = dst_img.shape
+    left, top = dst_transform * (0, 0)
+    right, bottom = dst_transform * (width, height)
+
+    return InMemoryRaster(dst_img, input_raster.crs, dst_transform, (left, bottom, right, top))
 
 
 # ------------------------------------------------------
@@ -151,7 +219,7 @@ class DataLoaderCustom(DataLoader):
         f.close()
 
         src_image = np.rollaxis(src_image, 0, 3)
-        return src_image, src_crs, src_transform, buffed_geom.bounds
+        return InMemoryRaster(src_image, src_crs, src_transform, buffed_geom.bounds)
 
     def get_area_from_shape_by_extent(self, extent, shape_layer):
         i, shape = self.get_shape_by_extent(extent, shape_layer)
@@ -177,7 +245,8 @@ class DataLoaderCustom(DataLoader):
         f.close()
 
         src_image = np.rollaxis(src_image, 0, 3)
-        return src_image, src_profile, src_transform, shapely.geometry.shape(transformed_mask_geom).bounds, src_crs
+        #return src_image, src_profile, src_transform, shapely.geometry.shape(transformed_mask_geom).bounds, src_crs
+        return InMemoryRaster(src_image, src_crs, src_transform, shapely.geometry.shape(transformed_mask_geom).bounds)
 
 
 # ------------------------------------------------------
