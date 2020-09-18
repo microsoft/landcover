@@ -112,9 +112,9 @@ def warp_data_to_3857(input_raster):
         bottom=input_raster.bounds[1],
         right=input_raster.bounds[2],
         top=input_raster.bounds[3],
-        resolution=(x_res, y_res) # TODO: we use the resolution of the src_input, while this parameter needs the resolution of the destination. This will break if src_crs units are degrees instead of meters.
+        resolution=(30, 30)  # resolution in meters of the imagery data
+        # resolution=(x_res, y_res) # TODO: we use the resolution of the src_input, while this parameter needs the resolution of the destination. This will break if src_crs units are degrees instead of meters.
     )
-
     dst_image = np.zeros((num_channels, height, width), np.float32)
     dst_image, dst_transform = rasterio.warp.reproject(
         source=src_img_tmp,
