@@ -53,13 +53,12 @@ class Session():
         self.creation_time = time.time()
         self.last_interaction_time = self.creation_time
 
-    def reset(self, soft=False, from_cached=None):
-        if not soft:
-            self.model.reset() # can't fail, so don't worry about it
+    def reset(self):
         self.current_snapshot_string = get_random_string(8)
         self.current_snapshot_idx = 0
         self.current_request_counter = AtomicCounter()
         self.request_list = []
+        return self.model.reset()
 
     def load(self, encoded_model_fn):
         model_fn = base64.b64decode(encoded_model_fn).decode('utf-8')
