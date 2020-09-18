@@ -30,11 +30,11 @@
   - [ ] Every 10ish seconds the front-end should poll an endpoint to ask what the status of its session is.
   - [ ] The status should be displayed somewhere on the page
   - [ ] If the session has died then some blocking indication should be given
-- [ ] Add ability for multiple named basemaps to be passed through the entries in `datasets.json`
-  - [ ] The front-end should display all basemaps for the selected dataset.
+- [x] Add ability for multiple named basemaps to be passed through the entries in `datasets.json`
+  - [x] The front-end should display all basemaps for the selected dataset.
   - [ ] Add a hotkey to switch between the custom basemap layers
 - [ ] The front-end does not need to call `get_input()` or display the image/model results in the top-right corner
-- [ ] The front-end expects `add_sample_point` to return which class was selected, however we only return `{message: "", success: bool}`, this causes the class counter to break
+- [x] The front-end expects `add_sample_point` to return which class was selected, however we only return `{message: "", success: bool}`, this causes the class counter to break
 
 ## Server
 
@@ -49,6 +49,7 @@
 - [ ] Document the existing API exposed by `server.py`, create `API.md`
 - [ ] Create simple instructions for how to use the tool to include in `README.md`
 - [ ] Document the DataLoaderAbstract interface
+- [x] Document the misc methods in `DataLoader.py`
 - [x] Document the ModelSessionAbstract interface
 - [ ] Document the process by which users can train / add an unsupervised model using the `training/train_autoencoder.py` script.
 
@@ -72,7 +73,7 @@
   - Celery with a Redis backend might be a good solution here.
   - [ ] Move this to a GitHub issue
 
-- [ ] The `pred_tile` code path should return the class statistics directly instead of saving to txt
+- [x] The `pred_tile` code path should return the class statistics directly instead of saving to txt
   - [ ] Show class statistics when we click on a polygon in the front-end
 
 - [ ] Re-visit the ability to draw / run inference over polygons
