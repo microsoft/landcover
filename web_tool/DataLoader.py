@@ -38,10 +38,13 @@ class InMemoryRaster(object):
 
         Args:
             data (np.ndarray): The data in the raster. This should be formatted as "channels last", i.e. with shape (height, width, number of channels)
-            crs (str): The EPSG code describing the coordinate system of this raster, e.g. "epsg:4326"
+            crs (str): The EPSG code describing the coordinate system of this raster (e.g. "epsg:4326")
             transform (affine.Affine): An affine transformation for converting to/from pixel and global coordinates 
             bounds (tuple): A tuple in the format (left, bottom, right, top) / (xmin, ymin, xmax, ymax) describing the boundary of the raster data in the units of `crs`
         """
+        assert len(data.shape) == 3
+        assert data.shape[2] < data.shape[1] and data.shape[2] < data.shape[0], "We assume that rasters should have larger height/width then number of channels"
+        
         self.data = data
         self.crs = crs
         self.transform = transform
@@ -59,16 +62,15 @@ class InMemoryRaster(object):
 # ------------------------------------------------------
 
 def extent_to_transformed_geom(extent, dst_crs):
-    """
-    This function takes an extent in the the format {'xmax': -8547225, 'xmin': -8547525, 'ymax': 4709841, 'ymin': 4709541, 'crs': 'epsg:3857'}
+    """This function takes an extent in the the format {'xmax': -8547225, 'xmin': -8547525, 'ymax': 4709841, 'ymin': 4709541, 'crs': 'epsg:3857'}
     and converts it into a GeoJSON polygon, transforming it into the coordinate system specificed by dst_crs.
     
     Args:
-        extent: A geographic extent formatted as a dictionary with the following keys: xmin, xmax, ymin, ymax, crs
-        dst_crs: The desired CRS of the output GeoJSON polygon as a string
+        extent (dict): A geographic extent formatted as a dictionary with the following keys: xmin, xmax, ymin, ymax, crs
+        dst_crs (str): The desired coordinate system of the output GeoJSON polygon as a string (e.g. epsg:4326)
 
     Returns:
-        A GeoJSON polygon formatted as described above
+        geom (dict): A GeoJSON polygon
     """
     left, right = extent["xmin"], extent["xmax"]
     top, bottom = extent["ymax"], extent["ymin"]
@@ -87,14 +89,13 @@ def extent_to_transformed_geom(extent, dst_crs):
 
 
 def warp_data_to_3857(input_raster):
-    """
-    Warps an input raster to EPSG:3857
+    """Warps an input raster to EPSG:3857
 
     Args:
         input_raster (InMemoryRaster): An (in memory) raster datasource to warp
 
     Returns:
-        output_raster (InMemoryRaster): The warped version of `input_raster
+        output_raster (InMemoryRaster): The warped version of `input_raster`
     """
     src_height, src_width, num_channels = input_raster.shape
     src_img_tmp = np.rollaxis(input_raster.data.copy(), 2, 0) # convert image to "channels first" format
@@ -130,7 +131,7 @@ def warp_data_to_3857(input_raster):
 
 
 def crop_data_by_extent(input_raster, extent):
-    """Crops the input raster to the boundaries described by `extent`
+    """Crops the input raster to the boundaries described by `extent`.
 
     Args:
         input_raster (InMemoryRaster): An (in memory) raster datasource to crop
@@ -144,15 +145,15 @@ def crop_data_by_extent(input_raster, extent):
 
 
 def crop_data_by_geometry(input_raster, geometry, geometry_crs):
-    """Crops the input raster by the input geometry.
+    """Crops the input raster by the input geometry (described by `geometry` and `geometry_crs`).
 
     Args:
         input_raster (InMemoryRaster): An (in memory) raster datasource to crop
-        geometry (GeoJSON polygon): A polygon in GeoJSON format describing the boundary to crop the input raster to
-        geometry_crs (str): The 
+        geometry (dict): A polygon in GeoJSON format describing the boundary to crop the input raster to
+        geometry_crs (str): The coordinate system of `geometry` as a EPSG code (e.g "epsg:4326")
 
     Returns:
-        output_raster: The cropped version of the input raster
+        output_raster (InMemoryRaster): The cropped version of the input raster
     """
     src_img_tmp = np.rollaxis(input_raster.data.copy(), 2, 0)
     
@@ -189,9 +190,24 @@ def crop_data_by_geometry(input_raster, geometry, geometry_crs):
 # ------------------------------------------------------
 class DataLoaderCustom(DataLoader):
 
+    def __init__(self, data_fn, shapes, padding):
+        """A `DataLoader` object made for single raster datasources (single .tif files, .vrt files, etc.). This provides functionality for extracting data
+        from different shapes and calculating the area of shapes.
+
+        Args:
+            data_fn (str): Path (relative to the root project directory) to a raster file that GDAL can read
+            shapes (dict): A dictionary of with key:value pairs in the format `<layer name>: {"geoms": [...], "areas": [...], "crs": <str>}`. These describe the different polygon layers from 
+                the "datasets.json" file.
+            padding (float): Amount of padding in terms of units of the CRS of the raster source pointed to by `data_fn`
+        """
+        self.data_fn = data_fn
+        self._shapes = shapes
+        self._padding = padding
+
     @property
     def shapes(self):
         return self._shapes
+    
     @shapes.setter
     def shapes(self, value):
         self._shapes = value
@@ -199,33 +215,60 @@ class DataLoaderCustom(DataLoader):
     @property
     def padding(self):
         return self._padding
+
     @padding.setter
     def padding(self, value):
         self._padding = value
 
-    def __init__(self, data_fn, shapes, padding):
-        self.data_fn = data_fn
-        self._shapes = shapes
-        self._padding = padding
-
     def get_data_from_extent(self, extent):
-        f = rasterio.open(self.data_fn, "r")
-        src_crs = f.crs
-        transformed_geom = extent_to_transformed_geom(extent, f.crs.to_dict())
-        transformed_geom = shapely.geometry.shape(transformed_geom)
-        buffed_geom = transformed_geom.buffer(self.padding)
-        geom = shapely.geometry.mapping(shapely.geometry.box(*buffed_geom.bounds))
-        src_image, src_transform = rasterio.mask.mask(f, [geom], crop=True, all_touched=True, pad=False)
-        f.close()
+        """Returns the data from the class' raster source corresponding to a *buffered* version of the input extent.
+        Buffering is done by `self.padding` number of units (in terms of the source coordinate system).
+
+        Args:
+            extent (dict): A geographic extent formatted as a dictionary with the following keys: xmin, xmax, ymin, ymax, crs
+
+        Returns:
+            output_raster (InMemoryRaster): A raster cropped to a *buffered* version of the input extent.
+        """
+        with rasterio.open(self.data_fn, "r") as f:
+            src_crs = f.crs.to_string()
+            transformed_geom = extent_to_transformed_geom(extent, src_crs)
+            transformed_geom = shapely.geometry.shape(transformed_geom)
+
+            buffed_geom = shapely.geometry.mapping(transformed_geom.buffer(self.padding))
+            #geom = shapely.geometry.mapping(shapely.geometry.box(*buffed_geom.bounds))
+            src_image, src_transform = rasterio.mask.mask(f, [buffed_geom], crop=True, all_touched=True, pad=False) # NOTE: Used to buffer by geom, haven't tested this.
 
         src_image = np.rollaxis(src_image, 0, 3)
         return InMemoryRaster(src_image, src_crs, src_transform, buffed_geom.bounds)
 
     def get_area_from_shape_by_extent(self, extent, shape_layer):
+        """Returns the area from the shape that _contains_ the centroid of the given extent.
+
+        Args:
+            extent (dict): A geographic extent formatted as a dictionary with the following keys: xmin, xmax, ymin, ymax, crs
+            shape_layer (str): The name of a key in `self._shapes` to look through
+
+        Returns:
+            area (float): The area of the shape (or a ValueError is raised if no shape is found)
+        """
         i, shape = self.get_shape_by_extent(extent, shape_layer)
         return self.shapes[shape_layer]["areas"][i]
 
     def get_shape_by_extent(self, extent, shape_layer):
+        """Returns the index and shape where shape _contains_ the centroid of the given extent.
+        Specifically, this will iterate through `self._shapes[shape_layer]["geoms"]` to find which shape contains the centroid of the extent.
+
+        Args:
+            extent (dict): A geographic extent formatted as a dictionary with the following keys: xmin, xmax, ymin, ymax, crs
+            shape_layer (str): A key in `self._shapes` to look through
+
+        Raises:
+            ValueError: Will be raised if no shape within `self._shapes[shape_layer]` contains the given extent
+
+        Returns:
+            (index (int), shape (shapely.geometry.shape)): A tuple containing the index of the found shape and the corresponding shapely shape object
+        """
         transformed_geom = extent_to_transformed_geom(extent, self.shapes[shape_layer]["crs"])
         transformed_shape = shapely.geometry.shape(transformed_geom)
         mask_geom = None
@@ -235,7 +278,15 @@ class DataLoaderCustom(DataLoader):
         raise ValueError("No shape contains the centroid")
 
     def get_data_from_shape(self, shape):
-        '''Note: We assume that the shape is a geojson geometry in EPSG:4326'''
+        """Returns the data from the class' raster source corresponding to the input `shape` without any buffering applied. Note that `shape` is expected
+        to be a GeoJSON polygon (as a dictionary) in the EPSG:4326 coordinate system.
+
+        Args:
+            shape (dict): A polygon in GeoJSON format describing the boundary to crop the input raster to
+
+        Returns:
+            output_raster (InMemoryRaster): A raster cropped to the outline of `shape`
+        """
 
         f = rasterio.open(self.data_fn, "r")
         src_profile = f.profile

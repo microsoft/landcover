@@ -295,15 +295,15 @@ def pred_tile():
         raise ValueError("Dataset doesn't seem to be valid, do the datasets in js/tile_layers.js correspond to those in TileLayers.py")    
     
     try:
-        tile, raster_profile, raster_transform, raster_bounds, raster_crs = DATASETS[dataset]["data_loader"].get_data_from_shape(geom["geometry"])
-        print("pred_tile, get_data_from_shape:", tile.shape)
+        raster = DATASETS[dataset]["data_loader"].get_data_from_shape(geom["geometry"])
+        print("pred_tile, get_data_from_shape:", raster.shape)
 
         shape_area = get_area_from_geometry(geom["geometry"])      
     except NotImplementedError as e:
         bottle.response.status = 400
         return json.dumps({"error": "Cannot currently download imagery with 'Basemap' based datasets"})
 
-    output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(tile, True)
+    output = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(raster.data, True)
     print("pred_tile, after model.run:", output.shape)
     
     if output.shape[2] > len(color_list):
@@ -336,7 +336,7 @@ def pred_tile():
     cv2.imwrite("tmp/downloads/%s.png" % (tmp_id), img_hard)
     data["downloadPNG"] = "tmp/downloads/%s.png" % (tmp_id)
 
-    new_profile = raster_profile.copy()
+    new_profile = {}
     new_profile['driver'] = 'GTiff'
     new_profile['dtype'] = 'uint8'
     new_profile['compress'] = "lzw"
