@@ -153,15 +153,14 @@ var doSendCorrection = function(point, idx){
         "modelIdx": parseInt(gActiveImgIdx),
     };
 
-
+    var value = gSelectedClassIdx;
     $.ajax({
         type: "POST",
         url: gBackendURL + "recordCorrection",
         data: JSON.stringify(request),
         success: function(data, textStatus, jqXHR){
-            var labelIdx = data["value"];
-            CLASSES[labelIdx]["count"] += 1;
-            renderClassCount(CLASSES[labelIdx]["name"], CLASSES[labelIdx]["count"]);
+            CLASSES[value]["count"] += 1;
+            renderClassCount(CLASSES[value]["name"], CLASSES[value]["count"]);
             animateSuccessfulCorrection(10, 80);
         },
         error: notifyFail,
@@ -341,13 +340,13 @@ var requestInputPatch = function(idx, polygon, serviceURL){
         data: JSON.stringify(request),
         success: function(data, textStatus, jqXHR){
             var resp = data;
-            var naipImg = "data:image/png;base64," + resp.input_naip;
+            var inputImage = "data:image/png;base64," + resp.input_img;
 
             //gCurrentPatches[idx]["naipImg"] = naipImg
             
             // Update the right panel if we are the current "last item", we need to check for this because the order we send out requests to the API isn't necessarily the order they will come back
             if(idx == gCurrentPatches.length-1){
-                $("#inputImage").attr("src", naipImg);
+                $("#inputImage").attr("src", inputImage);
             }
         },
         error: notifyFail,

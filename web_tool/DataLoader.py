@@ -102,7 +102,7 @@ def warp_data_to_3857(input_raster):
 
     x_res, y_res = input_raster.transform[0], -input_raster.transform[4] # the pixel resolution of the raster is given by the affine transformation
 
-    dst_crs = rasterio.crs.CRS.from_epsg(3857)
+    dst_crs = "epsg:3857"
     dst_bounds = rasterio.warp.transform_bounds(input_raster.crs, dst_crs, *input_raster.bounds)
     dst_transform, width, height = rasterio.warp.calculate_default_transform(
         input_raster.crs,
@@ -235,9 +235,11 @@ class DataLoaderCustom(DataLoader):
             transformed_geom = extent_to_transformed_geom(extent, src_crs)
             transformed_geom = shapely.geometry.shape(transformed_geom)
 
-            buffed_geom = shapely.geometry.mapping(transformed_geom.buffer(self.padding))
-            #geom = shapely.geometry.mapping(shapely.geometry.box(*buffed_geom.bounds))
-            src_image, src_transform = rasterio.mask.mask(f, [buffed_geom], crop=True, all_touched=True, pad=False) # NOTE: Used to buffer by geom, haven't tested this.
+            buffed_geom = transformed_geom.buffer(self.padding)
+            buffed_geojson = shapely.geometry.mapping(buffed_geom)
+
+            #buffed = shapely.geometry.mapping(shapely.geometry.box(*buffed_geom.bounds))
+            src_image, src_transform = rasterio.mask.mask(f, [buffed_geojson], crop=True, all_touched=True, pad=False) # NOTE: Used to buffer by geom, haven't tested this.
 
         src_image = np.rollaxis(src_image, 0, 3)
         return InMemoryRaster(src_image, src_crs, src_transform, buffed_geom.bounds)
