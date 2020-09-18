@@ -44,7 +44,9 @@ class TorchFineTuningOrinoquia(ModelSession):
         LOGGER.info(f"config is for experiment {self.config.experiment_name}")
 
         # check that the necessary fields are present in the config
-        assert self.config.num_classes > 1
+        assert self.config.num_classes > 1  # this is the number of classes the initial model supports
+        self.num_classes = self.config.num_classes  # self.num_classes can evolve during a session
+
         assert self.config.chip_size > 1
         assert self.config.feature_scale in [1, 2]
 
@@ -176,8 +178,8 @@ class TorchFineTuningOrinoquia(ModelSession):
         model_output = np.concatenate(model_output, axis=0)
         model_features = np.concatenate(model_features, axis=0)
 
-        # fill in the output array
-        output = np.zeros((height, width, self.config.num_classes), dtype=np.float32)
+        # fill in the output array; self.num_classes is the number of classes supported by the current model
+        output = np.zeros((height, width, self.num_classes), dtype=np.float32)
         for i, (row_start, row_end, col_start, col_end) in enumerate(batch_indices):
             h = row_end - row_start
             w = col_end - col_start
@@ -199,6 +201,7 @@ class TorchFineTuningOrinoquia(ModelSession):
     def add_sample_point(self, row, col, class_idx):
         self.corr_labels.append(class_idx)
         self.corr_features.append(self.current_features[row, col, :])
+
         print(f"After add_sample_point, corr_labels length is {len(self.corr_labels)}")
         return {
             "message": f"Training sample for class {class_idx} added",
@@ -221,16 +224,24 @@ class TorchFineTuningOrinoquia(ModelSession):
 
     def reset(self):
         self._init_model()
+        self.num_classes = self.config.num_classes
         self.corr_features = []
         self.corr_labels = []
         return {
-            "message": "Model is reset",
+            "message": f"Model is reset and support {self.num_classes} classes",
             "success": True
         }
 
-    def retrain(self, train_steps=100, learning_rate=5e-5):
-        print("In retrain...")
+    def retrain(self, train_steps=100, learning_rate=1e-3):
         print_every = 10
+
+        # if any new classes have been added, update self.num_classes and re-initialize final layer
+        # class start from 0
+        if max(self.corr_labels) >= self.num_classes:
+            self.num_classes = max(self.corr_labels) + 1
+            self.model.change_num_classes(self.num_classes)
+            self.model.final.to(device=self.device)
+            LOGGER.debug(f"New classes have been added (total {self.num_classes}) and final layer re-initialized.")
 
         # all corrections since the last reset are used
         batch_x = torch.from_numpy(np.array(self.corr_features)).float().to(self.device)
@@ -270,6 +281,7 @@ class TorchFineTuningOrinoquia(ModelSession):
         }
 
     def save_state_to(self, directory):
+        # number of classes could be different from what's in the config for the initial model
         return {
             "message": "Saving not yet implemented",
             "success": False
