@@ -316,15 +316,11 @@ var requestPatches = function(polygon){
     
     requestInputPatch(idx, polygon, gBackendURL);
 
-    gCurrentPatches[idx]["patches"].push({
-        "srcs": null
-    });
-    gCurrentPatches[idx]["patches"].push({
-        "srcs": null
-    });
-    gCurrentPatches[idx]["patches"].push({
-        "srcs": null
-    });
+    for (var i=0;i<6;i++) {
+        gCurrentPatches[idx]["patches"].push({
+            "srcs": null
+        });
+    }
     requestPatch(idx, polygon, 0, gBackendURL);
 
     // The following code is for connecting to multiple backends at once
@@ -377,10 +373,22 @@ var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
                 {
                     "soft": "data:image/png;base64," + resp.output_soft[2],
                     "hard": "data:image/png;base64," + resp.output_hard[2],
+                },
+                {
+                    "soft": "data:image/png;base64," + resp.output_soft[3],
+                    "hard": "data:image/png;base64," + resp.output_hard[3],
+                },
+                {
+                    "soft": "data:image/png;base64," + resp.output_soft[4],
+                    "hard": "data:image/png;base64," + resp.output_hard[4],
+                },
+                {
+                    "soft": "data:image/png;base64," + resp.output_soft[5],
+                    "hard": "data:image/png;base64," + resp.output_hard[5],
                 }
             ];
             
-            for(let i=0; i<3; i++){
+            for(let i=0; i<6; i++){
                 // Display the result on the map if we are the currently selected model
                 let tSelection = gDisplayHard ? "hard" : "soft";
                 if(i == gCurrentPatches[idx]["activeImgIdx"]){
