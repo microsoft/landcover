@@ -133,7 +133,7 @@ class SessionHandler():
             #process = self._spawn_local_worker(random_port, model_fn, gpu_id, fine_tune_layer, model_type)
             #model = ModelSessionRPC(session_id, random_port)
             
-            model = TorchSmoothingCycleFineTune(model_fn, gpu_id, -2, 4)
+            model = TorchSmoothingCycleFineTune(model_fn, gpu_id, -2, 6)
             
             session = Session(session_id, model)
             self._SESSION_MAP[session_id] = session
