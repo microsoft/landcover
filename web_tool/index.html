@@ -453,7 +453,8 @@
                 $(this).addClass("active");
                 
                 var idx = gCurrentPatches.length-1;
-                gActiveImgIdx = $(this).attr("im-id");
+                gActiveImgIdx = parseInt($(this).attr("im-id"));
+                console.debug(gActiveImgIdx);
 
                 var srcs = gCurrentPatches[idx]["patches"][gActiveImgIdx]["srcs"];
                 let tSelection = gDisplayHard ? "hard" : "soft";
