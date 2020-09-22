@@ -146,7 +146,7 @@ var addOpacityKeyHandlers = function(opacitySlider){
                 opacitySlider.slider.value = 100
                 opacitySlider._updateValue();
             } else if(e.which == 67) { // "c" - cycle chosen model
-                $(".exampleImage")[(gActiveImgIdx+1) % 3].click();
+                $(".exampleImage")[(gActiveImgIdx+1) % gNumModels].click();
             }
         }
     });

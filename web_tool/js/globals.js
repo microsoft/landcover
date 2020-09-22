@@ -137,3 +137,5 @@ var gBasemaps = {};
 var gZonemaps = {};
 
 var gDownloadLayer = null;
+
+var gNumModels = 6;

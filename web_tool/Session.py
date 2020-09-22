@@ -140,12 +140,10 @@ class Session():
             # The storage_type / --storage_path command line args were not set
             pass
 
-    def pred_patch(self, patch, dataset_profile, target_extent, patch_transform):
+    def pred_patch(self, patch, dataset_profile, target_extent, patch_transform, idx):
         # need to paste the returned predictions to self.output_map
-        outputs = self.model.run(patch, False)
+        outputs = self.model.run(patch, False, idx)
         output = outputs[self.model.current_model_idx]
-
-        print(self.model.current_model_idx)
 
         # Crop output to extent
         dataset_crs = dataset_profile["crs"].to_string()
@@ -186,7 +184,7 @@ class Session():
         return outputs
 
     def pred_tile(self, tile, dataset_profile, target_polygon, tile_transform):
-        outputs = self.model.run(tile, True)
+        outputs = self.model.run(tile, True, -1)
         output = outputs[self.model.current_model_idx]
 
         # Crop output to extent

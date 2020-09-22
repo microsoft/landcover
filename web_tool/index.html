@@ -441,7 +441,7 @@
             //----------------------------------------------------------------------
             
             //for(var i=0; i<SERVERS.length; i++){
-            for(var i=0; i<6; i++){
+            for(var i=0; i<gNumModels; i++){
                 var img = $("<img class='exampleImage'>");
                 img.attr("im-id", i);
                 img.attr("id", "exampleImage_"+i);
@@ -452,9 +452,9 @@
                 $(".exampleImage").removeClass("active");
                 $(this).addClass("active");
                 
-                var idx = gCurrentPatches.length-1;
+                let idx = gCurrentPatches.length-1;
                 gActiveImgIdx = parseInt($(this).attr("im-id"));
-                console.debug(gActiveImgIdx);
+                console.debug("Changing gActiveImgIdx to " + gActiveImgIdx);
 
                 var srcs = gCurrentPatches[idx]["patches"][gActiveImgIdx]["srcs"];
                 let tSelection = gDisplayHard ? "hard" : "soft";

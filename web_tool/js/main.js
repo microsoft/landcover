@@ -113,7 +113,7 @@ var doDownloadTile = function(){
         "polygon": polygon.toGeoJSON(),
         "classes": CLASSES,
         "zoneLayerName": null,
-        "modelIdx": parseInt(gActiveImgIdx),
+        "modelIdx": gActiveImgIdx,
         "SESSION": SESSION_ID
     };
 
@@ -164,7 +164,7 @@ var doDownloadAll = function(){
         "experiment": EXP_NAME,
         "classes": CLASSES,
         "zoneLayerName": null,
-        "modelIdx": parseInt(gActiveImgIdx),
+        "modelIdx": gActiveImgIdx,
         "SESSION": SESSION_ID
     };
 
@@ -223,7 +223,7 @@ var doSendCorrection = function(point, idx){
         },
         "classes": CLASSES,
         "value" : gSelectedClassIdx,
-        "modelIdx": parseInt(gActiveImgIdx),
+        "modelIdx": gActiveImgIdx,
         "SESSION": SESSION_ID
     };
 
@@ -306,21 +306,22 @@ var doUndo = function(){
 //-----------------------------------------------------------------
 var requestPatches = function(polygon){
     // Setup placeholders for the predictions from the current click to be saved to
+
+    let idx = gCurrentPatches.length;
     gCurrentPatches.push({
         "naipImg": null,
         "imageLayer": L.imageOverlay("", L.polygon(polygon).getBounds(), {pane: "labels"}).addTo(gMap),
         "patches": [],
-        "activeImgIdx": gActiveImgIdx
+        "activeImgIdx": gActiveImgIdx,
+        "rendered": false
     });
-    var idx = gCurrentPatches.length-1;
-    
-    requestInputPatch(idx, polygon, gBackendURL);
-
-    for (var i=0;i<6;i++) {
+    for (var i=0;i<gNumModels;i++) {
         gCurrentPatches[idx]["patches"].push({
             "srcs": null
         });
     }
+
+    requestInputPatch(idx, polygon, gBackendURL);
     requestPatch(idx, polygon, 0, gBackendURL);
 
     // The following code is for connecting to multiple backends at once
@@ -351,44 +352,26 @@ var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
             "crs": "epsg:3857"
         },
         "classes": CLASSES,
-        "SESSION": SESSION_ID
+        "SESSION": SESSION_ID,
+        "idx": idx
     };
 
-    var lengthThatMightChange = gCurrentPatches.length-1;
+
+    let lengthThatMightChange = gCurrentPatches.length-1;
     $.ajax({
         type: "POST",
         url: serviceURL + "predPatch",
         data: JSON.stringify(request),
         success: function(resp, textStatus, jqXHR){
-            
-            let srcs = [
-                {
-                    "soft": "data:image/png;base64," + resp.output_soft[0],
-                    "hard": "data:image/png;base64," + resp.output_hard[0],
-                },
-                {
-                    "soft": "data:image/png;base64," + resp.output_soft[1],
-                    "hard": "data:image/png;base64," + resp.output_hard[1],
-                },
-                {
-                    "soft": "data:image/png;base64," + resp.output_soft[2],
-                    "hard": "data:image/png;base64," + resp.output_hard[2],
-                },
-                {
-                    "soft": "data:image/png;base64," + resp.output_soft[3],
-                    "hard": "data:image/png;base64," + resp.output_hard[3],
-                },
-                {
-                    "soft": "data:image/png;base64," + resp.output_soft[4],
-                    "hard": "data:image/png;base64," + resp.output_hard[4],
-                },
-                {
-                    "soft": "data:image/png;base64," + resp.output_soft[5],
-                    "hard": "data:image/png;base64," + resp.output_hard[5],
-                }
-            ];
-            
-            for(let i=0; i<6; i++){
+            let srcs = [];
+            for(let i=0;i<gNumModels;i++){
+                srcs.push({
+                    "soft": "data:image/png;base64," + resp.output_soft[i],
+                    "hard": "data:image/png;base64," + resp.output_hard[i],
+                });
+            }
+
+            for(let i=0; i<gNumModels; i++){
                 // Display the result on the map if we are the currently selected model
                 let tSelection = gDisplayHard ? "hard" : "soft";
                 if(i == gCurrentPatches[idx]["activeImgIdx"]){
@@ -412,7 +395,7 @@ var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
                 }
             }
 
-            if(idx > 0){
+            if(idx > 0 && gCurrentPatches[idx-1]["rendered"]){
                 delete gCurrentPatches[idx-1]["patches"];
                 delete gCurrentPatches[idx-1]["naipImg"];
             }
@@ -534,7 +517,7 @@ var doUserCycle = function () {
         "type": "userCycled",
         "dataset": gCurrentDataset,
         "experiment": EXP_NAME,
-        "modelIdx": parseInt(gActiveImgIdx),
+        "modelIdx": gActiveImgIdx,
         "SESSION": SESSION_ID
     };
 

@@ -245,6 +245,7 @@ def pred_patch():
     class_list = data["classes"]
     name_list = [item["name"] for item in class_list]
     color_list = [item["color"] for item in class_list]
+    idx_from_frontend = data["idx"]
 
     tic = float(time.time())
 
@@ -274,7 +275,7 @@ def pred_patch():
     #   Fix padding
     # ------------------------------------------------------
     #outputs = SESSION_HANDLER.get_session(bottle.request.session.id).model.run(patch, False, bounds, DATASETS[dataset]["data_loader"].profile)
-    outputs = current_session.pred_patch(patch, DATASETS[dataset]["data_loader"].profile, extent, transform)
+    outputs = current_session.pred_patch(patch, DATASETS[dataset]["data_loader"].profile, extent, transform, idx_from_frontend)
 
     #assert len(output.shape) == 3, "The model function should return an image shaped as (height, width, num_classes)"
     #assert (output.shape[2] < output.shape[0] and output.shape[2] < output.shape[1]), "The model function should return an image shaped as (height, width, num_classes)" # assume that num channels is less than img dimensions

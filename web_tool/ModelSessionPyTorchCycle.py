@@ -66,26 +66,27 @@ class TorchSmoothingCycleFineTune(ModelSession):
         self.num_corrections_since_retrain = [ [ 0 for _ in range(num_models) ] ]
 
         self.current_model_idx = 0
+        self.latest_idx = -1
 
     @property
     def last_tile(self):
         return 0
 
-    def run(self, naip_data, inference_mode):
+    def run(self, naip_data, inference_mode, idx):
         x = naip_data
         x = np.swapaxes(x, 0, 2)
         x = np.swapaxes(x, 1, 2)
         x = x[:4, :, :]
         naip_data = x / 255.0
 
-        self.last_outputs = []
+        last_outputs = []
         self.naip_data = naip_data  # keep non-trimmed size, i.e. with padding
         with T.no_grad():
 
             if naip_data.shape[1] < 300:
 
                 features = self.run_core_model_on_tile(naip_data)
-                self.features = features.cpu().numpy()
+                tfeatures = features.cpu().numpy()
 
                 for i in range(self.num_models):
 
@@ -93,12 +94,16 @@ class TorchSmoothingCycleFineTune(ModelSession):
                     out = np.rollaxis(out, 0, 3)
                     out = softmax(out, 2)
                 
-                    self.last_outputs.append(out)
+                    last_outputs.append(out)
 
             else:
-                self.features, self.last_outputs = self.run_large(naip_data)
+                tfeatures, last_outputs = self.run_large(naip_data)
 
-            return self.last_outputs
+            if idx > self.latest_idx:
+                self.features = tfeatures
+                self.latest_idx = idx
+
+            return last_outputs
 
     def run_large(self,naip_data):
         eval_size = 256
