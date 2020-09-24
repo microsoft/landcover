@@ -150,7 +150,7 @@ class TorchSmoothingCycleFineTune(ModelSession):
 
         return features_out, preds_out
 
-    def retrain(self, train_steps=100, learning_rate=1e-3):
+    def retrain(self, train_steps=100, learning_rate=1e-2):
       
         print_every_k_steps = 99
         
