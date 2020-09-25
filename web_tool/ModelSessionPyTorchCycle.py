@@ -61,8 +61,9 @@ class TorchSmoothingCycleFineTune(ModelSession):
 
         self.naip_data = None
         
-        self.corr_features = [[] for _ in range(num_models) ]
-        self.corr_labels = [[] for _ in range(num_models) ]
+        #self.corr_features = [[] for _ in range(num_models) ]
+        #self.corr_labels = [[] for _ in range(num_models) ]
+        self.corrections = [ [] for _ in range(num_models) ]
         self.num_corrections_since_retrain = [ [ 0 for _ in range(num_models) ] ]
 
         self.current_model_idx = 0
@@ -158,7 +159,11 @@ class TorchSmoothingCycleFineTune(ModelSession):
         
         self.num_corrections_since_retrain.append([0 for _ in range(self.num_models)])
 
-        for model, corr_features, corr_labels in zip(self.augment_models, self.corr_features, self.corr_labels):
+        for model, corr in zip(self.augment_models, self.corrections):
+
+            corr_features = [ x[0] for x in corr ]
+            corr_labels = [ x[1] for x in corr ]
+
             batch_x = T.from_numpy(np.array(corr_features)).float().to(self.device)
             batch_y = T.from_numpy(np.array(corr_labels)).to(self.device)
 
@@ -190,7 +195,7 @@ class TorchSmoothingCycleFineTune(ModelSession):
                     message = "Fine-tuned model with %d samples." % (len(corr_features))
 
         success = True
-        message = "Fine-tuned models with {} samples.".format((','.join(str(len(x)) for x in self.corr_features)))
+        message = "Fine-tuned models with {} samples.".format((','.join(str(len(x)) for x in self.corrections)))
         print(message)
         return success, message
     
@@ -198,8 +203,7 @@ class TorchSmoothingCycleFineTune(ModelSession):
         num_undone = sum(self.num_corrections_since_retrain[-1])
         message = 'Removed {} labels'.format(' '.join(map(str,self.num_corrections_since_retrain[-1])))
         for i in range(self.num_models):
-            self.corr_features[i] = self.corr_features[i][:len(self.corr_features[i])-self.num_corrections_since_retrain[-1][i]]
-            self.corr_labels[i] = self.corr_labels[i][:len(self.corr_labels[i])-self.num_corrections_since_retrain[-1][i]]
+            self.corrections[i] = self.corrections[i][:len(self.corrections[i])-self.num_corrections_since_retrain[-1][i]]
             self.num_corrections_since_retrain[-1][i] = 0
         if num_undone == 0: self.num_corrections_since_retrain = self.num_corrections_since_retrain[:-1]
         if len(self.num_corrections_since_retrain) == 0:
@@ -209,8 +213,7 @@ class TorchSmoothingCycleFineTune(ModelSession):
     def add_sample_point(self, row, col, class_idx, model_idx):
         print("adding sample: class %d (incremented to %d) at (%d, %d), model %d" % (class_idx, class_idx+1 , row, col, model_idx))
 
-        self.corr_labels[model_idx].append(class_idx+1)
-        self.corr_features[model_idx].append(self.features[0,:,row,col])
+        self.corrections[model_idx].append((self.features[0,:,row,col],class_idx+1))
         self.num_corrections_since_retrain[-1][model_idx] += 1
 
     def init_model(self):
