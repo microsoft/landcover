@@ -25,9 +25,9 @@ def _load_dataset(dataset):
     if dataset["dataLayer"]["type"] == "CUSTOM":
         data_loader = DataLoaderCustom(**dataset["dataLayer"])
     elif dataset["dataLayer"]["type"] == "USA_LAYER":
-        data_loader = DataLoaderUSALayer(dataset["dataLayer"]["padding"])
+        data_loader = DataLoaderUSALayer(**dataset["dataLayer"])
     elif dataset["dataLayer"]["type"] == "BASEMAP":
-        data_loader = DataLoaderBasemap(dataset["dataLayer"]["padding"])
+        data_loader = DataLoaderBasemap(**dataset["dataLayer"])
     else:
         LOGGER.warning("Step 3 failed in loading dataset {}".format(dataset["metadata"]["displayName"]))
         return False # TODO: maybe we should make these errors more descriptive (explain why we can't load a dataset)
@@ -42,7 +42,7 @@ def load_datasets():
     dataset_json = json.load(open(os.path.join(ROOT_DIR, "datasets.json"),"r"))
     for key, dataset in dataset_json.items():
         data_loader = _load_dataset(dataset)
-        
+
         if data_loader is False:
             LOGGER.warning("Files are missing, we will not be able to serve the following dataset: '%s'" % (key)) 
         else:
@@ -54,7 +54,7 @@ def load_datasets():
 
             if key not in datasets:
                 data_loader = _load_dataset(dataset)
-                
+
                 if data_loader is False:
                     LOGGER.warning("Files are missing, we will not be able to serve the following dataset: '%s'" % (key)) 
                 else:

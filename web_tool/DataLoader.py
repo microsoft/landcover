@@ -103,6 +103,9 @@ def warp_data_to_3857(input_raster):
     src_img_tmp = np.rollaxis(input_raster.data.copy(), 2, 0) # convert image to "channels first" format
 
     x_res, y_res = input_raster.transform[0], -input_raster.transform[4] # the pixel resolution of the raster is given by the affine transformation
+    if x_res < 1 and y_res < 1:
+        x_res = 1
+        y_res = 1
 
     dst_crs = "epsg:3857"
     dst_bounds = rasterio.warp.transform_bounds(input_raster.crs, dst_crs, *input_raster.bounds)
@@ -315,7 +318,7 @@ class NAIPTileIndex(object):
 
 class DataLoaderUSALayer(DataLoader):
 
-    def __init__(self, padding):
+    def __init__(self, padding, **kwargs):
         self._padding = padding
 
     @property
@@ -361,12 +364,10 @@ class DataLoaderUSALayer(DataLoader):
 # ------------------------------------------------------
 class DataLoaderBasemap(DataLoader):
 
-    @property
-    def shapes(self):
-        return self._shapes
-    @shapes.setter
-    def shapes(self, value):
-        self._shapes = value
+    def __init__(self, padding, **kwargs):
+        self._padding = padding
+        self.data_url = kwargs["url"]
+        self.zoom_level = 17
 
     @property
     def padding(self):
@@ -374,11 +375,6 @@ class DataLoaderBasemap(DataLoader):
     @padding.setter
     def padding(self, value):
         self._padding = value
-
-    def __init__(self, data_url, padding):
-        self.data_url = data_url
-        self._padding = padding
-        self.zoom_level = 17
 
     def get_image_by_xyz_from_url(self, tile):
         '''NOTE: Here "tile" refers to a mercantile "Tile" object.'''
@@ -414,9 +410,6 @@ class DataLoaderBasemap(DataLoader):
         
         return test_f
 
-    def get_shape_by_extent(self, extent, shape_layer):
-        raise NotImplementedError()
-
     def get_data_from_extent(self, extent):
         transformed_geom = extent_to_transformed_geom(extent, "epsg:4326")
         transformed_geom = shapely.geometry.shape(transformed_geom)
@@ -437,13 +430,13 @@ class DataLoaderBasemap(DataLoader):
         for f in virtual_files:
             f.close()
         
-        dst_crs = rasterio.crs.CRS.from_epsg(4326)
+        dst_crs = "epsg:4326"
         dst_profile = {
             "driver": "GTiff",
             "width": out_image.shape[1],
             "height": out_image.shape[0],
             "transform": out_transform,
-            "crs": "epsg:4326",
+            "crs": dst_crs,
             "count": 3,
             "dtype": "uint8"
         }
@@ -455,13 +448,8 @@ class DataLoaderBasemap(DataLoader):
         test_f.seek(0)
         test_f.close()
 
-        r,g,b = out_image
-        out_image = np.stack([r,g,b,r])
-        
-        return out_image, dst_crs, out_transform, (minx, miny, maxx, maxy)
+        out_image = np.rollaxis(out_image, 0, 3)
+        return InMemoryRaster(out_image, dst_crs, out_transform, buffed_geom.bounds)
 
-    def get_area_from_shape_by_extent(self, extent, shape_layer):
-        raise NotImplementedError()
-
-    def get_data_from_shape(self, shape):
+    def get_data_from_geometry(self, geometry):
         raise NotImplementedError()

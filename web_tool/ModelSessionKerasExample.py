@@ -50,6 +50,12 @@ class KerasDenseFineTune(ModelSession):
         return self._last_tile
 
     def run(self, tile, inference_mode=False):
+        if tile.shape[2] == 3: # If we get a 3 channel image, then pretend it is 4 channel by duplicating the first band
+            tile = np.concatenate([
+                tile,
+                tile[:,:,0][:,:,np.newaxis]
+            ], axis=2)
+
         tile = tile / 255.0
         output, output_features = self.run_model_on_tile(tile)
         

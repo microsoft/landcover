@@ -112,5 +112,33 @@
         ],
         "shapeLayers": null,
         "validModels": ["naip_demo"]
+    },
+    "esri_all": {
+        "metadata": {
+            "displayName": "ESRI World Imagery",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "BASEMAP",
+            "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+            "padding": 0.0005,
+            "resolution": 1
+        },
+        "basemapLayers": [
+            {
+                "layerName": "NAIP 2017 Imagery",
+                "initialZoom": 4,
+                "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+                "initialLocation": [38, -88],
+                "args": {
+                    "attribution": "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
+                    "maxNativeZoom": 16,
+                    "maxZoom": 20,
+                    "minZoom": 4
+                }
+            }
+        ],
+        "shapeLayers": null,
+        "validModels": ["naip_demo"]
     }
 }
