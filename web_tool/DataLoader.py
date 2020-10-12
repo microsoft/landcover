@@ -23,12 +23,15 @@ import rasterio.merge
 import rtree
 
 import mercantile
+import utm
 
 import cv2
 import pickle
 
 from . import ROOT_DIR
 from .DataLoaderAbstract import DataLoader
+
+NAIP_BLOB_ROOT = 'https://naipblobs.blob.core.windows.net/naip'
 
 
 class InMemoryRaster(object):
@@ -85,7 +88,6 @@ def extent_to_transformed_geom(extent, dst_crs):
         return geom
     else:
         return fiona.transform.transform_geom(src_crs, dst_crs, geom)
-
 
 
 def warp_data_to_3857(input_raster):
@@ -185,32 +187,54 @@ def crop_data_by_geometry(input_raster, geometry, geometry_crs):
     return InMemoryRaster(dst_img, input_raster.crs, dst_transform, (left, bottom, right, top))
 
 
+def get_area_from_geometry(geom, src_crs="epsg:4326"):
+    """Semi-accurately calculates the area for an input GeoJSON shape in km^2 by reprojecting it into a local UTM coordinate system.
+
+    Args:
+        geom (dict): A polygon (or multipolygon) in GeoJSON format
+        src_crs (str, optional): The CRS of `geom`. Defaults to "epsg:4326".
+
+    Raises:
+        ValueError: This will be thrown if geom isn't formatted correctly, or is not a Polygon or MultiPolygon type
+
+    Returns:
+        area (float): The area of `geom` in km^2
+    """
+
+    # get one of the coordinates
+    try:
+        if geom["type"] == "Polygon":
+            lon, lat = geom["coordinates"][0][0]
+        elif geom["type"] == "MultiPolygon":
+            lon, lat = geom["coordinates"][0][0][0]
+        else:
+            raise ValueError("Polygons and MultiPolygons only")
+    except:
+        raise ValueError("Input shape is not in the correct format")
+
+    zone_number = utm.latlon_to_zone_number(lat, lon)
+    hemisphere = "+north" if lat > 0 else "+south"
+    dest_crs = "+proj=utm +zone=%d %s +datum=WGS84 +units=m +no_defs" % (zone_number, hemisphere)
+    projected_geom = fiona.transform.transform_geom(src_crs, dest_crs, geom)
+    area = shapely.geometry.shape(projected_geom).area / 1000000.0 # we calculate the area in square meters then convert to square kilometers
+    return area
+
+
 # ------------------------------------------------------
 # DataLoader for arbitrary GeoTIFFs
 # ------------------------------------------------------
 class DataLoaderCustom(DataLoader):
 
-    def __init__(self, data_fn, shapes, padding):
+    def __init__(self, padding, **kwargs):
         """A `DataLoader` object made for single raster datasources (single .tif files, .vrt files, etc.). This provides functionality for extracting data
         from different shapes and calculating the area of shapes.
 
         Args:
-            data_fn (str): Path (relative to the root project directory) to a raster file that GDAL can read
-            shapes (dict): A dictionary of with key:value pairs in the format `<layer name>: {"geoms": [...], "areas": [...], "crs": <str>}`. These describe the different polygon layers from 
-                the "datasets.json" file.
-            padding (float): Amount of padding in terms of units of the CRS of the raster source pointed to by `data_fn`
+            padding (float): Amount of padding in terms of units of the CRS of the raster source pointed to by `data_fn`.
+            **kwargs: Should contain a "path" key that points to the location of the datasource (e.g. the .tif or .vrt file to use) 
         """
-        self.data_fn = data_fn
-        self._shapes = shapes
         self._padding = padding
-
-    @property
-    def shapes(self):
-        return self._shapes
-    
-    @shapes.setter
-    def shapes(self, value):
-        self._shapes = value
+        self.data_fn = kwargs["path"]
 
     @property
     def padding(self):
@@ -221,15 +245,6 @@ class DataLoaderCustom(DataLoader):
         self._padding = value
 
     def get_data_from_extent(self, extent):
-        """Returns the data from the class' raster source corresponding to a *buffered* version of the input extent.
-        Buffering is done by `self.padding` number of units (in terms of the source coordinate system).
-
-        Args:
-            extent (dict): A geographic extent formatted as a dictionary with the following keys: xmin, xmax, ymin, ymax, crs
-
-        Returns:
-            output_raster (InMemoryRaster): A raster cropped to a *buffered* version of the input extent.
-        """
         with rasterio.open(self.data_fn, "r") as f:
             src_crs = f.crs.to_string()
             transformed_geom = extent_to_transformed_geom(extent, src_crs)
@@ -244,61 +259,16 @@ class DataLoaderCustom(DataLoader):
         src_image = np.rollaxis(src_image, 0, 3)
         return InMemoryRaster(src_image, src_crs, src_transform, buffed_geom.bounds)
 
-    def get_area_from_shape_by_extent(self, extent, shape_layer):
-        """Returns the area from the shape that _contains_ the centroid of the given extent.
-
-        Args:
-            extent (dict): A geographic extent formatted as a dictionary with the following keys: xmin, xmax, ymin, ymax, crs
-            shape_layer (str): The name of a key in `self._shapes` to look through
-
-        Returns:
-            area (float): The area of the shape (or a ValueError is raised if no shape is found)
-        """
-        i, shape = self.get_shape_by_extent(extent, shape_layer)
-        return self.shapes[shape_layer]["areas"][i]
-
-    def get_shape_by_extent(self, extent, shape_layer):
-        """Returns the index and shape where shape _contains_ the centroid of the given extent.
-        Specifically, this will iterate through `self._shapes[shape_layer]["geoms"]` to find which shape contains the centroid of the extent.
-
-        Args:
-            extent (dict): A geographic extent formatted as a dictionary with the following keys: xmin, xmax, ymin, ymax, crs
-            shape_layer (str): A key in `self._shapes` to look through
-
-        Raises:
-            ValueError: Will be raised if no shape within `self._shapes[shape_layer]` contains the given extent
-
-        Returns:
-            (index (int), shape (shapely.geometry.shape)): A tuple containing the index of the found shape and the corresponding shapely shape object
-        """
-        transformed_geom = extent_to_transformed_geom(extent, self.shapes[shape_layer]["crs"])
-        transformed_shape = shapely.geometry.shape(transformed_geom)
-        mask_geom = None
-        for i, shape in enumerate(self.shapes[shape_layer]["geoms"]):
-            if shape.contains(transformed_shape.centroid):
-                return i, shape
-        raise ValueError("No shape contains the centroid")
-
-    def get_data_from_shape(self, shape):
-        """Returns the data from the class' raster source corresponding to the input `shape` without any buffering applied. Note that `shape` is expected
-        to be a GeoJSON polygon (as a dictionary) in the EPSG:4326 coordinate system.
-
-        Args:
-            shape (dict): A polygon in GeoJSON format describing the boundary to crop the input raster to
-
-        Returns:
-            output_raster (InMemoryRaster): A raster cropped to the outline of `shape`
-        """
-
+    def get_data_from_geometry(self, geometry):
+        #TODO: Figure out what happens if we call this with a geometry that doesn't intersect the data source.
         f = rasterio.open(self.data_fn, "r")
         src_profile = f.profile
         src_crs = f.crs.to_string()
-        transformed_mask_geom = fiona.transform.transform_geom("epsg:4326", src_crs, shape)
+        transformed_mask_geom = fiona.transform.transform_geom("epsg:4326", src_crs, geometry)
         src_image, src_transform = rasterio.mask.mask(f, [transformed_mask_geom], crop=True, all_touched=True, pad=False)
         f.close()
 
         src_image = np.rollaxis(src_image, 0, 3)
-        #return src_image, src_profile, src_transform, shapely.geometry.shape(transformed_mask_geom).bounds, src_crs
         return InMemoryRaster(src_image, src_crs, src_transform, shapely.geometry.shape(transformed_mask_geom).bounds)
 
 
@@ -309,115 +279,82 @@ class NAIPTileIndex(object):
     TILES = None
     
     @staticmethod
-    def lookup(extent):
+    def lookup(geom):
         if NAIPTileIndex.TILES is None:
             assert all([os.path.exists(fn) for fn in [
-                ROOT_DIR + "/data/tile_index.dat",
-                ROOT_DIR + "/data/tile_index.idx",
-                ROOT_DIR + "/data/tiles.p"
+                "data/tile_index/tile_index.dat",
+                "data/tile_index/tile_index.idx",
+                "data/tile_index/tiles.p"
             ]]), "You do not have the correct files, did you setup the project correctly"
-            NAIPTileIndex.TILES = pickle.load(open(ROOT_DIR + "/data/tiles.p", "rb"))
-        return NAIPTileIndex.lookup_naip_tile_by_geom(extent)
+            NAIPTileIndex.TILES = pickle.load(open("data/tile_index/tiles.p", "rb"))
+        return NAIPTileIndex.lookup_naip_tile_by_geom(geom)
 
     @staticmethod
-    def lookup_naip_tile_by_geom(extent):
-        tile_index = rtree.index.Index(ROOT_DIR + "/data/tile_index")
+    def lookup_naip_tile_by_geom(geom):
+        tile_index = rtree.index.Index("data/tile_index/tile_index")
 
-        geom = extent_to_transformed_geom(extent, "EPSG:4269")
         minx, miny, maxx, maxy = shapely.geometry.shape(geom).bounds
         geom = shapely.geometry.mapping(shapely.geometry.box(minx, miny, maxx, maxy, ccw=True))
-
         geom = shapely.geometry.shape(geom)
+
         intersected_indices = list(tile_index.intersection(geom.bounds))
         for idx in intersected_indices:
             intersected_fn = NAIPTileIndex.TILES[idx][0]
             intersected_geom = NAIPTileIndex.TILES[idx][1]
             if intersected_geom.contains(geom):
                 print("Found %d intersections, returning at %s" % (len(intersected_indices), intersected_fn))
+                tile_index.close()
                 return intersected_fn
 
+        tile_index.close()
         if len(intersected_indices) > 0:
             raise ValueError("Error, there are overlaps with tile index, but no tile completely contains selection")
         else:
             raise ValueError("No tile intersections")
 
-class USALayerGeoDataTypes(Enum):
-    NAIP = 1
-    NLCD = 2
-    LANDSAT_LEAFON = 3
-    LANDSAT_LEAFOFF = 4
-    BUILDINGS = 5
-    LANDCOVER = 6
 
 class DataLoaderUSALayer(DataLoader):
 
-    @property
-    def shapes(self):
-        return self._shapes
-    @shapes.setter
-    def shapes(self, value):
-        self._shapes = value
+    def __init__(self, padding):
+        self._padding = padding
 
     @property
     def padding(self):
         return self._padding
+
     @padding.setter
     def padding(self, value):
         self._padding = value
 
-    def __init__(self, shapes, padding):
-        self._shapes = shapes
-        self._padding = padding
+    def get_data_from_extent(self, extent):
+        query_geom = extent_to_transformed_geom(extent, "epsg:4326")
+        naip_fn = NAIPTileIndex.lookup(query_geom)
 
-    def get_fn_by_geo_data_type(self, naip_fn, geo_data_type):
-        fn = None
+        with rasterio.open(NAIP_BLOB_ROOT + "/" + naip_fn) as f:
+            src_crs = f.crs.to_string()
+            transformed_geom = extent_to_transformed_geom(extent, src_crs)
+            transformed_geom = shapely.geometry.shape(transformed_geom)
 
-        if geo_data_type == USALayerGeoDataTypes.NAIP:
-            fn = naip_fn
-        elif geo_data_type == USALayerGeoDataTypes.NLCD:
-            fn = naip_fn.replace("/esri-naip/", "/resampled-nlcd/")[:-4] + "_nlcd.tif"
-        elif geo_data_type == USALayerGeoDataTypes.LANDSAT_LEAFON:
-            fn = naip_fn.replace("/esri-naip/data/v1/", "/resampled-landsat8/data/leaf_on/")[:-4] + "_landsat.tif"
-        elif geo_data_type == USALayerGeoDataTypes.LANDSAT_LEAFOFF:
-            fn = naip_fn.replace("/esri-naip/data/v1/", "/resampled-landsat8/data/leaf_off/")[:-4] + "_landsat.tif"
-        elif geo_data_type == USALayerGeoDataTypes.BUILDINGS:
-            fn = naip_fn.replace("/esri-naip/", "/resampled-buildings/")[:-4] + "_building.tif"
-        elif geo_data_type == USALayerGeoDataTypes.LANDCOVER:
-            fn = naip_fn.replace("/esri-naip/", "/resampled-lc/")[:-4] + "_lc.tif"
-        else:
-            raise ValueError("GeoDataType not recognized")
+            buffed_geom = transformed_geom.buffer(self.padding)
+            buffed_geojson = shapely.geometry.mapping(buffed_geom)
 
-        return fn
-    
-    def get_shape_by_extent(self, extent, shape_layer):
-        transformed_geom = extent_to_transformed_geom(extent, shapes_crs)
-        transformed_shape = shapely.geometry.shape(transformed_geom)
-        mask_geom = None
-        for i, shape in enumerate(shapes):
-            if shape.contains(transformed_shape.centroid):
-                return i, shape
-        raise ValueError("No shape contains the centroid")
+            src_image, src_transform = rasterio.mask.mask(f, [buffed_geojson], crop=True, all_touched=True, pad=False)
 
-    def get_data_from_extent(self, extent, geo_data_type=USALayerGeoDataTypes.NAIP):
-        naip_fn = NAIPTileIndex.lookup(extent)
-        fn = self.get_fn_by_geo_data_type(naip_fn, geo_data_type)
+        src_image = np.rollaxis(src_image, 0, 3)
+        return InMemoryRaster(src_image, src_crs, src_transform, buffed_geom.bounds)
 
-        f = rasterio.open(fn, "r")
-        src_crs = f.crs
-        transformed_geom = extent_to_transformed_geom(extent, f.crs.to_dict())
-        transformed_geom = shapely.geometry.shape(transformed_geom)
-        buffed_geom = transformed_geom.buffer(self.padding)
-        geom = shapely.geometry.mapping(shapely.geometry.box(*buffed_geom.bounds))
-        src_image, src_transform = rasterio.mask.mask(f, [geom], crop=True)
-        f.close()
+    def get_data_from_geometry(self, geometry):
+        naip_fn = NAIPTileIndex.lookup(geometry)
 
-        return src_image, src_crs, src_transform, buffed_geom.bounds
+        with rasterio.open(NAIP_BLOB_ROOT + "/" + naip_fn) as f:
+            src_profile = f.profile
+            src_crs = f.crs.to_string()
+            transformed_mask_geom = fiona.transform.transform_geom("epsg:4326", src_crs, geometry)
+            src_image, src_transform = rasterio.mask.mask(f, [transformed_mask_geom], crop=True, all_touched=True, pad=False)
 
-    def get_area_from_shape_by_extent(self, extent, shape_layer):
-        raise NotImplementedError()
+        src_image = np.rollaxis(src_image, 0, 3)
+        return InMemoryRaster(src_image, src_crs, src_transform, shapely.geometry.shape(transformed_mask_geom).bounds)
 
-    def get_data_from_shape(self, shape):
-        raise NotImplementedError()
 
 # ------------------------------------------------------
 # DataLoader for loading RGB data from arbitrary basemaps
@@ -451,7 +388,7 @@ class DataLoaderBasemap(DataLoader):
         arr = np.asarray(bytearray(req.read()), dtype=np.uint8)
         img = cv2.imdecode(arr, -1)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        return img    
+        return img
 
     def get_tile_as_virtual_raster(self, tile):
         '''NOTE: Here "tile" refers to a mercantile "Tile" object.'''

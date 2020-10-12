@@ -7,6 +7,8 @@ import base64
 import json
 import logging
 import os
+os.environ["CURL_CA_BUNDLE"] = "/etc/ssl/certs/ca-certificates.crt" 
+
 import sys
 import time
 
@@ -19,9 +21,9 @@ import rasterio.warp
 
 LOGGER = logging.getLogger("server")
 
-from web_tool.DataLoader import warp_data_to_3857, crop_data_by_extent, crop_data_by_geometry
-from web_tool.Datasets import load_datasets, get_area_from_geometry
-DATASETS = load_datasets()
+from web_tool.DataLoader import warp_data_to_3857, crop_data_by_extent, crop_data_by_geometry, get_area_from_geometry
+from web_tool.Datasets import load_datasets
+DATALOADERS = load_datasets()
 
 from web_tool.Utils import setup_logging, get_random_string, class_prediction_to_img
 from web_tool import ROOT_DIR
@@ -207,10 +209,10 @@ def pred_patch():
     name_list = [item["name"] for item in class_list]
     color_list = [item["color"] for item in class_list]
 
-    if dataset not in DATASETS:
+    if dataset not in DATALOADERS:
         raise ValueError("Dataset doesn't seem to be valid, do the datasets in js/tile_layers.js correspond to those in TileLayers.py")
     else:
-        current_data_loader = DATASETS[dataset]["data_loader"]
+        current_data_loader = DATALOADERS[dataset]
 
     input_raster = current_data_loader.get_data_from_extent(extent)
     current_session.latest_input_raster = input_raster
@@ -255,19 +257,19 @@ def pred_tile():
     zone_layer_name = data["zoneLayerName"]
     model_idx = data["modelIdx"]
 
-    if dataset not in DATASETS:
+    if dataset not in DATALOADERS:
         raise ValueError("Dataset doesn't seem to be valid, do the datasets in js/tile_layers.js correspond to those in TileLayers.py")    
     else:
-        current_data_loader = DATASETS[dataset]["data_loader"]
+        current_data_loader = DATALOADERS[dataset]
 
     try:
-        input_raster = current_data_loader.get_data_from_shape(geom["geometry"])
+        input_raster = current_data_loader.get_data_from_geometry(geom["geometry"])
         shape_area = get_area_from_geometry(geom["geometry"])
     except NotImplementedError as e: # Example of how to handle errors from the rest of the server
         bottle.response.status = 400
         return json.dumps({"error": "Cannot currently download imagery with 'Basemap' based datasets"})
     
-    output_raster = current_session.pred_tile(input_raster)    
+    output_raster = current_session.pred_tile(input_raster)
     if output_raster.shape[2] > len(color_list):
        LOGGER.warning("The number of output channels is larger than the given color list, cropping output to number of colors (you probably don't want this to happen")
        output_raster.data = output_raster.data[:,:,:len(color_list)]
@@ -349,10 +351,10 @@ def get_input():
     extent = data["extent"]
     dataset = data["dataset"]
 
-    if dataset not in DATASETS:
+    if dataset not in DATALOADERS:
         raise ValueError("Dataset doesn't seem to be valid, please check Datasets.py")
     else:
-        current_data_loader = DATASETS[dataset]["data_loader"]
+        current_data_loader = DATALOADERS[dataset]
 
     input_raster = current_data_loader.get_data_from_extent(extent)
     warped_output_raster = warp_data_to_3857(input_raster) # warp image to 3857
