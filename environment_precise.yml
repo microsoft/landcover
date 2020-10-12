@@ -83,7 +83,6 @@ dependencies:
   - libffi=3.2.1=he1b5a44_1007
   - libgcc-ng=9.2.0=h24d8f2e_2
   - libgdal=2.4.3=hd53ac37_8
-  - libgfortran-ng=7.5.0=hdf63c60_6
   - libiconv=1.15=h516909a_1006
   - libkml=1.3.0=hb574062_1011
   - liblapack=3.8.0=16_mkl
