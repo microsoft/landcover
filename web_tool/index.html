@@ -91,6 +91,10 @@
                         <div style="text-align: center; margin-top:10px;">
                             <button id="btnKillSession">End Session</button>
                         </div>
+
+                        <div style="text-align: center; margin-top:10px;">
+                            Session status: <span id="lblSessionStatus">None</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -128,7 +132,32 @@
 
     <script type="text/javascript">
         
-        var zonePickerControl;
+        function monitorSession(){
+
+            $.ajax({
+                type: "POST",
+                url: window.location.origin + "/getSessionStatus",
+                data: JSON.stringify({}),
+                success: function (data, textStatus, jqXHR) {
+                    gIsSessionActive = data["isActive"];
+                    if(data["isActive"]){
+                        $("#lblSessionStatus").html("Active")
+                        $("#lblSessionStatus").css("text","green")
+                        
+                        window.setTimeout(function(){monitorSession()}, gSessionCheckFrequency);
+                    }else{
+                        $("#lblSessionStatus").html("Inactive")
+                        $("#lblSessionStatus").css("text","red")
+                    }
+                },
+                error: function (jqXHR, textStatus) {
+                },
+                dataType: "json",
+                contentType: "application/json"
+            });
+        }
+
+
         //----------------------------------------------------------------------
         // Runtime entrance
         //----------------------------------------------------------------------
@@ -195,7 +224,7 @@
                 gBasemaps[layerName] = layer;
             }
             gBasemaps["OpenStreetMap"] = getOSMLayer();
-            gBasemaps["ESRI World Imagery"] = getESRILayer();
+            gBasemaps["Esri World Imagery"] = getEsriLayer();
 
 
             // Setup the initial layers to be displayed on the map. This consists of the basemap from the dataset and, if defined, the first shape layer.
@@ -233,14 +262,17 @@
             // Create UI components. These are all defined in `js/components.js`.
             //----------------------------------------------------------------------
             addCustomLogoControl();
+            //addGeocoderControl();
             addZoomControls();
             addDrawControls();
             var basemapPickerControl = addBasemapPickerControl(gBasemaps);
             var basemapPickerControlContainer = basemapPickerControl.getContainer();
             
-            zonePickerControl = addZonePickerControl(gZonemaps);
-            var zonePickerControlContainer = zonePickerControl.getContainer();
-            
+            if (Object.keys(gZonemaps).length > 0){
+                var zonePickerControl = addZonePickerControl(gZonemaps);
+                var zonePickerControlContainer = zonePickerControl.getContainer();
+            }
+
             var opacitySlider = addOpacitySlider();
             addInferenceWindowSizeSlider();
             // addCorrectionWindowSizeSlider();
@@ -394,6 +426,8 @@
                 gCurrentPatches[idx]["activeImgIdx"] = gActiveImgIdx;
                 $(this).attr("src", srcs[tSelection]);
             });
+
+            monitorSession();
 
         });
 

@@ -230,7 +230,17 @@ var addUploadControl = function(){
     return uploadControl;
 }
 
-var getESRILayer = function(){
+
+var addGeocoderControl = function(){
+    var geocoderControl = L.Control.geocoder({
+        collapsed: false,
+        position:'topleft',
+        defaultMarkGeocode: true
+    }).addTo(gMap);
+    return geocoderControl;
+}
+
+var getEsriLayer = function(){
     return L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         maxZoom: 20,
         maxNativeZoom: 17,

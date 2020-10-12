@@ -31,6 +31,11 @@ var addInferenceMouseHandlers = function(){
     });
     
     gMap.addEventListener('click', function(e){
+
+        if(!gIsSessionActive){
+            notifyFailMessage("Your session is inactive, please restart from the landing page")
+            return
+        }
         
         var curSelPoly = null;
         if(gShiftKeyDown){

@@ -146,3 +146,6 @@ var gZoneMapsWeight = {};
 
 var gBasemaps = {};
 var gZonemaps = {};
+
+var gSessionCheckFrequency = 10000; // in milliseconds
+var gIsSessionActive = false;

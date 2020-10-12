@@ -294,12 +294,11 @@ class NAIPTileIndex(object):
 
     @staticmethod
     def lookup_naip_tile_by_geom(geom):
-        tile_index = rtree.index.Index("data/tile_index/tile_index")
-
         minx, miny, maxx, maxy = shapely.geometry.shape(geom).bounds
         geom = shapely.geometry.mapping(shapely.geometry.box(minx, miny, maxx, maxy, ccw=True))
         geom = shapely.geometry.shape(geom)
 
+        tile_index = rtree.index.Index("data/tile_index/tile_index")
         intersected_indices = list(tile_index.intersection(geom.bounds))
         for idx in intersected_indices:
             intersected_fn = NAIPTileIndex.TILES[idx][0]
@@ -308,7 +307,6 @@ class NAIPTileIndex(object):
                 print("Found %d intersections, returning at %s" % (len(intersected_indices), intersected_fn))
                 tile_index.close()
                 return intersected_fn
-
         tile_index.close()
         if len(intersected_indices) > 0:
             raise ValueError("Error, there are overlaps with tile index, but no tile completely contains selection")
@@ -320,6 +318,12 @@ class DataLoaderUSALayer(DataLoader):
 
     def __init__(self, padding, **kwargs):
         self._padding = padding
+        
+        # we do this to prime the tile index -- loading the first time can take awhile
+        try:
+            NAIPTileIndex.lookup(None)
+        except:
+            pass
 
     @property
     def padding(self):

@@ -62,7 +62,10 @@ def manage_sessions():
     elif not SESSION_HANDLER.is_active(bottle.request.session.id):
         LOGGER.debug("We are getting a request that doesn't have an active session")
     else:
-        SESSION_HANDLER.touch_session(bottle.request.session.id) # let the SESSION_HANDLER know that this session has activity
+        if bottle.request.path == "/getSessionStatus":
+            pass # getting the session status should not trigger a touch_session
+        else:
+            SESSION_HANDLER.touch_session(bottle.request.session.id) # let the SESSION_HANDLER know that this session has activity
 
 
 def enable_cors():
@@ -110,6 +113,15 @@ def kill_session():
     bottle.response.status = 200
     return json.dumps(data)
 
+def get_session_status():
+    bottle.response.content_type = 'application/json'
+    data = bottle.request.json
+    
+    data["sessionID"] = str(bottle.request.session.id)
+    data["isActive"] = SESSION_HANDLER.is_active(bottle.request.session.id)
+
+    bottle.response.status = 200
+    return json.dumps(data)
 
 def whoami():
     page = f"""
@@ -476,6 +488,9 @@ def main():
 
     app.route("/killSession", method="OPTIONS", callback=do_options)
     app.route("/killSession", method="POST", callback=kill_session)
+
+    app.route("/getSessionStatus", method="OPTIONS", callback=do_options)
+    app.route("/getSessionStatus", method="POST", callback=get_session_status)
 
     # Checkpoints
     app.route("/createCheckpoint", method="OPTIONS", callback=do_options)

@@ -104,7 +104,6 @@
                 "initialLocation": [38.477018, -75.402312],
                 "args": {
                     "attribution": "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
-                    "maxNativeZoom": 16,
                     "maxZoom": 20,
                     "minZoom": 4
                 }
@@ -115,7 +114,7 @@
     },
     "esri_all": {
         "metadata": {
-            "displayName": "ESRI World Imagery",
+            "displayName": "Esri World Imagery",
             "locationName": null
         },
         "dataLayer": {
@@ -132,7 +131,6 @@
                 "initialLocation": [38, -88],
                 "args": {
                     "attribution": "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
-                    "maxNativeZoom": 16,
                     "maxZoom": 20,
                     "minZoom": 4
                 }
