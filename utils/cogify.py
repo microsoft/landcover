@@ -80,8 +80,6 @@ def main():
     else:
         assert args.suffix != "", "The suffix can't be an empty string because you might lose data."
 
-    fns = fns[:4]
-
     p = Pool(args.num_processes)
     results = p.map(do_work, fns)
 
