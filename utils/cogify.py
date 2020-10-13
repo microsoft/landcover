@@ -12,6 +12,7 @@ If you select "--overwrite" then your input files must be TIFs (i.e. end with {"
 If you select "--suffix" with a suffix of "_SUFFIX" then for each input file "/PATH/INPUT.EXT", a COG file "/PATH/INPUT_SUFFIX.tif" will be written.
 
 The files are converted using `gdal_translate`. Note: you must have GDAL version >=3.1 for this to work -- the script attempts to check for this.
+You can install GDAL>3.1 with `conda create --name myenv "gdal>=3.1" -c conda-forge`.
 
 The script writes a log file to the filename given by `--log_fn` that shows the return code of `gdal_translate` for each input file. A value of "0" means that everything went as expected.
 '''
