@@ -19,6 +19,8 @@ import sys, os, time
 import argparse
 import subprocess
 from multiprocessing import Pool
+import tempfile
+import shutil
 
 import gdal
 
@@ -39,21 +41,27 @@ def do_work(fn):
     extension = parts[-1]
     filename = ".".join(parts[:-1])
 
+    temp_fn = os.path.join(tempfile.gettempdir(), filename + args.suffix + ".tif")
     output_fn = os.path.join(directory, filename + args.suffix + ".tif")
 
-    command = [
-        "gdal_translate",
-        "-co", "NUM_THREADS=ALL_CPUS",
-        "-co", "BIGTIFF=YES",
-        "-co", "COMPRESS=LZW",
-        "-co", "PREDICTOR=2",
-        "-of", "COG",
-        fn,
-        output_fn
-    ]
+    if os.path.exists(output_fn):
+        return (output_fn, -1)
+    else:
+        command = [
+            "gdal_translate",
+            #"-co", "NUM_THREADS=ALL_CPUS",
+            "-co", "BIGTIFF=YES",
+            "-co", "COMPRESS=LZW",
+            "-co", "PREDICTOR=2",
+            "-of", "COG",
+            fn,
+            temp_fn
+        ]
+        result = subprocess.call(" ".join(command), shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        shutil.copy(temp_fn, output_fn)
+        os.remove(temp_fn)
 
-    result = subprocess.call(" ".join(command), shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    return (output_fn,result)
+        return (output_fn,result)
 
 
 def main():
