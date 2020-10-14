@@ -57,10 +57,12 @@ def do_work(fn):
             fn,
             temp_fn
         ]
-        result = subprocess.call(" ".join(command), shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        shutil.copy(temp_fn, output_fn)
-        os.remove(temp_fn)
-
+        result = subprocess.call(" ".join(command), shell=True, stdout=subprocess.DEVNULL)
+        if result == 0:
+            shutil.copy(temp_fn, output_fn)
+            os.remove(temp_fn)
+        else:
+            print("ERROR")
         return (output_fn,result)
 
 
