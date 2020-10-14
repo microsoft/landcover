@@ -44,26 +44,22 @@ def do_work(fn):
     temp_fn = os.path.join(tempfile.gettempdir(), filename + args.suffix + ".tif")
     output_fn = os.path.join(directory, filename + args.suffix + ".tif")
 
-    if os.path.exists(output_fn):
-        return (output_fn, -1)
-    else:
-        command = [
-            "gdal_translate",
-            #"-co", "NUM_THREADS=ALL_CPUS",
-            "-co", "BIGTIFF=YES",
-            "-co", "COMPRESS=LZW",
-            "-co", "PREDICTOR=2",
-            "-of", "COG",
-            fn,
-            temp_fn
-        ]
-        result = subprocess.call(" ".join(command), shell=True, stdout=subprocess.DEVNULL)
-        if result == 0:
-            shutil.copy(temp_fn, output_fn)
-            os.remove(temp_fn)
-        else:
-            print("ERROR")
-        return (output_fn,result)
+    command = [
+        "gdal_translate",
+        #"-co", "NUM_THREADS=ALL_CPUS",
+        "-co", "BIGTIFF=YES",
+        "-co", "COMPRESS=LZW",
+        "-co", "PREDICTOR=2",
+        "-of", "COG",
+        fn,
+        temp_fn
+    ]
+    result = subprocess.call(" ".join(command), shell=True, stdout=subprocess.DEVNULL)
+    if result == 0:
+        shutil.copyfile(temp_fn, output_fn)
+        os.remove(temp_fn)
+
+    return (output_fn,result)
 
 
 def main():
