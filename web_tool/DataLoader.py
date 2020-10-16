@@ -32,6 +32,7 @@ from . import ROOT_DIR
 from .DataLoaderAbstract import DataLoader
 
 NAIP_BLOB_ROOT = 'https://naipblobs.blob.core.windows.net/naip'
+LC_BLOB_ROOT =  'https://modeloutput.blob.core.windows.net/full-usa-output'
 
 
 class InMemoryRaster(object):
@@ -285,11 +286,11 @@ class NAIPTileIndex(object):
     def lookup(geom):
         if NAIPTileIndex.TILES is None:
             assert all([os.path.exists(fn) for fn in [
-                "data/tile_index/tile_index.dat",
-                "data/tile_index/tile_index.idx",
-                "data/tile_index/tiles.p"
+                "data/tile_index/naip/tile_index.dat",
+                "data/tile_index/naip/tile_index.idx",
+                "data/tile_index/naip/tiles.p"
             ]]), "You do not have the correct files, did you setup the project correctly"
-            NAIPTileIndex.TILES = pickle.load(open("data/tile_index/tiles.p", "rb"))
+            NAIPTileIndex.TILES = pickle.load(open("data/tile_index/naip/tiles.p", "rb"))
         return NAIPTileIndex.lookup_naip_tile_by_geom(geom)
 
     @staticmethod
@@ -298,7 +299,7 @@ class NAIPTileIndex(object):
         geom = shapely.geometry.mapping(shapely.geometry.box(minx, miny, maxx, maxy, ccw=True))
         geom = shapely.geometry.shape(geom)
 
-        tile_index = rtree.index.Index("data/tile_index/tile_index")
+        tile_index = rtree.index.Index("data/tile_index/naip/tile_index")
         intersected_indices = list(tile_index.intersection(geom.bounds))
         for idx in intersected_indices:
             intersected_fn = NAIPTileIndex.TILES[idx][0]
@@ -457,3 +458,88 @@ class DataLoaderBasemap(DataLoader):
 
     def get_data_from_geometry(self, geometry):
         raise NotImplementedError()
+
+
+
+class LCTileIndex(object):
+    TILES = None
+    
+    @staticmethod
+    def lookup(geom):
+        if LCTileIndex.TILES is None:
+            assert all([os.path.exists(fn) for fn in [
+                "data/tile_index/lc2019/tile_index.dat",
+                "data/tile_index/lc2019/tile_index.idx",
+                "data/tile_index/lc2019/tiles.p"
+            ]]), "You do not have the correct files, did you setup the project correctly"
+            LCTileIndex.TILES = pickle.load(open("data/tile_index/lc2019/tiles.p", "rb"))
+        return LCTileIndex.lookup_naip_tile_by_geom(geom)
+
+    @staticmethod
+    def lookup_naip_tile_by_geom(geom):
+        miny, minx, maxy, maxx = shapely.geometry.shape(geom).bounds
+        geom = shapely.geometry.mapping(shapely.geometry.box(minx, miny, maxx, maxy, ccw=True))
+        geom = shapely.geometry.shape(geom)
+
+        tile_index = rtree.index.Index("data/tile_index/lc2019/tile_index")
+        intersected_indices = list(tile_index.intersection(geom.bounds))
+        for idx in intersected_indices:
+            intersected_fn = LCTileIndex.TILES[idx][0]
+            intersected_geom = LCTileIndex.TILES[idx][1]
+            if intersected_geom.contains(geom):
+                print("Found %d intersections, returning at %s" % (len(intersected_indices), intersected_fn))
+                tile_index.close()
+                return intersected_fn
+        tile_index.close()
+        if len(intersected_indices) > 0:
+            raise ValueError("Error, there are overlaps with tile index, but no tile completely contains selection")
+        else:
+            raise ValueError("No tile intersections")
+
+class DataLoaderLCLayer(DataLoader):
+
+    def __init__(self, padding, **kwargs):
+        self._padding = padding
+        
+        # we do this to prime the tile index -- loading the first time can take awhile
+        try:
+            LCTileIndex.lookup(None)
+        except:
+            pass
+
+    @property
+    def padding(self):
+        return self._padding
+
+    @padding.setter
+    def padding(self, value):
+        self._padding = value
+
+    def get_data_from_extent(self, extent):
+        query_geom = extent_to_transformed_geom(extent, "epsg:4326")
+        naip_fn = LCTileIndex.lookup(query_geom)
+
+        with rasterio.open(LC_BLOB_ROOT + "/" + naip_fn) as f:
+            src_crs = f.crs.to_string()
+            transformed_geom = extent_to_transformed_geom(extent, src_crs)
+            transformed_geom = shapely.geometry.shape(transformed_geom)
+
+            buffed_geom = transformed_geom.buffer(self.padding)
+            buffed_geojson = shapely.geometry.mapping(buffed_geom)
+
+            src_image, src_transform = rasterio.mask.mask(f, [buffed_geojson], crop=True, all_touched=True, pad=False)
+
+        src_image = np.rollaxis(src_image, 0, 3)
+        return InMemoryRaster(src_image, src_crs, src_transform, buffed_geom.bounds)
+
+    def get_data_from_geometry(self, geometry):
+        naip_fn = LCTileIndex.lookup(geometry)
+
+        with rasterio.open(LC_BLOB_ROOT + "/" + naip_fn) as f:
+            src_profile = f.profile
+            src_crs = f.crs.to_string()
+            transformed_mask_geom = fiona.transform.transform_geom("epsg:4326", src_crs, geometry)
+            src_image, src_transform = rasterio.mask.mask(f, [transformed_mask_geom], crop=True, all_touched=True, pad=False)
+
+        src_image = np.rollaxis(src_image, 0, 3)
+        return InMemoryRaster(src_image, src_crs, src_transform, shapely.geometry.shape(transformed_mask_geom).bounds)

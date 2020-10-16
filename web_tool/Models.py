@@ -8,8 +8,9 @@ from . import ROOT_DIR
 
 
 def _load_model(model):
-    if not os.path.exists(model["model"]["fn"]):
-        return False
+    if "fn" in model["model"]:
+        if not os.path.exists(model["model"]["fn"]):
+            return False
     return model["model"]
 
 def load_models():

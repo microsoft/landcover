@@ -125,7 +125,7 @@
         },
         "basemapLayers": [
             {
-                "layerName": "NAIP 2017 Imagery",
+                "layerName": "Esri World Imagery",
                 "initialZoom": 4,
                 "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
                 "initialLocation": [38, -88],
@@ -138,5 +138,31 @@
         ],
         "shapeLayers": null,
         "validModels": ["naip_demo"]
+    },
+    "lc_all": {
+        "metadata": {
+            "displayName": "CVPR Landcover Layer",
+            "locationName": null
+        },
+        "dataLayer": {
+            "type": "LC_LAYER",
+            "padding": 20,
+            "resolution": 1
+        },
+        "basemapLayers": [
+            {
+                "layerName": "Esri World Imagery",
+                "initialZoom": 4,
+                "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+                "initialLocation": [38, -88],
+                "args": {
+                    "attribution": "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
+                    "maxZoom": 20,
+                    "minZoom": 4
+                }
+            }
+        ],
+        "shapeLayers": null,
+        "validModels": ["rf_model"]
     }
 }

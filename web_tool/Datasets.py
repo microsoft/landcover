@@ -11,7 +11,7 @@ import logging
 LOGGER = logging.getLogger("server")
 
 from . import ROOT_DIR
-from .DataLoader import DataLoaderCustom, DataLoaderUSALayer, DataLoaderBasemap
+from .DataLoader import DataLoaderCustom, DataLoaderUSALayer, DataLoaderLCLayer, DataLoaderBasemap
 
 def _load_dataset(dataset):
     # Step 1: make sure the dataLayer exists
@@ -26,6 +26,8 @@ def _load_dataset(dataset):
         data_loader = DataLoaderCustom(**dataset["dataLayer"])
     elif dataset["dataLayer"]["type"] == "USA_LAYER":
         data_loader = DataLoaderUSALayer(**dataset["dataLayer"])
+    elif dataset["dataLayer"]["type"] == "LC_LAYER":
+        data_loader = DataLoaderLCLayer(**dataset["dataLayer"])
     elif dataset["dataLayer"]["type"] == "BASEMAP":
         data_loader = DataLoaderBasemap(**dataset["dataLayer"])
     else:
