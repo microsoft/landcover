@@ -53,7 +53,7 @@ class SessionHandler():
 
     def __init__(self, args):
         self._GPU_WORKERS = [
-            {"type": "local", "gpu_id": 0},
+            #{"type": "local", "gpu_id": 0},
         ]
 
         self._WORKER_POOL = Queue()
