@@ -119,9 +119,9 @@ class SessionHandler():
             raise ValueError("%s is not a valid model, check the keys in models.json and models.mine.json" % (model_key))
 
         try:
-            worker = self._WORKER_POOL.get_nowait() # this will block until we have a free worker resource
+            worker = self._WORKER_POOL.get_nowait()
         except Empty:
-            worker = {"type": "local", "gpu_id": -1}
+            worker = {"type": "local", "gpu_id": -1} # by convention, a GPU id of -1 means that we should use the CPU. We do this if there are no resources in the worker pool
         
         if worker["type"] == "local":
             gpu_id = worker["gpu_id"]
