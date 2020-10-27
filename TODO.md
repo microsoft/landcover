@@ -84,12 +84,12 @@
 - [x] The `pred_tile` code path should return the class statistics directly instead of saving to txt
   - [ ] Show class statistics when we click on a polygon in the front-end
 
-- [ ] Re-visit the ability to draw / run inference over polygons
+- [x] Re-visit the ability to draw / run inference over polygons
   - Currently the workflows for interacting with "user added polygons" and "dataset polygons" are totally separate which is confusing for everyone. These should be merged.
-  - [ ] When the user firsts adds a polygon there should be a new "User layer" that is added to the list of current zones in the bottom left
-  - [ ] The user is free to add, delete, change polygons in this layer
-  - [ ] The user should be able to download this layer as a geojson
-  - [ ] The user should be able to click on any current polygon in this zone and run inference over it by pressing "Download" like usual
+  - [x] When the user firsts adds a polygon there should be a new "User layer" that is added to the list of current zones in the bottom left
+  - [x] The user is free to add, delete, change polygons in this layer
+  - [x] The user should be able to download this layer as a geojson
+  - [x] The user should be able to click on any current polygon in this zone and run inference over it by pressing "Download" like usual
 
 - [ ] Re-visit the `train_autoencoder.py` script
   - [ ] Rename to something more appropriate
