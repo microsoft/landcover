@@ -166,8 +166,6 @@ var addDrawControls = function(){
     //----------------------------------------------------------------------
     // Add the custom drawn items layer to the global map and create the appropirate control item
     //----------------------------------------------------------------------
-    L.Util.setOptions(gCustomDrawnItems, {pane: "customPolygons"});
-    gMap.addLayer(gCustomDrawnItems);
 
     var drawControl = new L.Control.Draw({
         edit: {
