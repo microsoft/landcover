@@ -263,7 +263,7 @@
             addCustomLogoControl();
             //addGeocoderControl();
             addZoomControls();
-            addDrawControls();
+            var drawControl = addDrawControls();
 
             var basemapPickerControl = addBasemapPickerControl(gBasemaps);
             var basemapPickerControlContainer = basemapPickerControl.getContainer();            
@@ -309,6 +309,9 @@
             });
 
             var downloadControl = addDownloadControl();
+            $(uploadControl.getContainer()).hide()
+            $(downloadControl.getContainer()).hide()
+            $(drawControl.getContainer()).hide()
 
             //----------------------------------------------------------------------
             // Register handlers. These are all defined in `js/handlers.js`
@@ -340,6 +343,17 @@
                 if (e.name in gZonemaps){
                     console.debug("Zone map change")
                     gCurrentZoneLayerName = e.name;
+
+                    if (gCurrentZoneLayerName == "User polygons"){
+                        $(uploadControl.getContainer()).show()
+                        $(downloadControl.getContainer()).show()
+                        $(drawControl.getContainer()).show()
+                    }else{
+                        $(uploadControl.getContainer()).hide()
+                        $(downloadControl.getContainer()).hide()
+                        $(drawControl.getContainer()).hide()
+                    }
+
                 }else{
                     console.debug("Basemap change")
                     gCurrentBasemapLayerName = e.name;
