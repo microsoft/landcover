@@ -89,23 +89,19 @@ var addDrawControlHandlers = function(){
     gMap.on("draw:created", function (e) {
         var layer = e.layer;
         var type = e.layerType;
-        
+
         if (type === 'polygon') {
-            L.Util.setOptions(layer, {pane: "customPolygons"});
-            if(gCurrentCustomPolygon !== null){
-                gCurrentCustomPolygon.remove();
-            }
-            layer.addTo(gCustomDrawnItems);
-            gCurrentCustomPolygon = layer;
+            layer.setStyle(DEFAULT_ZONE_STYLE(1));
+            layer.addTo(gZonemaps["User polygons"]);
         }
     });
-    
+
     gMap.on("draw:deleted", function(e){
-        var layer = e.layer;
-        var type = e.layerType;
-    
-        if (type === "draw:deleted"){
-            gCurrentCustomPolygon = null;
+        for (layerIdx in e.layers._layers){
+            if(e.layers._layers[layerIdx] == gCurrentZone){
+                console.debug("we deleted the current zone")
+                gCurrentZone = null;
+            }
         }
     });
 };

@@ -16,7 +16,7 @@
     <link href="css/leaflet-sidebar.css" rel="stylesheet" />
     <link href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.14/leaflet.draw.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css">
     <link href="css/noty.css" rel="stylesheet">
 
     <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet">
@@ -116,7 +116,7 @@
     <script src="js/leaflet.filelayer.js" type="text/javascript"></script>
     <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js" type="text/javascript"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.js" type="text/javascript"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.14/leaflet.draw.js" type="text/javascript"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js" type="text/javascript"></script>
 
     <!-- Application JavaScript
     ================================================== -->
@@ -188,13 +188,41 @@
                     gZoneMapsWeight[zoneName] = DEFAULT_ZONE_LINE_WEIGHTS[zoneSetId];
                     gZonemaps[zoneName] = L.geoJSON(null, {
                         style: DEFAULT_ZONE_STYLE(gZoneMapsWeight[zoneName]),
-                        onEachFeature: forEachFeatureOnClick,
                         pane: "polygons"
+                    });
+
+                    gZonemaps[zoneName].on('click', function(e){
+                        gCurrentZone = e.layer;
+                        console.debug(e)
+                        for(k in gZonemaps){
+                            gZonemaps[k].setStyle(DEFAULT_ZONE_STYLE(gZoneMapsWeight[k]));
+                        }
+                        e.layer.setStyle(HIGHLIGHTED_ZONE_STYLE);
+                        e.layer.bringToFront();
+
+                        var nameKey = e.layer.feature.properties["KEY"];
+                        if (nameKey !== null){
+                            $("#lblZoneName").html(e.layer.feature.properties[nameKey]);
+                        }
                     });
                     
                     getZoneMap(zoneSetId, zoneName, DATASETS[gCurrentDataset]["shapeLayers"][zoneSetId]["shapesFn"]);
                 }
             }
+
+            gZonemaps["User polygons"] = new L.geoJSON(null, {
+                style: DEFAULT_ZONE_STYLE(1),
+                pane: "polygons"
+            });
+            gZonemaps["User polygons"].on('click', function (e) {
+                gCurrentZone = e.layer;
+                for(k in gZonemaps){
+                    gZonemaps[k].setStyle(DEFAULT_ZONE_STYLE(gZoneMapsWeight[k]));
+                }
+                e.layer.setStyle(HIGHLIGHTED_ZONE_STYLE);
+                e.layer.bringToFront();
+            });
+            gZoneMapsWeight["User polygons"] = 1;
 
             //----------------------------------------------------------------------
             // Update the correction pixel size to the resolution of the dataset
@@ -320,22 +348,33 @@
             uploadControl.loader.on('data:loaded', function (e) {
                 var zoneName = e.filename;
 
-                if(zoneName in gZonemaps){ // if there is an entry in gZonemaps with the same filename then we have already loaded this file
-                    console.debug("Error, already loaded this file");
+                if(gLoadedLayers.indexOf(zoneName) >= 0){
+                    notifyFailMessage("Error, already loaded this file");
                 }else{
                     if(gCurrentZoneLayerName !== null){
                         console.debug("Removing existing zone layer");
                         gMap.removeLayer(gZonemaps[gCurrentZoneLayerName]);
                     }
-                    gZoneMapsWeight[zoneName] = 3;
-                    gZonemaps[zoneName] = e.layer;
-                    e.layer.addTo(gMap);
-                    zonePickerControl.addBaseLayer(e.layer, zoneName);
+
+                    for (layerIdx in e.layer._layers){
+                        var layer = e.layer._layers[layerIdx];
+                        layer.setStyle(DEFAULT_ZONE_STYLE(1));
+                        layer.addTo(gZonemaps["User polygons"]);
+                    }
+
+                    gLoadedLayers.push(zoneName);
+
+                    zonePickerControl._layerControlInputs[zonePickerControl._layerControlInputs.length-1].click();
                 }
             });
             uploadControl.loader.on('data:error', function (error) {
                 console.error(error); //TODO: alert a reasonable error message
             });
+
+            var downloadControl = addDownloadControl();
+            $(uploadControl.getContainer()).hide()
+            $(downloadControl.getContainer()).hide()
+            $(drawControl.getContainer()).hide()
 
             //----------------------------------------------------------------------
             // Register handlers. These are all defined in `js/handlers.js`
@@ -362,7 +401,14 @@
 
             gMap.on('baselayerchange', function(e) {
                 //https://gis.stackexchange.com/questions/171911/getting-current-layer-in-control-event-of-leaflet
-                console.log(e);
+                console.debug(e);
+                if (e.name in gZonemaps){
+                    console.debug("Zone map change")
+                    gCurrentZoneLayerName = e.name;
+                }else{
+                    console.debug("Basemap change")
+                    gCurrentBasemapLayerName = e.name;
+                }
             });
 
             $("#btnRetrain").click(doRetrain);

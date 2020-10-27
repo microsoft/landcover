@@ -65,6 +65,16 @@ var notifySuccess = function(data, textStatus, jqXHR, timeout=500){
     }).show();        
 };
 
+var notifySuccessMessage = function(message, timeout=2000){
+    new Noty({
+        type: 'success',
+        text: message,
+        layout: 'topCenter',
+        timeout: timeout,
+        theme: 'metroui'
+    }).show();        
+};
+
 var notifyFail = function(jqXHR, textStatus, errorThrown, timeout=2000){
     var response = $.parseJSON(jqXHR.responseText);
     console.log("Error in processing server: " + response.error);
@@ -275,3 +285,16 @@ var forEachFeatureOnClick = function(feature, layer) {
         }
     });
 }
+
+var download = function(filename, text) {
+    var element = document.createElement('a');
+    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+    element.setAttribute('download', filename);
+
+    element.style.display = 'none';
+    document.body.appendChild(element);
+
+    element.click();
+
+    document.body.removeChild(element);
+}; 

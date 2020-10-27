@@ -91,9 +91,7 @@ var doReset = function(notify=true, initialReset=false){
 var doDownloadTile = function(){
 
     var polygon = null;
-    if(gCurrentCustomPolygon !== null){
-        polygon = gCurrentCustomPolygon;
-    }else if(gCurrentZone !== null){
+    if(gCurrentZone !== null){
         polygon = gCurrentZone;
     }else{
         new Noty({

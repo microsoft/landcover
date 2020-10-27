@@ -97,16 +97,12 @@ var CLASSES = [];
 var gSelectionBox = null;
 var gCurrentSelection = null;
 
-var gCustomDrawnItems = new L.FeatureGroup();
-
 var gCurrentPatches = [];
 var gCurrentZone = null;
 var gCurrentZoneLayerName = null;
 var gCurrentBasemapLayerName = null;
 var gCurrentDataset = null;
 var gCurrentModel = null;
-var gCurrentCustomPolygon = null; // this holds the current active leaflet `L.Layer` object for the custom polygon that the user can create
-
 
 var gRightMouseDown = false;
 var gShiftKeyDown = false;
@@ -135,6 +131,7 @@ var gZoneMapsWeight = {};
 
 var gBasemaps = {};
 var gZonemaps = {};
+var gLoadedLayers = [];
 
 var gDownloadLayer = null;
 
