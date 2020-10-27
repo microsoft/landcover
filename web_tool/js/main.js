@@ -72,9 +72,7 @@ var doReset = function(){
 var doDownloadTile = function(){
 
     var polygon = null;
-    if(gCurrentCustomPolygon !== null){
-        polygon = gCurrentCustomPolygon;
-    }else if(gCurrentZone !== null){
+    if(gCurrentZone !== null){
         polygon = gCurrentZone;
     }else{
         new Noty({
@@ -269,8 +267,6 @@ var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
         },
         "classes": CLASSES,
     };
-
-    console.debug(serviceURL);
     
     $.ajax({
         type: "POST",
