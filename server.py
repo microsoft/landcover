@@ -385,14 +385,22 @@ def get_input():
 # Checkpoint handling endpoints
 #---------------------------------------------------------------------------------------
 
-def create_checkpoint():
-    bottle.response.content_type = 'application/json'
-    data = bottle.request.json
-    
-    result = SESSION_HANDLER.get_session(bottle.request.session.id).create_checkpoint(data["dataset"], data["model"], data["checkpointName"], data["classes"])
+def checkpoint_wrapper(disable_checkpoints):
+    def create_checkpoint():
+        bottle.response.content_type = 'application/json'
+        data = bottle.request.json
+        
+        if disable_checkpoints:
+            result = {
+                "success": False,
+                "message": "Saving checkpoints is disabled on the server"
+            }
+        else:
+            result = SESSION_HANDLER.get_session(bottle.request.session.id).create_checkpoint(data["dataset"], data["model"], data["checkpointName"], data["classes"])
 
-    bottle.response.status = 200 if result["success"] else 500
-    return json.dumps(result)
+        bottle.response.status = 200 if result["success"] else 500
+        return json.dumps(result)
+    return create_checkpoint
 
 def get_checkpoints():
     checkpoints = Checkpoints.list_checkpoints()
@@ -431,6 +439,8 @@ def main():
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debugging", default=False)
     parser.add_argument("--host", action="store", dest="host", type=str, help="Host to bind to", default="0.0.0.0")
     parser.add_argument("--port", action="store", dest="port", type=int, help="Port to listen on", default=8080)
+
+    parser.add_argument("--disable_checkpoints", action="store_true", help="Disables the ability to save checkpoints on the server")
 
 
     args = parser.parse_args(sys.argv[1:])
@@ -494,7 +504,7 @@ def main():
 
     # Checkpoints
     app.route("/createCheckpoint", method="OPTIONS", callback=do_options)
-    app.route("/createCheckpoint", method="POST", callback=create_checkpoint)
+    app.route("/createCheckpoint", method="POST", callback=checkpoint_wrapper(args.disable_checkpoints))
     app.route("/getCheckpoints", method="GET", callback=get_checkpoints)
 
     # Sessions
