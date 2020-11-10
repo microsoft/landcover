@@ -22,8 +22,9 @@ def extent_to_transformed_geom(extent, dest_crs="EPSG:4269"):
     return fiona.transform.transform_geom(src_crs, dest_crs, geom)
 
 def get_geom(lat, lon, src_crs):
-
+    print('in geom')
     extent = get_extent_values(lat, lon)
+    print(extent)
     geom = extent_to_transformed_geom(extent)
     crs = src_crs
 
@@ -32,6 +33,7 @@ def get_geom(lat, lon, src_crs):
 def get_extent_values( lat, lon):
     
     polygon = get_polygon(lat, lon)
+    print(polygon)
     
     topleft = [polygon[0][0], polygon[0][1]]
     topleftProjected = get_projected(topleft[0], topleft[1])

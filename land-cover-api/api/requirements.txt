@@ -1,0 +1,11 @@
+flask-cors
+opencv-contrib-python==3.2.0.7
+opencv-python==3.2.0.7
+Fiona==1.8.17
+pyproj==1.9.6
+rasterio==1.0.12
+Rtree==0.8.3
+Shapely==1.6.4
+numpy==1.19.4
+pandas==0.24.2
+scipy==1.3.0

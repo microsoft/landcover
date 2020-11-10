@@ -17,7 +17,7 @@ def run(naip, fn, extent, buffer):
     return get_cached_by_extent(fn, extent, buffer)
 
 def get_cached_by_extent(fn, extent, buffer):
-    fn = fn.replace("esri-naip/", "full-usa-output/1_3_2019/")[:-4] + "_prob.tif"
+    fn = fn.replace("esri-naip/", "full-usa-output/1_3_2019/")[:-4] + "_probs.tif"
     
     try:
         fn, temp_folder = get_blob("full-usa-output", fn.replace("/mnt/blobfuse/full-usa-output/", ""))
@@ -27,7 +27,6 @@ def get_cached_by_extent(fn, extent, buffer):
         abort(500, 'Error reading the images: ' + str(e))
 
     with rasterio.open(fn, "r") as f:
-        #f = rasterio.open(fn, "r")
         geom = GeoTools.extent_to_transformed_geom(extent, f.crs["init"])
         pad_rad = 15 # TODO: this might need to be changed for much larger inputs
         buffed_geom = shapely.geometry.shape(geom).buffer(pad_rad)

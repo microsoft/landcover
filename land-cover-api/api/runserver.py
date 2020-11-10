@@ -169,6 +169,7 @@ def pred_patch(data, type):
     except ValueError as e:
         error_msg = 'Error occurred in tile retrieval, no data is available for the specified location'
         log.log_exception(error_msg + '(in pred_patch function) :' + str(e))
+        print(str(e))
         return abort_error(400, error_msg)
 
     # ------------------------------------------------------
@@ -178,7 +179,7 @@ def pred_patch(data, type):
     print('runserver, pred_patch, load input data sources: ')
     start = datetime.now()  
     
-    naip_data, padding = DataLoader.get_data_by_extent(naip_fn, extent, DataLoader.GeoDataTypes.NAIP)
+    naip_data, padding = DataLoader.get_data_by_extent(naip_fn, extent, DataLoader.GeoDataTypes.NAIP, "get_prediction")
     naip_data = np.rollaxis(naip_data, 0, 3)
     
     stop = datetime.now()
@@ -276,7 +277,7 @@ def get_input(data, type):
     print('runserver, get_input, Load the input data sources for the given tile: ')
     start = datetime.now()   
 
-    naip_data, padding = DataLoader.get_data_by_extent(naip_fn, extent, DataLoader.GeoDataTypes.NAIP)
+    naip_data, padding = DataLoader.get_data_by_extent(naip_fn, extent, DataLoader.GeoDataTypes.NAIP, "get_tile")
     naip_data = np.rollaxis(naip_data, 0, 3)
     naip_img = naip_data[:,:,:3].copy().astype(np.uint8) # keep the RGB channels to save as a color image later
     if padding > 0:

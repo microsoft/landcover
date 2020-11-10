@@ -25,6 +25,10 @@ import logging
 from azure_blob import *
 from flask import abort
 
+from ai4e_app_insights_wrapper import AI4EAppInsights
+
+log = AI4EAppInsights()
+
 class GeoDataTypes(Enum):
     NAIP = 1
     NLCD = 2
@@ -109,7 +113,7 @@ def lookup_tile_by_geom(geom):
 
 # ------------------------------------------------------------------------------
 
-def get_data_by_extent(naip_fn, extent, geo_data_type):
+def get_data_by_extent(naip_fn, extent, geo_data_type, type):
     
     start2 = time.time()
 
@@ -133,6 +137,7 @@ def get_data_by_extent(naip_fn, extent, geo_data_type):
     
     try:
         fn, temp_folder = get_blob("naip", fn.replace("/mnt/blobfuse/esri-naip/", ""))
+
     except Exception as e:
         print(str(e))
         log.log_exception('Error reading the images from blob container NAIP: ' + str(e))
