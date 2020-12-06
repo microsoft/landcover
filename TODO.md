@@ -47,7 +47,8 @@
 - [ ] The logic of `pred_patch`, `pred_tile`, etc. should probably all be moved to the Session class. `server.py` should just be in charge of routing requests to the correct place.
 - [x] Rework how "shapes" are handled by the server. Currently there is a strange dependency on the "shapeLayers" assosciated with each dataset -- shapes are loaded up, then when someone wants to run a "download" we find the appropriate shape based on name/location. Instead, everything should be done through API calls that include a GeoJSON polygon.
 - [x] Fix `DataLoaderUSALayer` and `DataLoaderBasemap` and give them appropriate datasets.
-
+- [ ] The create checkpoint code path serializes a checkpoint's name (something the user provides) to a directory name on disk. This is bad and should be changed.
+- [x] Create a flag to disable saving checkpoints to disk.
 
 ## Documentation
 
