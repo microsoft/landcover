@@ -39,24 +39,28 @@ cd ../../../
 
 # install the conda environment
 # Note: if using a DSVM on Azure, as of 7/6/2020 you need to first run `sudo chown -R $USER /anaconda/`
+# make sure conda-forge and pytorch are in the conda channel
+
+conda config --append channels pytorch
+conda config --append channels conda-forge
 
 cd landcover
 conda env create --file environment_precise.yml
 cd ..
 ```
 
-
 ## Configuration instructions for the web-tool
 
 A last step is required to configure the _backend_ server with the demo models/data.
 
-Create and edit `web_tool/endpoints.mine.js`. Replace "localhost" with the address of your machine (or leave it alone it you are running locally), and choose the port you will use (defaults to 8080). Note: make sure this port is open to your machine if you are using a remote sever (e.g. with a DSVM on Azure, use the Networking tab to open port 8080).
+Create local copies of `datasets.json`, `models.json` and `endpoints.js`. Edit `web_tool/endpoints.mine.js`. Replace "localhost" with the address of your machine (or leave it alone it you are running locally), and choose the port you will use (defaults to 8080). Note: make sure this port is open to your machine if you are using a remote sever (e.g. with a DSVM on Azure, use the Networking tab to open port 8080).
 
 ```bash
+cp landcover/web_tool/datasets.json landcover/web_tool/datasets.mine.json
+cp landcover/web_tool/models.json landcover/web_tool/models.mine.json
 cp landcover/web_tool/endpoints.js landcover/web_tool/endpoints.mine.js
 nano landcover/web_tool/endpoints.mine.js
 ```
-
 ### Adding new datasets
 
 The _backend_ server looks for dataset definitions in two places: `web_tool/datasets.json` and `web_tool/datasets.mine.json`. The latter is included in `.gitignore` and is where you can add custom datasets following the template of the default datasets in `web_tool/datasets.json`.
