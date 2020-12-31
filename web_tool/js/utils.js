@@ -59,6 +59,17 @@ var notifySuccess = function(data, textStatus, jqXHR, timeout=1000){
     }).show();        
 };
 
+var notifySuccessMessage = function(message, timeout=2000){
+    new Noty({
+        type: 'success',
+        text: message,
+        layout: 'topCenter',
+        timeout: timeout,
+        theme: 'metroui'
+    }).show();        
+};
+
+
 var notifyFail = function(jqXHR, textStatus, errorThrown, timeout=2000){
     var data = $.parseJSON(jqXHR.responseText);
     new Noty({
@@ -208,10 +219,6 @@ var getURLArguments = function(){
     }
 }
 
-var generateRandInt = function() {
-    return Math.floor( Math.random() * 200000 ) + 1;
-};
-
 var getZoneMap = function(zoneSetId, name, url){
     $.ajax({
         dataType: "json",
@@ -226,7 +233,6 @@ var getZoneMap = function(zoneSetId, name, url){
 }
 
 var forEachFeatureOnClick = function(feature, layer) {
-    console.debug("clicked")
     layer.on('click', function (e) {
         gCurrentZone = layer;
         for(k in gZonemaps){
@@ -241,7 +247,6 @@ var forEachFeatureOnClick = function(feature, layer) {
         }
     });
 }
-
 
 var loadClasses = function(classesToLoad){
     for(var i=0;i<classesToLoad.length;i++){
@@ -282,4 +287,44 @@ var loadClasses = function(classesToLoad){
             "count": 0
         });
     }
+};
+
+var monitorSession = function(){
+
+    $.ajax({
+        type: "POST",
+        url: window.location.origin + "/getSessionStatus",
+        data: JSON.stringify({}),
+        success: function (data, textStatus, jqXHR) {
+            gIsSessionActive = data["isActive"];
+            if(data["isActive"]){
+                $("#lblSessionStatus").html("Active");
+                $("#lblSessionStatus").css("color","green");
+                
+                window.setTimeout(function(){monitorSession()}, gSessionCheckFrequency);
+            }else{
+                $("#lblSessionStatus").html("Inactive");
+                $("#lblSessionStatus").css("color","red");
+            }
+        },
+        error: function (jqXHR, textStatus) {
+            $("#lblSessionStatus").html("Inactive");
+            $("#lblSessionStatus").css("color","red");
+        },
+        dataType: "json",
+        contentType: "application/json"
+    });
+};
+
+var download = function(filename, text) {
+    var element = document.createElement('a');
+    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+    element.setAttribute('download', filename);
+
+    element.style.display = 'none';
+    document.body.appendChild(element);
+
+    element.click();
+
+    document.body.removeChild(element);
 };

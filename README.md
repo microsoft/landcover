@@ -65,15 +65,19 @@ nano landcover/web_tool/endpoints.mine.js
 
 The _backend_ server looks for dataset definitions in two places: `web_tool/datasets.json` and `web_tool/datasets.mine.json`. The latter is included in `.gitignore` and is where you can add custom datasets following the template of the default datasets in `web_tool/datasets.json`.
 
+For a dataset entry, the `dataLayer` can point to a .tif file or a .vrt file (GDAL Virtual Format) uniting a set of .tif files - anything that `rasterio` loads. The `dataLayer` needs to contain all the channels required by the model.
+
+Path to data and shapefiles in this section, including the `url` of the `basemapLayers`, need to point to a location in the current directory so that the web server can serve the resources. If your data is mounted or stored elsewhere, you can create symbolic links to them from this directory.
+
 ### Adding new models
 
-Similar to datasets, the _backend_ server looks for model definitions in two places: `web_tool/models.json` and `web_tool/models.mine.json`. The latter is included in `.gitignore` and is where you can add custom models following the template of the default datasets in `web_tool/models.json`.
+Similar to datasets, the _backend_ server looks for model definitions in two places: `web_tool/models.json` and `web_tool/models.mine.json`. The latter is included in `.gitignore` and is where you can add custom models following the template of the default datasets in `web_tool/models.json`. The only required field is `fn`, a path pointing to a model checkpoint.
 
-The additional step you need to take for adding custom models is creating a class that extends `ModelSession` (from `web_tool/ModelSessionAbstract.py`) to wrap your custom model, then create a constructor in `worker.py` to handle your custom class type. Note: we have included implementations of `ModelSession` that handle standard use cases of Keras and PyTorch based models. The `ModelSession` interface exists to allow for easy customization of retraining and inference logic.  
+The additional step you need to take for adding custom models is creating a class that extends `ModelSession` (from `web_tool/ModelSessionAbstract.py`) to wrap your custom model, then create a constructor in `worker.py` to handle your custom class type. Note: we have included implementations of `ModelSession` that handle standard use cases of Keras and PyTorch based models. The `ModelSession` interface exists to allow for easy customization of retraining and inference logic.
 
 ### Using GPU workers
 
-- Edit `self._WORKERS` of the SessionHandler class in SessionHandler.py to include the GPU resources you want to use on your machine. By default this is set to use GPU IDs 0 through 4.
+- Edit `self._WORKERS` of the `SessionHandler` class in `SessionHandler.py` to include the GPU resources you want to use on your machine. By default this is set to use GPU IDs 0 through 4.
 
 
 ## Running an instance of the web-tool

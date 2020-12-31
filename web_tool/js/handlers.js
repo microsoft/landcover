@@ -31,6 +31,11 @@ var addInferenceMouseHandlers = function(){
     });
     
     gMap.addEventListener('click', function(e){
+
+        if(!gIsSessionActive){
+            notifyFailMessage("Your session is inactive, please restart from the landing page")
+            return
+        }
         
         var curSelPoly = null;
         if(gShiftKeyDown){
@@ -93,23 +98,19 @@ var addDrawControlHandlers = function(){
     gMap.on("draw:created", function (e) {
         var layer = e.layer;
         var type = e.layerType;
-        
+
         if (type === 'polygon') {
-            L.Util.setOptions(layer, {pane: "customPolygons"});
-            if(gCurrentCustomPolygon !== null){
-                gCurrentCustomPolygon.remove();
-            }
-            layer.addTo(gCustomDrawnItems);
-            gCurrentCustomPolygon = layer;
+            layer.setStyle(DEFAULT_ZONE_STYLE(1));
+            layer.addTo(gZonemaps["User polygons"]);
         }
     });
-    
+
     gMap.on("draw:deleted", function(e){
-        var layer = e.layer;
-        var type = e.layerType;
-    
-        if (type === "draw:deleted"){
-            gCurrentCustomPolygon = null;
+        for (layerIdx in e.layers._layers){
+            if(e.layers._layers[layerIdx] == gCurrentZone){
+                console.debug("we deleted the current zone")
+                gCurrentZone = null;
+            }
         }
     });
 };
@@ -149,8 +150,27 @@ var addOpacityKeyHandlers = function(opacitySlider){
                 gMap.getPane('labels').style.opacity = 1.0;
                 opacitySlider.slider.value = 100
                 opacitySlider._updateValue();
-            } else if(e.which == 67) { // "c" - cycle chosen model
-                $(".exampleImage")[(gActiveImgIdx+1) % 3].click();
+            }
+        }
+    });
+};
+
+var addMapKeyHandlers = function(opacitySlider){
+    $(document).keydown(function(e) {
+        if(document.activeElement == document.body){ // only register if we are in document.body so that we don't fire events when typing in text boxes
+            let elements = $(".basemapPickerControlContainer .leaflet-control-layers-selector[name='leaflet-base-layers']");
+            if(e.which == 49) { // "1"
+                if(elements.length > 0){
+                    elements[0].click();
+                }
+            } else if(e.which == 50) {
+                if(elements.length > 1){
+                    elements[1].click();
+                }
+            } else if(e.which == 51){
+                if(elements.length > 2){
+                    elements[2].click();
+                }
             }
         }
     });

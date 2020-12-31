@@ -1,17 +1,15 @@
-import time
-import threading
-import subprocess
-import json
 import socket
-from queue import Queue
+import subprocess
+import threading
+import time
 
 import logging
 LOGGER = logging.getLogger("server")
 
+from queue import Queue, Empty
+
 from .Session import Session
-
 from .ModelSessionRPC import ModelSessionRPC
-
 from .Models import load_models
 from .Datasets import is_valid_dataset
 from .Checkpoints import Checkpoints
@@ -54,14 +52,12 @@ def get_free_tcp_port():
 class SessionHandler():
 
     def __init__(self, args):
-        self._WORKERS = [ # TODO: I hardcode that there are 4 GPUs available on the local machine
-            {"type": "local", "gpu_id": 0},
-            {"type": "local", "gpu_id": 1},
-            {"type": "local", "gpu_id": 2}
+        self._GPU_WORKERS = [
+            #{"type": "local", "gpu_id": 0},
         ]
 
         self._WORKER_POOL = Queue()
-        for worker in self._WORKERS:
+        for worker in self._GPU_WORKERS:
             self._WORKER_POOL.put(worker)
 
         self._expired_sessions = set()
@@ -101,11 +97,13 @@ class SessionHandler():
 
     def _spawn_local_worker(self, port, gpu_id, model_key):
         command = [
-            "/usr/bin/env", "python", "worker.py",
+            "/usr/bin/env", "python3", "worker.py",
             "--port", str(port),
-            "--gpu_id", str(gpu_id),
             "--model_key", model_key,
         ]
+        if gpu_id != -1:
+            command.append("--gpu_id")
+            command.append(str(gpu_id))
         process = subprocess.Popen(command, shell=False)
         return process
 
@@ -120,7 +118,11 @@ class SessionHandler():
         if model_key not in self.model_configs:
             raise ValueError("%s is not a valid model, check the keys in models.json and models.mine.json" % (model_key))
 
-        worker = self._WORKER_POOL.get() # this will block until we have a free worker resource
+        try:
+            worker = self._WORKER_POOL.get_nowait()
+        except Empty:
+            worker = {"type": "local", "gpu_id": -1} # by convention, a GPU id of -1 means that we should use the CPU. We do this if there are no resources in the worker pool
+        
         if worker["type"] == "local":
             gpu_id = worker["gpu_id"]
             
@@ -144,7 +146,10 @@ class SessionHandler():
                 "worker": worker,
                 "process": process
             }
-            LOGGER.info("Created a local worker for (%s) on GPU %s" % (session_id, str(gpu_id)))
+            if gpu_id == -1:
+                LOGGER.info("Created a local worker for (%s) on CPU" % (session_id))
+            else:
+                LOGGER.info("Created a local worker for (%s) on GPU %s" % (session_id, str(gpu_id)))
 
         elif worker["type"] == "remote":
             raise NotImplementedError("Remote workers aren't implemented yet")

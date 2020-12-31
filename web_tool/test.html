@@ -1,0 +1,42 @@
+<html>
+<head>
+  <title>Test page</title>
+</head>
+
+<body>
+  Test session creator.
+
+  <script src="js/jquery-3.3.1.min.js"></script>
+  <script type="text/javascript">
+
+    $(document).ready(function () {
+        
+        var selectedDataset = "hcmc_sentinel";
+        var selectedModel = "sentinel_demo";
+        var selectedCheckpoint = -1;
+
+        var request = {
+            "dataset": selectedDataset,
+            "model": selectedModel,
+            "checkpoint": selectedCheckpoint
+        };
+
+        $.ajax({
+            type: "POST",
+            url: window.location.origin + "/createSession",
+            data: JSON.stringify(request),
+            success: function(data, textStatus, jqXHR){
+              window.location.href = `/index.html?dataset=${selectedDataset}&model=${selectedModel}&checkpoint=${selectedCheckpoint}`;
+            },
+            error: function(jqXHR, textStatus){
+            },
+            dataType: "json",
+            contentType: "application/json"
+          });
+
+    });
+  </script>
+
+</body>
+
+</html>

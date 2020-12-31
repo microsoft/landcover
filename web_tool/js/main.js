@@ -72,9 +72,7 @@ var doReset = function(){
 var doDownloadTile = function(){
 
     var polygon = null;
-    if(gCurrentCustomPolygon !== null){
-        polygon = gCurrentCustomPolygon;
-    }else if(gCurrentZone !== null){
+    if(gCurrentZone !== null){
         polygon = gCurrentZone;
     }else{
         new Noty({
@@ -153,15 +151,14 @@ var doSendCorrection = function(point, idx){
         "modelIdx": parseInt(gActiveImgIdx),
     };
 
-
+    var value = gSelectedClassIdx;
     $.ajax({
         type: "POST",
         url: gBackendURL + "recordCorrection",
         data: JSON.stringify(request),
         success: function(data, textStatus, jqXHR){
-            var labelIdx = data["value"];
-            CLASSES[labelIdx]["count"] += 1;
-            renderClassCount(CLASSES[labelIdx]["name"], CLASSES[labelIdx]["count"]);
+            CLASSES[value]["count"] += 1;
+            renderClassCount(CLASSES[value]["name"], CLASSES[value]["count"]);
             animateSuccessfulCorrection(10, 80);
         },
         error: notifyFail,
@@ -228,25 +225,18 @@ var doUndo = function(){
 //-----------------------------------------------------------------
 var requestPatches = function(polygon){
     // Setup placeholders for the predictions from the current click to be saved to
+    var idx = gCurrentPatches.length;
     gCurrentPatches.push({
         "naipImg": null,
         "imageLayer": L.imageOverlay("", L.polygon(polygon).getBounds(), {pane: "labels"}).addTo(gMap),
         "patches": [],
         "activeImgIdx": gActiveImgIdx
     });
-    var idx = gCurrentPatches.length-1;
+    gCurrentPatches[idx]["patches"].push({
+        "srcs": null
+    });
     
     requestInputPatch(idx, polygon, gBackendURL);
-
-    gCurrentPatches[idx]["patches"].push({
-        "srcs": null
-    });
-    gCurrentPatches[idx]["patches"].push({
-        "srcs": null
-    });
-    gCurrentPatches[idx]["patches"].push({
-        "srcs": null
-    });
     requestPatch(idx, polygon, 0, gBackendURL);
 
     // The following code is for connecting to multiple backends at once
@@ -277,32 +267,20 @@ var requestPatch = function(idx, polygon, currentImgIdx, serviceURL){
         },
         "classes": CLASSES,
     };
-
-    console.debug(serviceURL);
     
     $.ajax({
         type: "POST",
         url: serviceURL + "predPatch",
         data: JSON.stringify(request),
         success: function(data, textStatus, jqXHR){
-            var resp = data;
+            let resp = data;
 
-            var srcs = [
-                {
-                    "soft": "data:image/png;base64," + resp.output_soft,
-                    "hard": "data:image/png;base64," + resp.output_hard,
-                },
-                {
-                    "soft": "data:image/png;base64," + resp.output_soft,
-                    "hard": "data:image/png;base64," + resp.output_hard,
-                },
-                {
-                    "soft": "data:image/png;base64," + resp.output_soft,
-                    "hard": "data:image/png;base64," + resp.output_hard,
-                }
-            ];
+            var srcs = [{
+                "soft": "data:image/png;base64," + resp.output_soft,
+                "hard": "data:image/png;base64," + resp.output_hard,
+            }];
             
-            for(var i=0; i<3; i++){
+            for(var i=0; i<1; i++){
                 // Display the result on the map if we are the currently selected model
                 let tSelection = gDisplayHard ? "hard" : "soft";
                 if(i == gCurrentPatches[idx]["activeImgIdx"]){
@@ -358,13 +336,13 @@ var requestInputPatch = function(idx, polygon, serviceURL){
         data: JSON.stringify(request),
         success: function(data, textStatus, jqXHR){
             var resp = data;
-            var naipImg = "data:image/png;base64," + resp.input_naip;
+            var inputImage = "data:image/png;base64," + resp.input_img;
 
-            gCurrentPatches[idx]["naipImg"] = naipImg
+            //gCurrentPatches[idx]["naipImg"] = naipImg
             
             // Update the right panel if we are the current "last item", we need to check for this because the order we send out requests to the API isn't necessarily the order they will come back
             if(idx == gCurrentPatches.length-1){
-                $("#inputImage").attr("src", naipImg);
+                $("#inputImage").attr("src", inputImage);
             }
         },
         error: notifyFail,

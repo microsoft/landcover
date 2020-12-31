@@ -166,14 +166,12 @@ var addDrawControls = function(){
     //----------------------------------------------------------------------
     // Add the custom drawn items layer to the global map and create the appropirate control item
     //----------------------------------------------------------------------
-    L.Util.setOptions(gCustomDrawnItems, {pane: "customPolygons"});
-    gMap.addLayer(gCustomDrawnItems);
-
     var drawControl = new L.Control.Draw({
         edit: {
-            featureGroup: gCustomDrawnItems,
-            edit: false,
-            remove: true
+            featureGroup: gZonemaps["User polygons"],
+            edit: true,
+            remove: true,
+            allowIntersection: false
         },
         draw: {
             polyline: false,
@@ -181,6 +179,10 @@ var addDrawControls = function(){
             circlemarker: false,
             rectangle: false,
             marker: false,
+            polygon: {
+                allowIntersection: false,
+                showArea: false
+            }
         }
     });
     gMap.addControl(drawControl);
@@ -215,13 +217,13 @@ var addZonePickerControl = function(zonemaps){
 var addUploadControl = function(){
     L.Control.FileLayerLoad.LABEL = '<span class="fa fa-upload"></span>';
     var uploadControl = L.Control.fileLayerLoad({
-        fitBounds: true,
+        fitBounds: false,
         addToMap: false,
         formats: [
             '.geojson'
         ],
         layerOptions: {
-            style: DEFAULT_ZONE_STYLE(2),
+            style: DEFAULT_ZONE_STYLE(1),
             onEachFeature: forEachFeatureOnClick,
             pane: "polygons"
         }
@@ -230,7 +232,30 @@ var addUploadControl = function(){
     return uploadControl;
 }
 
-var getESRILayer = function(){
+var addDownloadControl = function(){
+    var downloadControl = L.easyButton('fa-download', function(){
+        var numEntries = Object.keys(gZonemaps["User polygons"]._layers).length;
+        if(numEntries > 0){
+            notifySuccessMessage("Downloading " + numEntries + " custom polygons as geojson");
+            download("userLayer.geojson", JSON.stringify(gZonemaps["User polygons"].toGeoJSON()));
+        }else{
+            notifyFailMessage("No custom polygons have been created");
+        }
+    });
+    downloadControl.addTo(gMap);
+    return downloadControl;
+}
+
+var addGeocoderControl = function(){
+    var geocoderControl = L.Control.geocoder({
+        collapsed: false,
+        position:'topleft',
+        defaultMarkGeocode: true
+    }).addTo(gMap);
+    return geocoderControl;
+}
+
+var getEsriLayer = function(){
     return L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         maxZoom: 20,
         maxNativeZoom: 17,

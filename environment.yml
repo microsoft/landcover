@@ -7,7 +7,7 @@ channels:
 
 dependencies:
   - python>=3.6
-  - gdal>=2.0
+  - gdal>=2.0  # if solving environment is taking too longer, specify the version of gdal to proceed faster (gdal==2.4.3)
   - rasterio
   - shapely
   - rtree

@@ -107,8 +107,6 @@ var CLASSES = [];
 var gSelectionBox = null;
 var gCurrentSelection = null;
 
-var gCustomDrawnItems = new L.FeatureGroup();
-
 var gCurrentPatches = [];
 var gCurrentZone = null;
 var gCurrentZoneLayerName = null;
@@ -116,8 +114,6 @@ var gCurrentBasemapLayerName = null;
 var gCurrentDataset = null;
 var gCurrentModel = null;
 var gCurrentCheckpoint = null;
-var gCurrentCustomPolygon = null; // this holds the current active leaflet `L.Layer` object for the custom polygon that the user can create
-
 
 var gRightMouseDown = false;
 var gShiftKeyDown = false;
@@ -132,9 +128,9 @@ var gActiveImgIdx = 0;
 var gBackendURL = ""; // this will be the base URL of the backend server we make requests to, e.g. "http://msrcalebubuntu1.eastus.cloudapp.azure.com:8080/". Note, a trailing "/" is necessary.
 
 var gSelectedClassIdx = 0;
-var gUserPointList = []
+var gUserPointList = [];
 
-var gRetrainCounts = 0
+var gRetrainCounts = 0;
 var gRetrainArgs = {};
 var gMap = null; // global leaflet `L.Map` object
 var gAnimating = false;
@@ -146,3 +142,7 @@ var gZoneMapsWeight = {};
 
 var gBasemaps = {};
 var gZonemaps = {};
+var gLoadedLayers = [];
+
+var gSessionCheckFrequency = 10000; // in milliseconds
+var gIsSessionActive = false;

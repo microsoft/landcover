@@ -17,6 +17,7 @@ import joblib
 
 from .Utils import get_random_string, AtomicCounter
 from .Checkpoints import Checkpoints
+from .DataLoader import InMemoryRaster
 
 import logging
 LOGGER = logging.getLogger("server")
@@ -39,7 +40,9 @@ class Session():
         LOGGER.info("Instantiating a new session object with id: %s" % (session_id))
 
         self.model = model
-        self.current_transform = ()
+        self.data_loader = None
+        self.latest_input_raster = None # InMemoryRaster object from the most recent prediction
+        self.tile_map = None # A map recording the most recent prediction per pixel
 
         self.current_snapshot_string = get_random_string(8)
         self.current_snapshot_idx = 0
@@ -50,13 +53,12 @@ class Session():
         self.creation_time = time.time()
         self.last_interaction_time = self.creation_time
 
-    def reset(self, soft=False, from_cached=None):
-        if not soft:
-            self.model.reset() # can't fail, so don't worry about it
+    def reset(self):
         self.current_snapshot_string = get_random_string(8)
         self.current_snapshot_idx = 0
         self.current_request_counter = AtomicCounter()
         self.request_list = []
+        return self.model.reset()
 
     def load(self, encoded_model_fn):
         model_fn = base64.b64decode(encoded_model_fn).decode('utf-8')
@@ -148,3 +150,19 @@ class Session():
         #     # The storage_type / --storage_path command line args were not set
         #     pass
         pass
+
+    def pred_patch(self, input_raster):
+        output = self.model.run(input_raster.data, False)
+        assert input_raster.shape[0] == output.shape[0] and input_raster.shape[1] == output.shape[1], "ModelSession must return an np.ndarray with the same height and width as the input"
+
+        return InMemoryRaster(output, input_raster.crs, input_raster.transform, input_raster.bounds)
+
+    def pred_tile(self, input_raster):
+        output = self.model.run(input_raster.data, True)
+        assert input_raster.shape[0] == output.shape[0] and input_raster.shape[1] == output.shape[1], "ModelSession must return an np.ndarray with the same height and width as the input"
+
+        return InMemoryRaster(output, input_raster.crs, input_raster.transform, input_raster.bounds)
+
+    def download_all(self):
+        pass
+
