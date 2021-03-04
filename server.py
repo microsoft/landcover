@@ -316,6 +316,7 @@ def pred_tile():
     new_profile['height'] = output_hard.shape[0] 
     new_profile['width'] = output_hard.shape[1]
     new_profile['nodata'] = 255
+    new_profile['crs'] = output_raster.crs
     with rasterio.open("tmp/downloads/%s.tif" % (tmp_id), 'w', **new_profile) as f:
         f.write(output_hard.astype(np.uint8), 1)
     data["downloadTIFF"] = "tmp/downloads/%s.tif" % (tmp_id)
