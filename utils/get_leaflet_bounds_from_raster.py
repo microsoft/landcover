@@ -1,8 +1,9 @@
+import sys
 import rasterio
 import fiona.transform
 import shapely.geometry
 
-INPUT_FN = "../data/imagery/hcmc_sentinel.tif"
+INPUT_FN = sys.argv[1]
 
 with rasterio.open(INPUT_FN) as f:
     crs = f.crs.to_string()
