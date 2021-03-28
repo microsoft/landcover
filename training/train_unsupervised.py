@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 # pylint: disable=E1137,E1136,E0110
+from re import L
 import sys
 import os
 import time
@@ -18,14 +19,23 @@ from sklearn.cluster import MiniBatchKMeans, KMeans
 parser = argparse.ArgumentParser(description="Unsupervised model training")
 parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debugging", default=False)
 parser.add_argument("--input_fn", action="store", type=str, help="Path/paths to input GeoTIFF", required=True)
+parser.add_argument("--nodata_val", action="store", type=int, default=0, help="Value to treat as nodata in the input imagery")
 parser.add_argument("--output_fn", action="store", type=str, help="Output model fn format (use '{epoch:02d}' for checkpointing per epoch of traning)", required=True)
 
+# Cluster step arguments
+parser.add_argument("--num_clusters", type=int, default=64, help="Number of clusters to use in the k-means model")
+parser.add_argument("--num_cluster_samples_per_file", type=int, default=10000, help="Number of pixels (or neighborhoods) to sample and use to fit the k-means model")
+parser.add_argument("--radius", type=int, default=2, help="Size of neighborhood to use in creating the samples with the k-means model")
+
+# Training step arguments
 parser.add_argument("--batch_size", type=int, default=16, help="Batch size for training model")
 parser.add_argument("--num_epochs", type=int, default=30, help="Number of epochs to train model for")
-parser.add_argument("--number_of_clusters", type=int, default=64, help="Number of clusters to use in the k-means model")
-parser.add_argument("--number_of_cluster_samples_for_kmeans", type=int, default=50000, help="Number of pixels to sample and use to fit the k-means model")
-parser.add_argument("--number_of_patches_per_input", type=int, default=500, help="Number of patches to sample from each input file in order to train the DL model")
 parser.add_argument("--patch_size", type=int, default=150, help="The size of each patch to sample in order to train the DL model")
+parser.add_argument("--num_train_samples_per_file", type=int, default=1000, help="Number of patches to sample and use to fit the DL model")
+parser.add_argument("--num_val_samples_per_file", type=int, default=50, help="Number of patches to sample and use as validation")
+
+parser.add_argument("--normalization_means", type=str, required=False, help="Comma separated string of the per-channel means to subtract before training the model")
+parser.add_argument("--normalization_stds", type=str, required=False, help="Comma separated string of the per-channel stdevs to divide by before training the model")
 
 parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", required=True)
 args = parser.parse_args()
@@ -296,18 +306,20 @@ def basic_model(input_shape, num_classes, num_filters_per_layer=64, lr=0.003):
 
 def main():
     # Other args
-    nodata_value = 0
-    num_cluster_samples_per_file = 10000
-    num_cluster_classes = 40
-    r = 2
-    num_train_samples_per_file = 10000
-    num_val_samples_per_file = 50
-    sample_height = 150
-    sample_width = 150
-    num_epochs = 50
-    batch_size = 16
-    assert sample_height % (2*r+1) == 0
-    assert sample_width % (2*r+1) == 0
+    nodata_value = args.nodata_val
+    num_cluster_samples_per_file = args.num_cluster_samples_per_file
+    num_clusters = args.num_clusters
+    r = args.radius
+    num_train_samples_per_file = args.num_train_samples_per_file
+    num_val_samples_per_file = args.num_val_samples_per_file
+    sample_size = args.patch_size
+    num_epochs = args.num_epochs
+    batch_size = args.batch_size
+
+    initial_lr = 0.01
+    assert sample_size % (2*r+1) == 0
+    assert sample_size % (2*r+1) == 0
+
     input_fns = glob.glob(args.input_fn)
     num_files = len(input_fns)
     num_cluster_samples = num_cluster_samples_per_file * num_files
@@ -338,7 +350,7 @@ def main():
 
     #--------------------------------------------------
     # We first randomly sample (2*r+1, 2*r+1) patches to use to fit a KMeans model.
-    # We will later sample (sample_height, sample_width) patches, then apply this KMeans
+    # We will later sample (sample_size, sample_size) patches, then apply this KMeans
     # model to every pixel within those patches to get corresponding target labels.
     print("Sampling dataset for KMeans and fitting model")
     tic = float(time.time())
@@ -358,9 +370,8 @@ def main():
             idx += 1
     x_all_flat = x_all.reshape((num_cluster_samples, -1))
 
-    kmeans = KMeans(n_clusters=num_cluster_classes, verbose=0, n_init=20)
-    random_idxs = np.random.choice(num_cluster_samples, size=args.number_of_cluster_samples_for_kmeans, replace=True)
-    kmeans = kmeans.fit(x_all_flat[random_idxs])
+    kmeans = KMeans(n_clusters=num_clusters, verbose=0, n_init=20)
+    kmeans = kmeans.fit(x_all_flat)
     print("Finished fitting KMeans in %0.4f seconds" % (time.time() - tic))
 
 
@@ -368,27 +379,27 @@ def main():
     print("Sampling training dataset")
     tic = float(time.time())
 
-    x_train = np.zeros((num_train_samples,sample_height,sample_width,num_channels), dtype=float)
-    x_val = np.zeros((num_val_samples,sample_height,sample_width,num_channels), dtype=float)
+    x_train = np.zeros((num_train_samples,sample_size,sample_size,num_channels), dtype=float)
+    x_val = np.zeros((num_val_samples,sample_size,sample_size,num_channels), dtype=float)
 
-    y_train = np.zeros((num_train_samples,sample_height,sample_width), dtype=int)
-    y_val = np.zeros((num_val_samples,sample_height,sample_width), dtype=int)
+    y_train = np.zeros((num_train_samples,sample_size,sample_size), dtype=int)
+    y_val = np.zeros((num_val_samples,sample_size,sample_size), dtype=int)
     idx = 0
     for data, mask in zip(all_data, all_masks):
         height, width, _ = data.shape
-        for i in range(num_train_samples):
+        for i in range(num_train_samples_per_file):
             if idx % 1000 == 0:
                 print("%d/%d" % (idx, num_train_samples))
-            x = np.random.randint(r, width-sample_width-r)
-            y = np.random.randint(r, height-sample_height-r)
+            x = np.random.randint(r, width-sample_size-r)
+            y = np.random.randint(r, height-sample_size-r)
 
             while mask[y,x]:
-                x = np.random.randint(r, width-sample_width-r)
-                y = np.random.randint(r, height-sample_height-r)
+                x = np.random.randint(r, width-sample_size-r)
+                y = np.random.randint(r, height-sample_size-r)
 
-            window = data[y-r:y+sample_height+r, x-r:x+sample_width+r]
+            window = data[y-r:y+sample_size+r, x-r:x+sample_size+r]
             labels = apply_model_to_data(window, r, kmeans)
-            x_train[idx] = data[y:y+sample_height,x:x+sample_width].copy()
+            x_train[idx] = data[y:y+sample_size,x:x+sample_size].copy()
             y_train[idx] = labels
             idx += 1
     print("Finished sampling training dataset in %0.4f seconds" % (time.time() - tic))
@@ -400,19 +411,19 @@ def main():
     idx = 0
     for data, mask in zip(all_data, all_masks):
         height, width, _ = data.shape
-        for i in range(num_val_samples):
+        for i in range(num_val_samples_per_file):
             if idx % 1000 == 0:
                 print("%d/%d" % (idx, num_val_samples))
-            x = np.random.randint(r, width-sample_width-r)
-            y = np.random.randint(r, height-sample_height-r)
+            x = np.random.randint(r, width-sample_size-r)
+            y = np.random.randint(r, height-sample_size-r)
 
             while mask[y,x]:
-                x = np.random.randint(r, width-sample_width-r)
-                y = np.random.randint(r, height-sample_height-r)
+                x = np.random.randint(r, width-sample_size-r)
+                y = np.random.randint(r, height-sample_size-r)
 
-            window = data[y-r:y+sample_height+r, x-r:x+sample_width+r]
+            window = data[y-r:y+sample_size+r, x-r:x+sample_size+r]
             labels = apply_model_to_data(window, r, kmeans)
-            x_val[idx] = data[y:y+sample_height,x:x+sample_width].copy()
+            x_val[idx] = data[y:y+sample_size,x:x+sample_size].copy()
             y_val[idx] = labels
             idx += 1
     print("Finished sampling validation dataset in %0.4f seconds" % (time.time() - tic))
@@ -420,21 +431,28 @@ def main():
 
     #--------------------------------------------------
     print("Normalizing sampled imagery")
-    x_train = x_train / 255.0
-    x_val = x_val / 255.0
+    means = 0
+    stds = 1
+    if (args.normalization_means is not None) and (args.normalization_stds is not None):
+        means = np.array(list(map(float,args.normalization_means.split(","))))
+        stds = np.array(list(map(float,args.normalization_stds.split(","))))
+        assert means.shape[0] == 0 or means.shape[0] == num_channels
+        assert stds.shape[0] == 0 or stds.shape[0] == num_channels
+    x_train = (x_train - means) / stds
+    x_val = (x_val - means) / stds
 
 
     #--------------------------------------------------
     print("Converting labels to categorical")
     tic = float(time.time())
-    y_train = tensorflow.keras.utils.to_categorical(y_train, num_classes=num_cluster_classes)
-    y_val = tensorflow.keras.utils.to_categorical(y_val, num_classes=num_cluster_classes)
+    y_train = tensorflow.keras.utils.to_categorical(y_train, num_classes=num_clusters)
+    y_val = tensorflow.keras.utils.to_categorical(y_val, num_classes=num_clusters)
     print("Finished converting labels to categorical in %0.4f seconds" % (time.time() - tic))
 
     #--------------------------------------------------
     print("Creating and fitting model")
     tic = float(time.time())
-    model = basic_model((sample_height, sample_width, num_channels), num_cluster_classes, lr=0.01)
+    model = basic_model((sample_size, sample_size, num_channels), num_clusters, lr=initial_lr)
     if args.verbose:
         model.summary()
 
@@ -447,7 +465,7 @@ def main():
         cval=0.0,
         horizontal_flip=False,
         vertical_flip=False,
-        preprocessing_function=image_cutout_builder(mask_size=(5,20), replacement_val=128),
+        preprocessing_function=image_cutout_builder(mask_size=(5,20), replacement_val=means),
         dtype=np.float32
     )
 
