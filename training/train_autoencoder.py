@@ -5,12 +5,38 @@
 import sys
 import os
 import time
-import collections
+import glob
+import pickle
 import argparse
 
 import numpy as np
-
 import rasterio
+
+from sklearn.cluster import MiniBatchKMeans, KMeans
+
+
+parser = argparse.ArgumentParser(description="Unsupervised model training")
+parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debugging", default=False)
+parser.add_argument("--input_fn", action="store", type=str, help="Path/paths to input GeoTIFF", required=True)
+parser.add_argument("--output_fn", action="store", type=str, help="Output model fn format (use '{epoch:02d}' for checkpointing per epoch of traning)", required=True)
+
+parser.add_argument("--batch_size", type=int, default=16, help="Batch size for training model")
+parser.add_argument("--num_epochs", type=int, default=30, help="Number of epochs to train model for")
+parser.add_argument("--number_of_clusters", type=int, default=64, help="Number of clusters to use in the k-means model")
+parser.add_argument("--number_of_cluster_samples_for_kmeans", type=int, default=50000, help="Number of pixels to sample and use to fit the k-means model")
+parser.add_argument("--number_of_patches_per_input", type=int, default=500, help="Number of patches to sample from each input file in order to train the DL model")
+parser.add_argument("--patch_size", type=int, default=150, help="The size of each patch to sample in order to train the DL model")
+
+parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", required=True)
+args = parser.parse_args()
+
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpuid)
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
+import tensorflow as tf
+print("Using tensorflow version: %s" % (tf.__version__))
+print("Is GPU available: ", tf.test.is_gpu_available())
 
 import tensorflow.keras.backend as K
 import tensorflow.keras.callbacks
@@ -23,14 +49,13 @@ from tensorflow.keras.losses import categorical_crossentropy, mean_squared_error
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.layers import LeakyReLU
 
-from sklearn.cluster import MiniBatchKMeans, KMeans
 
 # from https://gist.github.com/seberg/3866040
 def rolling_window(array, window=(0,), asteps=None, wsteps=None, axes=None, toend=True):
     """Create a view of `array` which for every point gives the n-dimensional
     neighbourhood of size window. New dimensions are added at the end of
     `array` or after the corresponding original dimension.
-    
+
     Parameters
     ----------
     array : array_like
@@ -54,13 +79,13 @@ def rolling_window(array, window=(0,), asteps=None, wsteps=None, axes=None, toen
         dimension, instead of at the end of the array. Adding the new axes at the
         end makes it easier to get the neighborhood, however toend=False will give
         a more intuitive result if you view the whole array.
-    
+
     Returns
     -------
     A view on `array` which is smaller to fit the windows and has windows added
     dimensions (0s not counting), ie. every point of `array` is an array of size
     window.
-    
+
     Examples
     --------
     >>> a = np.arange(9).reshape(3,3)
@@ -73,23 +98,23 @@ def rolling_window(array, window=(0,), asteps=None, wsteps=None, axes=None, toen
              [6, 7]],
             [[4, 5],
              [7, 8]]]])
-    
+
     Or to create non-overlapping windows, but only along the first dimension:
     >>> rolling_window(a, (2,0), asteps=(2,1))
     array([[[0, 3],
             [1, 4],
             [2, 5]]])
-    
+
     Note that the 0 is discared, so that the output dimension is 3:
     >>> rolling_window(a, (2,0), asteps=(2,1)).shape
     (1, 3, 2)
-    
+
     This is useful for example to calculate the maximum in all (overlapping)
     2x2 submatrixes:
     >>> rolling_window(a, (2,2)).max((2,3))
     array([[4, 5],
            [7, 8]])
-           
+
     Or delay embedding (3D embedding with delay 2):
     >>> x = np.arange(10)
     >>> rolling_window(x, 3, wsteps=2)
@@ -103,14 +128,14 @@ def rolling_window(array, window=(0,), asteps=None, wsteps=None, axes=None, toen
     array = np.asarray(array)
     orig_shape = np.asarray(array.shape)
     window = np.atleast_1d(window).astype(int) # maybe crude to cast to int...
-    
+
     if axes is not None:
         axes = np.atleast_1d(axes)
         w = np.zeros(array.ndim, dtype=int)
         for axis, size in zip(axes, window):
             w[axis] = size
         window = w
-    
+
     # Check if window is legal:
     if window.ndim > 1:
         raise ValueError("`window` must be one-dimensional.")
@@ -128,11 +153,11 @@ def rolling_window(array, window=(0,), asteps=None, wsteps=None, axes=None, toen
             raise ValueError("`asteps` cannot be longer then the `array` dimension.")
         # does not enforce alignment, so that steps can be same as window too.
         _asteps[-len(asteps):] = asteps
-        
+
         if np.any(asteps < 1):
              raise ValueError("All elements of `asteps` must be larger then 1.")
     asteps = _asteps
-    
+
     _wsteps = np.ones_like(window)
     if wsteps is not None:
         wsteps = np.atleast_1d(wsteps)
@@ -150,22 +175,22 @@ def rolling_window(array, window=(0,), asteps=None, wsteps=None, axes=None, toen
         raise ValueError("`window` * `wsteps` larger then `array` in at least one dimension.")
 
     new_shape = orig_shape # just renaming...
-    
+
     # For calculating the new shape 0s must act like 1s:
     _window = window.copy()
     _window[_window==0] = 1
-    
+
     new_shape[-len(window):] += wsteps - _window * wsteps
     new_shape = (new_shape + asteps - 1) // asteps
     # make sure the new_shape is at least 1 in any "old" dimension (ie. steps
     # is (too) large, but we do not care.
     new_shape[new_shape < 1] = 1
     shape = new_shape
-    
+
     strides = np.asarray(array.strides)
     strides *= asteps
     new_strides = array.strides[-len(window):] * wsteps
-    
+
     # The full new shape and strides:
     if toend:
         new_shape = np.concatenate((shape, window))
@@ -176,30 +201,30 @@ def rolling_window(array, window=(0,), asteps=None, wsteps=None, axes=None, toen
         _window = _.copy()
         _[-len(window):] = new_strides
         _new_strides = _
-        
+
         new_shape = np.zeros(len(shape)*2, dtype=int)
         new_strides = np.zeros(len(shape)*2, dtype=int)
-        
+
         new_shape[::2] = shape
         new_strides[::2] = strides
         new_shape[1::2] = _window
         new_strides[1::2] = _new_strides
-    
+
     new_strides = new_strides[new_shape != 0]
     new_shape = new_shape[new_shape != 0]
-    
+
     return np.lib.stride_tricks.as_strided(array, shape=new_shape, strides=new_strides)
 
 def apply_model_to_data(data, r, kmeans):
     height, width, _ = data.shape
-    
+
     windowed_data = rolling_window(data, (2*r+1,2*r+1,0))
     windowed_data = np.rollaxis(windowed_data, 2, 5)
     windowed_data = windowed_data.reshape(int((height-2*r)*(width-2*r)), -1)
-    
+
     labels = kmeans.predict(windowed_data)
     labels = labels.reshape(height-2*r, width-2*r)
-    
+
     return labels
 
 
@@ -263,52 +288,51 @@ def basic_model(input_shape, num_classes, num_filters_per_layer=64, lr=0.003):
 
     outputs = Conv2D(num_classes, kernel_size=(1,1), strides=(1,1), padding="same", activation="softmax")(x)
     model = Model(inputs=inputs, outputs=outputs)
-    
+
     optimizer = Adam(lr=lr)
-    model.compile(loss=categorical_crossentropy, optimizer=optimizer)
-    
+    model.compile(loss=categorical_crossentropy, optimizer=optimizer, metrics=['accuracy'])
+
     return model
 
 def main():
-    parser = argparse.ArgumentParser(description="Unsupervised pre-training")
-
-    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debugging", default=False)
-    parser.add_argument("--input_fn", action="store", dest="input_fn", type=str, help="Path/paths to input GeoTIFF", required=True)
-    parser.add_argument("--output_fn", action="store", dest="output_fn", type=str, help="Output model fn format (use '{epoch:02d}' for checkpointing per epoch of traning)", required=True)
-    parser.add_argument("--gpu", action="store", dest="gpuid", type=int, help="GPU to use", required=True)
-
-    args = parser.parse_args(sys.argv[1:])
-
     # Other args
     nodata_value = 0
-    num_cluster_samples = 100000
+    num_cluster_samples_per_file = 10000
     num_cluster_classes = 40
     r = 2
-    num_train_samples = 5000
-    num_val_samples = 50
+    num_train_samples_per_file = 10000
+    num_val_samples_per_file = 50
     sample_height = 150
     sample_width = 150
-    num_epochs = 30
+    num_epochs = 50
     batch_size = 16
     assert sample_height % (2*r+1) == 0
     assert sample_width % (2*r+1) == 0
+    input_fns = glob.glob(args.input_fn)
+    num_files = len(input_fns)
+    num_cluster_samples = num_cluster_samples_per_file * num_files
+    num_train_samples = num_train_samples_per_file * num_files
+    num_val_samples = num_val_samples_per_file * num_files
+    output_dir = os.path.dirname(args.output_fn)
 
     #--------------------------------------------------
     print("Starting unsupervised pre-training script")
-    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpuid)
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
-
     start_time = float(time.time())
 
     #--------------------------------------------------
     print("Loading data")
     tic = float(time.time())
+
     all_data = []
-    with rasterio.open(args.input_fn) as f:
-        all_data = np.rollaxis(f.read(), 0, 3)
-    height, width, num_channels = all_data.shape
-    mask = np.sum(all_data == nodata_value, axis=2) == num_channels # We assume that if the `nodata_value` is present across all channels then the pixel is actually nodata
+    for fn in input_fns:
+        with rasterio.open(fn) as f:
+            all_data.append(np.rollaxis(f.read(), 0, 3))
+
+    _, __, num_channels = all_data[0].shape
+    all_masks = []
+    for data in all_data:
+        assert data.shape[2] == num_channels
+        all_masks.append(np.sum(data == nodata_value, axis=2) == num_channels) # We assume that if the `nodata_value` is present across all channels then the pixel is actually nodata
     print("Finished loading data in %0.4f seconds" % (time.time() - tic))
 
 
@@ -319,20 +343,24 @@ def main():
     print("Sampling dataset for KMeans and fitting model")
     tic = float(time.time())
     x_all = np.zeros((num_cluster_samples, 2*r+1, 2*r+1, num_channels), dtype=float)
-    for i in range(num_cluster_samples):
+    idx = 0
+    for data, mask in zip(all_data, all_masks):
+        height, width, _ = data.shape
+        for i in range(num_cluster_samples_per_file):
 
-        x = np.random.randint(r, width-r)
-        y = np.random.randint(r, height-r)
-        while mask[y,x]: # we hit a no data
             x = np.random.randint(r, width-r)
             y = np.random.randint(r, height-r)
+            while mask[y,x]: # we hit a no data
+                x = np.random.randint(r, width-r)
+                y = np.random.randint(r, height-r)
 
-        x_window = all_data[y-r:y+r+1, x-r:x+r+1]
-        x_all[i] = x_window
+            x_all[idx] = data[y-r:y+r+1, x-r:x+r+1].copy()
+            idx += 1
     x_all_flat = x_all.reshape((num_cluster_samples, -1))
 
     kmeans = KMeans(n_clusters=num_cluster_classes, verbose=0, n_init=20)
-    kmeans = kmeans.fit(x_all_flat)
+    random_idxs = np.random.choice(num_cluster_samples, size=args.number_of_cluster_samples_for_kmeans, replace=True)
+    kmeans = kmeans.fit(x_all_flat[random_idxs])
     print("Finished fitting KMeans in %0.4f seconds" % (time.time() - tic))
 
 
@@ -345,43 +373,56 @@ def main():
 
     y_train = np.zeros((num_train_samples,sample_height,sample_width), dtype=int)
     y_val = np.zeros((num_val_samples,sample_height,sample_width), dtype=int)
-
-    for i in range(num_train_samples):
-        if i % 1000 == 0:
-            print("%d/%d" % (i, num_train_samples))
-        x = np.random.randint(r, width-sample_width-r)
-        y = np.random.randint(r, height-sample_height-r)
-        
-        while mask[y,x]:
+    idx = 0
+    for data, mask in zip(all_data, all_masks):
+        height, width, _ = data.shape
+        for i in range(num_train_samples):
+            if idx % 1000 == 0:
+                print("%d/%d" % (idx, num_train_samples))
             x = np.random.randint(r, width-sample_width-r)
             y = np.random.randint(r, height-sample_height-r)
-        
-        window = all_data[y-r:y+sample_height+r, x-r:x+sample_width+r]
-        labels = apply_model_to_data(window, r, kmeans)
-        x_train[i] = all_data[y:y+sample_height,x:x+sample_width].copy()
-        y_train[i] = labels
+
+            while mask[y,x]:
+                x = np.random.randint(r, width-sample_width-r)
+                y = np.random.randint(r, height-sample_height-r)
+
+            window = data[y-r:y+sample_height+r, x-r:x+sample_width+r]
+            labels = apply_model_to_data(window, r, kmeans)
+            x_train[idx] = data[y:y+sample_height,x:x+sample_width].copy()
+            y_train[idx] = labels
+            idx += 1
     print("Finished sampling training dataset in %0.4f seconds" % (time.time() - tic))
 
 
     #--------------------------------------------------
     print("Sampling validation dataset")
     tic = float(time.time())
-    for i in range(num_val_samples):
-        if i % 1000 == 0:
-            print("%d/%d" % (i, num_val_samples))
-        x = np.random.randint(r, width-sample_width-r)
-        y = np.random.randint(r, height-sample_height-r)
-        
-        while mask[y,x]:
+    idx = 0
+    for data, mask in zip(all_data, all_masks):
+        height, width, _ = data.shape
+        for i in range(num_val_samples):
+            if idx % 1000 == 0:
+                print("%d/%d" % (idx, num_val_samples))
             x = np.random.randint(r, width-sample_width-r)
             y = np.random.randint(r, height-sample_height-r)
-        
-        window = all_data[y-r:y+sample_height+r, x-r:x+sample_width+r]
-        labels = apply_model_to_data(window, r, kmeans)
-        x_val[i] = all_data[y:y+sample_height,x:x+sample_width].copy()
-        y_val[i] = labels
+
+            while mask[y,x]:
+                x = np.random.randint(r, width-sample_width-r)
+                y = np.random.randint(r, height-sample_height-r)
+
+            window = data[y-r:y+sample_height+r, x-r:x+sample_width+r]
+            labels = apply_model_to_data(window, r, kmeans)
+            x_val[idx] = data[y:y+sample_height,x:x+sample_width].copy()
+            y_val[idx] = labels
+            idx += 1
     print("Finished sampling validation dataset in %0.4f seconds" % (time.time() - tic))
-    
+
+
+    #--------------------------------------------------
+    print("Normalizing sampled imagery")
+    x_train = x_train / 255.0
+    x_val = x_val / 255.0
+
 
     #--------------------------------------------------
     print("Converting labels to categorical")
@@ -390,7 +431,6 @@ def main():
     y_val = tensorflow.keras.utils.to_categorical(y_val, num_classes=num_cluster_classes)
     print("Finished converting labels to categorical in %0.4f seconds" % (time.time() - tic))
 
-    
     #--------------------------------------------------
     print("Creating and fitting model")
     tic = float(time.time())
@@ -415,15 +455,22 @@ def main():
     model_checkpoint = tensorflow.keras.callbacks.ModelCheckpoint(args.output_fn, monitor='train_loss', verbose=1, save_best_only=False, save_weights_only=False, mode='auto', save_freq=period)
     lr_reducer = tensorflow.keras.callbacks.ReduceLROnPlateau(monitor="val_loss", factor=0.1, patience=2, verbose=1)
 
-    model.fit(
-        datagen.flow(x_train, y_train, batch_size=batch_size),
+    history = model.fit(
+        datagen.flow(x_train, y_train, batch_size=batch_size, shuffle=True),
         steps_per_epoch=x_train.shape[0] // batch_size - 1,
         epochs=num_epochs,
         callbacks=[model_checkpoint, lr_reducer],
         validation_data=datagen.flow(x_val, y_val, batch_size=batch_size),
         validation_steps=x_val.shape[0] // batch_size - 1
     )
+
     print("Finished fitting model in %0.4f seconds" % (time.time() - tic))
+
+    with open(os.path.join(output_dir, "model_fit_history.p"), "wb") as f:
+        pickle.dump(
+            history.history,
+            f
+        )
 
     print("Finished in %0.4f seconds" % (time.time() - start_time))
 
