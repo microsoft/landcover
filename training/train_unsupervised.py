@@ -1,9 +1,4 @@
 #! /usr/bin/env python
-# -*- coding: utf-8 -*-
-# vim:fenc=utf-8
-# pylint: disable=E1137,E1136,E0110
-from re import L
-import sys
 import os
 import time
 import glob
@@ -13,18 +8,18 @@ import argparse
 import numpy as np
 import rasterio
 
-from sklearn.cluster import MiniBatchKMeans, KMeans
+from sklearn.cluster import KMeans
 
 
 parser = argparse.ArgumentParser(description="Unsupervised model training")
 parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debugging", default=False)
 parser.add_argument("--input_fn", action="store", type=str, help="Path/paths to input GeoTIFF", required=True)
 parser.add_argument("--nodata_val", action="store", type=int, default=0, help="Value to treat as nodata in the input imagery")
-parser.add_argument("--output_fn", action="store", type=str, help="Output model fn format (use '{epoch:02d}' for checkpointing per epoch of traning)", required=True)
+parser.add_argument("--output_fn", action="store", type=str, help="Output model file (the best model according to 'val_loss' will be saved here)", required=True)
 
 # Cluster step arguments
 parser.add_argument("--num_clusters", type=int, default=64, help="Number of clusters to use in the k-means model")
-parser.add_argument("--num_cluster_samples_per_file", type=int, default=10000, help="Number of pixels (or neighborhoods) to sample and use to fit the k-means model")
+parser.add_argument("--num_cluster_samples_per_file", type=int, default=1000, help="Number of pixels (or neighborhoods) to sample and use to fit the k-means model")
 parser.add_argument("--radius", type=int, default=2, help="Size of neighborhood to use in creating the samples with the k-means model")
 
 # Training step arguments
@@ -42,7 +37,7 @@ args = parser.parse_args()
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpuid)
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 import tensorflow as tf
 print("Using tensorflow version: %s" % (tf.__version__))
@@ -300,7 +295,7 @@ def basic_model(input_shape, num_classes, num_filters_per_layer=64, lr=0.003):
     model = Model(inputs=inputs, outputs=outputs)
 
     optimizer = Adam(lr=lr)
-    model.compile(loss=categorical_crossentropy, optimizer=optimizer, metrics=['accuracy'])
+    model.compile(loss=categorical_crossentropy, optimizer=optimizer, metrics=["accuracy"])
 
     return model
 
@@ -328,7 +323,7 @@ def main():
     output_dir = os.path.dirname(args.output_fn)
 
     #--------------------------------------------------
-    print("Starting unsupervised pre-training script")
+    print("Starting unsupervised pre-training script with %d inputs" % (len(input_fns)))
     start_time = float(time.time())
 
     #--------------------------------------------------
@@ -345,7 +340,7 @@ def main():
     for data in all_data:
         assert data.shape[2] == num_channels
         all_masks.append(np.sum(data == nodata_value, axis=2) == num_channels) # We assume that if the `nodata_value` is present across all channels then the pixel is actually nodata
-    print("Finished loading data in %0.4f seconds" % (time.time() - tic))
+    print("Finished loading %d files in %0.4f seconds" % (len(all_data), time.time() - tic))
 
 
     #--------------------------------------------------
@@ -456,29 +451,28 @@ def main():
     if args.verbose:
         model.summary()
 
-    datagen = ImageDataGenerator(
+    train_datagen = ImageDataGenerator(
         rotation_range=0,
         width_shift_range=0,
         height_shift_range=0,
-        channel_shift_range=0.1,
-        fill_mode='constant', # can also be "nearest"
-        cval=0.0,
+        channel_shift_range=0.0,
         horizontal_flip=False,
         vertical_flip=False,
         preprocessing_function=image_cutout_builder(mask_size=(5,20), replacement_val=means),
         dtype=np.float32
     )
+    val_datagen = ImageDataGenerator()
 
-    period = x_train.shape[0] // batch_size - 1
-    model_checkpoint = tensorflow.keras.callbacks.ModelCheckpoint(args.output_fn, monitor='train_loss', verbose=1, save_best_only=False, save_weights_only=False, mode='auto', save_freq=period)
+    model_checkpoint = tensorflow.keras.callbacks.ModelCheckpoint(args.output_fn, monitor="val_loss", verbose=1, save_best_only=True, save_weights_only=False, mode="min", save_freq="epoch")
     lr_reducer = tensorflow.keras.callbacks.ReduceLROnPlateau(monitor="val_loss", factor=0.1, patience=2, verbose=1)
+    early_stopper = tensorflow.keras.callbacks.EarlyStopping(monitor="val_loss", mode="min", verbose=1, patience=8)
 
     history = model.fit(
-        datagen.flow(x_train, y_train, batch_size=batch_size, shuffle=True),
+        train_datagen.flow(x_train, y_train, batch_size=batch_size, shuffle=True),
         steps_per_epoch=x_train.shape[0] // batch_size - 1,
         epochs=num_epochs,
-        callbacks=[model_checkpoint, lr_reducer],
-        validation_data=datagen.flow(x_val, y_val, batch_size=batch_size),
+        callbacks=[model_checkpoint, lr_reducer, early_stopper],
+        validation_data=val_datagen.flow(x_val, y_val, batch_size=batch_size),
         validation_steps=x_val.shape[0] // batch_size - 1
     )
 
