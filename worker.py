@@ -20,6 +20,7 @@ from rpyc.utils.server import OneShotServer, ThreadedServer
 from web_tool.ModelSessionKerasExample import KerasDenseFineTune
 from web_tool.ModelSessionPytorchSolar import SolarFineTuning
 from web_tool.ModelSessionPyTorchExample import TorchFineTuning
+from web_tool.ModelSessionPyTorchSegmentationModel import TorchSegmentationModel
 from web_tool.ModelSessionRandomForest import ModelSessionRandomForest
 from web_tool.Utils import setup_logging, serialize, deserialize
 
@@ -91,6 +92,8 @@ def main():
         model = TorchFineTuning(args.gpu_id, **model_configs[args.model_key])
     elif model_type == "pytorch_solar":
         model = SolarFineTuning(args.gpu_id, **model_configs[args.model_key])
+    elif model_type == "pytorch_segmodel":
+        model = TorchSegmentationModel(args.gpu_id, **model_configs[args.model_key])
     elif model_type == "random_forest":
         model = ModelSessionRandomForest(**model_configs[args.model_key])
     else:
