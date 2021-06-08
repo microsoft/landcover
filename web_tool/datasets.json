@@ -84,7 +84,7 @@
                 "name": "Grid"
             }
         ],
-        "validModels": ["naip_demo"]
+        "validModels": ["naip_demo", "devseed_9class"]
     },
     "naip_all": {
         "metadata": {
@@ -110,7 +110,7 @@
             }
         ],
         "shapeLayers": null,
-        "validModels": ["naip_demo"]
+        "validModels": ["naip_demo", "devseed_9class"]
     },
     "esri_all": {
         "metadata": {
@@ -137,7 +137,7 @@
             }
         ],
         "shapeLayers": null,
-        "validModels": ["naip_demo"]
+        "validModels": ["naip_demo", "devseed_9class"]
     },
     "lc_all": {
         "metadata": {
