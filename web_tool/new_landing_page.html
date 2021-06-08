@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="">
+  <meta name="author" content="">
+  <link rel="icon" href="favicon.ico">
+
+  <title>Microsoft AI for Earth</title>
+
+  <style>
+    .hovering{
+      border-width: 3px;
+      background-color:blue;
+      border-color:blue;
+    }
+    .selected{
+      border-width: 5px;
+      background-color:red;
+      border-color:red;
+    }
+
+    block{
+      display:inline-block;
+      background-color:rgba(224,224,224,0.5);
+    }
+
+    quad{
+      display:inline-block;
+    }
+
+    line {
+      z-index:-100;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="tileList" style="width:800px;height:600px;">
+
+  </div>
+
+  <div style="background-color:white;display:inline-block;">
+    <div style="height:200px;">
+      <img style="height:200px" id="thumb2013" />
+      <img style="height:200px" id="thumb2017" />
+    </div>
+
+    <p>
+      Tile: <span id="hoveringTile"></span>
+    </p>
+
+    <button onclick="startSession(2013)">
+      Start session for 2013
+    </button>
+
+    <button onclick="startSession(2017)">
+      Start session for 2017
+    </button>
+  </div>
+
+
+
+  <script src="js/jquery-3.3.1.min.js"></script>
+
+  <script type="text/javascript">
+
+    var selectedTile = null; // includes year
+    var tiles = null;
+
+    var main = function () {
+
+      var html = "";
+      var tileList = document.getElementById('tileList');
+
+      var sx = 12, sy = 16;
+      for (var tileName in tiles) {
+        var tile = tiles[tileName];
+
+        var lat = parseInt(tileName.substr(0,2));
+        var lon = parseInt(tileName.substr(2,3));
+        var quad = parseInt(tileName.substr(5,2))-1;
+        var quarter = tileName.substr(8,2);
+        var year = tileName.substr(11,4);
+
+        if (year === "2013") continue;
+
+        lat += 1;
+        lat -= Math.floor(quad/8) * (1/8);
+        lon += 1;
+        lon -= quad%8 * (1/8);
+        if (quarter.substr(0,1) === "s") lat -= 1/16;
+        if (quarter.substr(1,1) === "e") lon -= 1/16;
+
+        var left = 80-lon;
+        var top = 40-lat;
+
+        html += `<block style="position:absolute;left:${left*sx*16}px;top:${top*sy*16}px;width:${sx-2}px;height:${sy-2}px;border:1px solid #dddddd;margin:1px;" id="${tileName}" onmouseout="mouseOut('${tileName}')" onmouseover="mouseOver('${tileName}')" onclick="select('${tileName}')" > </block>`;
+      }
+
+      for (var left=0; left<5; left+=1/8) {
+        for (var top=0; top<2.25; top+=1/8) {
+          var a = (left - Math.floor(left))*8;
+          var b = (top- Math.floor(top))*8;
+          var quad = Math.round(b*8+a+1);
+          html += `<quad style="position:absolute;left:${left*sx*16}px;top:${top*sy*16}px;width:${2*sx}px;height:${2*sy}px;margin:2px;color:black;z-index:-1;text-align:center;"  ><span style="height:${sy}px;top:${sx/2}px;position:relative;">${quad}</span></quad>`;
+        }
+      }
+      
+
+      for (var left=1/8; left<5; left+=1/8) {
+        html += `<line style="position:absolute;left:${left*sx*16}px;top:${0*sy*16}px;width:0px;height:${sy*2.25*16}px;border:1px solid #eeeeee;margin:0px;" > </line>`;
+      }
+      for (var top=1/8; top<2.25; top+=1/8) {
+        html += `<line style="position:absolute;left:${0*sx*16}px;top:${top*sy*16}px;width:${sx*5*16}px;height:0px;border:1px solid #eeeeee;margin:0px;" > </line>`;
+      }
+
+      for (var left=1; left<5; left++) {
+        html += `<line style="position:absolute;left:${left*sx*16}px;top:${0*sy*16}px;width:1px;height:${sy*2.25*16}px;border:1px solid black;margin:0px;" > </line>`;
+        html += `<div style="position:absolute;left:${left*sx*16}px;top:${sy*2.25*16}px;" > ${80-left}&deg;W </div>`;
+      }
+      for (var top=1; top<2.25; top++) {
+        html += `<line style="position:absolute;left:${0*sx*16}px;top:${top*sy*16}px;width:${sx*5*16}px;height:1px;border:1px solid black;margin:0px;" > </line>`;
+        html += `<div style="position:absolute;left:${sx*5*16}px;top:${top*sy*16}px;" > ${40-top}&deg;N </div>`;
+      }
+
+      tileList.innerHTML = html;
+    }
+
+    function select(tile) {
+      selectedTile = tile.substr(0,10);
+      for (var tileName in tiles) {
+        if (!tileName.endsWith('2017')) continue;
+        document.getElementById(tileName).classList.remove('selected');
+      }
+      document.getElementById(tile).classList.add('selected');
+      document.getElementById("thumb2013").src = tiles[tile.substr(0,10) + '_2013']["metadata"]["thumbnail"];
+      document.getElementById("thumb2017").src = tiles[tile.substr(0,10) + '_2017']["metadata"]["thumbnail"];
+    }
+
+    function mouseOver(tile) {
+      document.getElementById('hoveringTile').innerText = tile.substr(0,10);
+      for (var tileName in tiles) {
+        if (!tileName.endsWith('2017')) continue;
+        document.getElementById(tileName).classList.remove('hovering');
+      }
+      document.getElementById(tile).classList.add('hovering');
+      document.getElementById("thumb2013").src = tiles[tile.substr(0,10) + '_2013']["metadata"]["thumbnail"];
+      document.getElementById("thumb2017").src = tiles[tile.substr(0,10) + '_2017']["metadata"]["thumbnail"];
+    }
+
+    function mouseOut(tile) {
+      document.getElementById('hoveringTile').innerText = selectedTile;
+      document.getElementById("thumb2013").src = tiles[selectedTile + '_2013']["metadata"]["thumbnail"];
+      document.getElementById("thumb2017").src = tiles[selectedTile + '_2017']["metadata"]["thumbnail"];
+      for (var tileName in tiles) {
+        if (!tileName.endsWith('2017')) continue;
+        document.getElementById(tileName).classList.remove('hovering');
+      }
+    }
+
+      function startSession(year) {
+        if (selectedTile != null) {
+
+          var datasetWithYear = selectedTile + `_${year}`;
+
+          var request = {
+            "dataset": datasetWithYear,
+            "model": datasetWithYear
+          };
+
+          $.ajax({
+            type: "POST",
+            url: window.location.origin + "/createSession",
+            data: JSON.stringify(request),
+            success: function(data, textStatus, jqXHR){
+              window.location.href = `/index.html?dataset=${datasetWithYear}&model=${datasetWithYear}&checkpoint=new`;
+            },
+            error: function(jqXHR, textStatus){
+              alert('Error starting session: ' + textStatus);
+            },
+            dataType: "json",
+            contentType: "application/json"
+          });
+        }else{
+          alert('You must select a dataset.');
+        }
+      }
+
+    $(document).ready(function () {
+      var data = [
+        $.getJSON('datasets.mine.json')
+      ];
+
+      Promise.allSettled(data).then(function (results) {        
+        tiles = results[0].value;
+        main();
+      });
+
+    });
+  </script>
+
+</body>
+
+</html>

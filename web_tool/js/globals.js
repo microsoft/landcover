@@ -135,4 +135,4 @@ var gLoadedLayers = [];
 
 var gDownloadLayer = null;
 
-var gNumModels = 6;
+var gNumModels = 12;

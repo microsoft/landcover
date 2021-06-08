@@ -48,6 +48,7 @@ body {
     height: 125px;
     margin: 10px;
     border: 2px solid transparent;
+    image-rendering: pixelated;
 }
 
 .exampleImage.active{
@@ -235,4 +236,8 @@ a.leaflet-control-slider-toggle {
     image-rendering: -o-crisp-edges;
     image-rendering: pixelated;
     -ms-interpolation-mode: nearest-neighbor;
+}
+
+img.leaflet-tile {
+    image-rendering: pixelated;
 }

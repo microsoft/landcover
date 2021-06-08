@@ -59,6 +59,27 @@ class Session():
 
         self.tile_map = None
 
+        self.mapfile = '/home/kolya/data/saved/' + model.model_fn[-15:] + '.npy'
+
+        self.fill_in_other_year = False
+
+        try:
+            self.tile_map = np.load(self.mapfile)
+        except: 
+            self.tile_map = None
+
+        if self.fill_in_other_year:
+            try:
+                self.other_tile_map = np.load(self.mapfile[:-5] + ('7' if self.mapfile[-5]=='3' else '3') + '.npy')
+                if not (self.tile_map is None):
+                    self.tile_map[self.tile_map==255] = self.other_tile_map[self.tile_map==255]
+                    del self.other_tile_map
+                else:
+                    self.tile_map = self.other_tile_map
+            except: 
+                self.other_tile_map = None
+        else: self.other_tile_map = None
+
     def reset(self, soft=False, from_cached=None):
         if not soft:
             self.model.reset() # can't fail, so don't worry about it
@@ -176,9 +197,14 @@ class Session():
 
         # Make sure our tile map is setup
         if self.tile_map is None:
-            self.tile_map = np.zeros((dataset_height, dataset_width, output.shape[2]), dtype=np.float32)
+            if self.fill_in_other_year and not (self.other_tile_map is None):
+                self.tile_map = self.other_tile_map
+            else: 
+                self.tile_map = np.zeros((dataset_height, dataset_width), dtype=np.uint8)
+                self.tile_map[:] = 255
         current_image = self.tile_map[miny:maxy, minx:maxx]
-        current_image[data_mask] = cropped_output[data_mask]
+        current_image[data_mask] = cropped_output[data_mask].argmax(1)
+        current_image[current_image==20] = 255
         self.tile_map[miny:maxy, minx:maxx] = current_image
 
         return outputs
@@ -218,12 +244,20 @@ class Session():
 
         # Make sure our tile map is setup
         if self.tile_map is None:
-            self.tile_map = np.zeros((dataset_height, dataset_width, output.shape[2]), dtype=np.float32)
+            if self.fill_in_other_year and not (self.other_tile_map is None):
+                self.tile_map = self.other_tile_map
+            else: 
+                self.tile_map = np.zeros((dataset_height, dataset_width), dtype=np.uint8)
+                self.tile_map[:] = 255
         current_image = self.tile_map[miny:maxy, minx:maxx]
-        current_image[data_mask] = cropped_output[data_mask]
+        current_image[data_mask] = cropped_output[data_mask].argmax(1)
+        current_image[current_image==20] = 255
         self.tile_map[miny:maxy, minx:maxx] = current_image
 
         return output
 
     def get_tile_predictions(self):
+        print('saving')
+        if not (self.tile_map is None): np.save(self.mapfile, self.tile_map)
+        print('saved')
         return self.tile_map

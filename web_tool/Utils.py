@@ -140,9 +140,14 @@ def to_one_hot_batch(batch, class_num):
         one_hot[:, class_id, :, :] = (batch == class_id).astype(np.float32)
     return one_hot
 
-def class_prediction_to_img(y_pred, hard=True, color_list=None):
-    assert len(y_pred.shape) == 3, "Input must have shape (height, width, num_classes)"
-    height, width, num_classes = y_pred.shape
+def class_prediction_to_img(y_pred, hard=True, color_list=None, sparse=False):
+    if not (hard and sparse): 
+        assert len(y_pred.shape) == 3, "Input must have shape (height, width, num_classes)"
+        height, width, num_classes = y_pred.shape
+    else:
+        height, width = y_pred.shape
+        num_classes = y_pred[y_pred<255].max()+1
+    print(hard,sparse,num_classes)
 
     if color_list is None:
         colour_map = COLOR_MAP_LC4
@@ -156,7 +161,7 @@ def class_prediction_to_img(y_pred, hard=True, color_list=None):
 
     if hard:
         img = np.zeros((height, width, 3), dtype=np.uint8)
-        y_pred_temp = y_pred.argmax(axis=2)
+        y_pred_temp = y_pred if sparse else y_pred.argmax(axis=2)
         for c in range(num_classes):
             mask = (y_pred_temp==c)
             for ch in range(3):

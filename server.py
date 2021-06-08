@@ -359,7 +359,9 @@ def pred_tile():
     # apply nodata mask from naip_data
     nodata_mask = np.sum(tile == 0, axis=2) == tile.shape[2]
     output_hard[nodata_mask] = 255
+    tile[nodata_mask] = [0,0,0,0]
     vals, counts = np.unique(output_hard[~nodata_mask], return_counts=True)
+
 
     # ------------------------------------------------------
     # Step 4
@@ -389,10 +391,27 @@ def pred_tile():
     new_profile['height'] = tile.shape[0] 
     new_profile['width'] = tile.shape[1]
     new_profile['nodata'] = 255
-    f = rasterio.open("tmp/downloads/%s.tif" % (tmp_id), 'w', **new_profile)
+    f = rasterio.open("tmp/downloads/%s_predictions.tif" % (tmp_id), 'w', **new_profile)
     f.write(output_hard.astype(np.uint8), 1)
     f.close()
-    data["downloadTIFF"] = "tmp/downloads/%s.tif" % (tmp_id)
+    data["downloadTIFF"] = "tmp/downloads/%s_predictions.tif" % (tmp_id)
+
+
+    new_profile = raster_profile.copy()
+    new_profile['driver'] = 'GTiff'
+    new_profile['dtype'] = 'uint8'
+    new_profile['compress'] = "lzw"
+    new_profile['count'] = 4
+    new_profile['transform'] = raster_transform
+    new_profile['height'] = tile.shape[0] 
+    new_profile['width'] = tile.shape[1]
+    new_profile['nodata'] = 0
+    f = rasterio.open("tmp/downloads/%s_inputs.tif" % (tmp_id), 'w', **new_profile)
+    for band_index in range(tile.shape[2]):
+        f.write(tile[:,:,band_index], band_index+1)
+    f.close()
+    data["downloadInputTIFF"] = "tmp/downloads/%s_inputs.tif" % (tmp_id)
+
 
     f = open("tmp/downloads/%s.txt" % (tmp_id), "w")
     f.write("Class id\tClass name\tPercent area\tArea (km^2)\n")
@@ -435,15 +454,15 @@ def get_tile_predictions():
     output = current_session.get_tile_predictions()
     print("get_tile_predictions, after model.run:", output.shape)
     
-    if output.shape[2] > len(color_list):
-       LOGGER.warning("The number of output channels is larger than the given color list, cropping output to number of colors (you probably don't want this to happen")
-       output = output[:,:,:len(color_list)]
+    #if output.shape[2] > len(color_list):
+    #   LOGGER.warning("The number of output channels is larger than the given color list, cropping output to number of colors (you probably don't want this to happen")
+    #   output = output[:,:,:len(color_list)]
     
-    output_hard = output.argmax(axis=2)
+    output_hard = output#.argmax(axis=2)
 
     # apply nodata mask from naip_data
     #nodata_mask = np.sum(tile == 0, axis=2) == tile.shape[2]
-    nodata_mask = output.sum(axis=2) == 0
+    nodata_mask = output == 255#.sum(axis=2) == 0
     #output_hard[nodata_mask] = 255
     #als, counts = np.unique(output_hard[~nodata_mask], return_counts=True)
 
@@ -452,7 +471,7 @@ def get_tile_predictions():
     #   Convert images to base64 and return  
     # ------------------------------------------------------
     tmp_id = get_random_string(8)
-    img_hard = class_prediction_to_img(output, True, color_list)
+    img_hard = class_prediction_to_img(output_hard, True, color_list, True)
     img_hard = cv2.cvtColor(img_hard, cv2.COLOR_RGB2BGRA)
     img_hard[nodata_mask] = [0,0,0,0]
 
@@ -472,8 +491,9 @@ def get_tile_predictions():
     f = rasterio.open("tmp/downloads/%s.tif" % (tmp_id), 'w', **new_profile)
     f.write(output_hard.astype(np.uint8), 1)
     f.close()
-    data["downloadTIFF"] = "tmp/downloads/%s.tif" % (tmp_id)
 
+    data["downloadTIFF"] = "tmp/downloads/%s.tif" % (tmp_id)
+ 
     bottle.response.status = 200
     return json.dumps(data)
 

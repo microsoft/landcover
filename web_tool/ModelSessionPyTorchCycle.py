@@ -43,6 +43,8 @@ class TorchSmoothingCycleFineTune(ModelSession):
         self.model_fn = model_fn
         self.device = T.device("cuda:0" if T.cuda.is_available() else "cpu")
 
+        num_models += 6 # unif brushes
+
         self.num_models = num_models
         
         self.core_model = CoreModel()
@@ -84,7 +86,7 @@ class TorchSmoothingCycleFineTune(ModelSession):
         self.naip_data = naip_data  # keep non-trimmed size, i.e. with padding
         with T.no_grad():
 
-            if naip_data.shape[1] < 300:
+            if naip_data.shape[1] < 300 or naip_data.shape[2] < 300:
 
                 features = self.run_core_model_on_tile(naip_data)
                 tfeatures = features.cpu().numpy()
@@ -218,6 +220,8 @@ class TorchSmoothingCycleFineTune(ModelSession):
 
     def init_model(self):
 
+        special_classes = [1,8,17,6,2,21]
+
         with T.no_grad():
             checkpoint = T.load(self.model_fn, map_location=self.device)
             self.core_model.load_state_dict(checkpoint, strict=False)
@@ -229,11 +233,18 @@ class TorchSmoothingCycleFineTune(ModelSession):
 
             for i,model in enumerate(self.augment_models):
                 #model.load_state_dict(checkpoint, strict=False)
-                model.last.weight[:] = weight[i].T.unsqueeze(2).unsqueeze(3)
-                model.last.bias[:] = bias[i]
+
+                if i<6:
+                    model.last.weight[:] = weight[i].T.unsqueeze(2).unsqueeze(3)
+                    model.last.bias[:] = bias[i]
+                else:
+                    model.last.weight[:] = 0
+                    model.last.bias[:] = 0
+                    model.last.bias[special_classes[i-6]] = 1000000
+
                 model.eval()
                 model.to(self.device)
-        
+
     def reset(self):
         self.init_model()
         for i in range(self.num_models): self.num_corrections_since_retrain[i] = 0

@@ -62,14 +62,14 @@ var addInferenceWindowSizeSlider = function(){
         }, {
             position: 'bottomleft',
             id: 'inferenceWindowSizeSlider',
-            orientation: 'horizontal',
+            orientation: 'vertical',
             collapsed: true,
             syncSlider: true,
-            min: 10,
-            max: 2000,
+            min: 2,
+            max: 500,
             value: INFERENCE_WINDOW_SIZE,
             logo: "Inference Window Size",
-            size: "171px"
+            size: "500px"
         }
     );
     inferenceWindowSizeSlider.addTo(gMap);

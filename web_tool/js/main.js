@@ -131,9 +131,11 @@ var doDownloadTile = function(){
             }).show();
             var pngURL = window.location.origin + "/" + data["downloadPNG"];
             var tiffURL = window.location.origin + "/" + data["downloadTIFF"];
+            var inputURL = window.location.origin + "/" + data["downloadInputTIFF"];
             var statisticsURL = window.location.origin + "/" + data["downloadStatistics"];
             $("#lblPNG").html("<a href='"+pngURL+"' target='_blank'>Download PNG</a>");
             $("#lblTIFF").html("<a href='"+tiffURL+"' target='_blank'>Download TIFF</a>");
+            $("#lblInputTIFF").html("<a href='"+inputURL+"' target='_blank'>Download Inputs</a>");
             $("#lblStatistics").html("<a href='"+statisticsURL+"' target='_blank'>Download Class Statistics</a>");
 
             outputLayer.setUrl(pngURL);
@@ -496,7 +498,7 @@ var doKillSession = function () {
         url: window.location.origin + "/killSession",
         data: JSON.stringify({}),
         success: function (data, textStatus, jqXHR) {
-            window.location.href = "/";
+            window.location.href = "/new_landing_page.html";
         },
         error: function (jqXHR, textStatus) {
             // TODO: Notify fail
