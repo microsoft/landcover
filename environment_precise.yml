@@ -230,5 +230,6 @@ dependencies:
     - urllib3==1.25.9
     - werkzeug==1.0.1
     - zipp==3.1.0
+    - segmentation-models-pytorch
 prefix: /data/anaconda/envs/landcover
 
