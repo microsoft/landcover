@@ -20,3 +20,7 @@ with rasterio.open(INPUT_FN) as f:
         [top_lat,top_lng],
         [bot_lat,bot_lng],
     ])
+
+    centroid_geom = shapely.geometry.mapping(shape.centroid)
+    centroid_geom = fiona.transform.transform_geom(crs, "epsg:4326", centroid_geom)
+    print(centroid_geom["coordinates"][1], centroid_geom["coordinates"][0])
