@@ -275,8 +275,12 @@ def pred_tile():
         current_data_loader = DATALOADERS[dataset]
 
     try:
-        input_raster = current_data_loader.get_data_from_geometry(geom["geometry"])
         shape_area = get_area_from_geometry(geom["geometry"])
+
+        if shape_area > 10:
+            raise ValueError("Dataset area is too big")
+
+        input_raster = current_data_loader.get_data_from_geometry(geom["geometry"])
     except NotImplementedError as e: # Example of how to handle errors from the rest of the server
         bottle.response.status = 400
         return json.dumps({"error": "Cannot currently download imagery with 'Basemap' based datasets"})

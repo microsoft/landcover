@@ -457,9 +457,42 @@ class DataLoaderBasemap(DataLoader):
         return InMemoryRaster(out_image, dst_crs, out_transform, buffed_geom.bounds)
 
     def get_data_from_geometry(self, geometry):
-        raise NotImplementedError()
+        geometry = shapely.geometry.shape(geometry)
+        minx, miny, maxx, maxy = geometry.bounds
+        
+        virtual_files = []
+        virtual_datasets = []
+        for i, tile in enumerate(mercantile.tiles(minx, miny, maxx, maxy, self.zoom_level)):
+            f = self.get_tile_as_virtual_raster(tile)
+            virtual_files.append(f)
+            virtual_datasets.append(f.open())
+        out_image, out_transform = rasterio.merge.merge(virtual_datasets, bounds=(minx, miny, maxx, maxy))
 
+        for ds in virtual_datasets:
+            ds.close()
+        for f in virtual_files:
+            f.close()
 
+        dst_crs = "epsg:4326"
+        dst_profile = {
+            "driver": "GTiff",
+            "width": out_image.shape[1],
+            "height": out_image.shape[0],
+            "transform": out_transform,
+            "crs": dst_crs,
+            "count": 3,
+            "dtype": "uint8"
+        }
+        test_f = rasterio.io.MemoryFile()
+        with test_f.open(**dst_profile) as test_d:
+            test_d.write(out_image[:,:,0], 1)
+            test_d.write(out_image[:,:,1], 2)
+            test_d.write(out_image[:,:,2], 3)
+        test_f.seek(0)
+        test_f.close()
+
+        out_image = np.rollaxis(out_image, 0, 3)
+        return InMemoryRaster(out_image, dst_crs, out_transform, geometry.bounds)
 
 class LCTileIndex(object):
     TILES = None
